@@ -24,8 +24,9 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Prop
   const [confirmado, setConfirmado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rgpdAceptado, setRgpdAceptado] = useState(false);
 
-  const puedeConfirmar = estado.nombre.trim() !== "" && estado.email.trim() !== "";
+  const puedeConfirmar = estado.nombre.trim() !== "" && estado.email.trim() !== "" && rgpdAceptado;
 
   const handleConfirmar = async () => {
     if (!puedeConfirmar || enviando) return;
@@ -216,6 +217,21 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Prop
                 </span>
               </div>
             </div>
+
+            <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rgpdAceptado}
+                onChange={(e) => setRgpdAceptado(e.target.checked)}
+                className="mt-0.5 shrink-0 accent-[#7d2b13]"
+              />
+              <span className="text-xs leading-snug" style={{ color: "#56423d" }}>
+                Acepto el tratamiento de mis datos personales según la{" "}
+                <a href="#" className="underline hover:opacity-70" style={{ color: "#7d2b13" }}>
+                  política de privacidad
+                </a>
+              </span>
+            </label>
 
             {error && (
               <p className="text-xs text-red-600 text-center mb-3">{error}</p>
