@@ -182,18 +182,18 @@ export default function AdminDashboard() {
     setDrawerLoading(false);
   };
 
-  const handleMarcarPagado = async () => {
+  const handleCambiarStato = async (nuevoStato: string) => {
     if (!drawerDetalle) return;
     const { error } = await supabase
       .from("iscrizioni")
-      .update({ stato: "pagato" })
+      .update({ stato: nuevoStato })
       .eq("id", drawerDetalle.id);
     if (!error) {
-      setDrawerDetalle((prev) => prev ? { ...prev, stato: "pagato" } : prev);
+      setDrawerDetalle((prev) => prev ? { ...prev, stato: nuevoStato } : prev);
       setDrawerAlumnos((prev) =>
         prev.map((a) =>
           a.iscrizione_id === drawerDetalle.id && a.iscrizioni
-            ? { ...a, iscrizioni: { ...a.iscrizioni, stato: "pagato" } }
+            ? { ...a, iscrizioni: { ...a.iscrizioni, stato: nuevoStato } }
             : a
         )
       );
@@ -836,13 +836,21 @@ export default function AdminDashboard() {
                         <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>
                       )}
                     </div>
-                    {drawerDetalle.stato === "attesa" && (
+                    {drawerDetalle.stato === "attesa" ? (
                       <button
-                        onClick={handleMarcarPagado}
+                        onClick={() => handleCambiarStato("pagato")}
                         className="w-full py-3 text-sm font-semibold tracking-wide border-t transition-colors"
                         style={{ borderColor: "#dcc1b9", backgroundColor: "#7d2b13", color: "#ffffff" }}
                       >
                         Marcar como pagado
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleCambiarStato("attesa")}
+                        className="w-full py-3 text-sm font-semibold tracking-wide border-t transition-colors"
+                        style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#89726c" }}
+                      >
+                        Deshacer pago
                       </button>
                     )}
                   </div>
