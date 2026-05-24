@@ -12,6 +12,8 @@ type AdminOrario = {
   ora_inizio: string;
   ora_fine: string;
   disciplina_id: string;
+  posti_totali: number;
+  iscrizione_orari: { orario_id: string }[];
   discipline: { nome: string } | null;
 };
 
@@ -65,12 +67,12 @@ function getDcClasses(id: string): string {
 function formatData(created_at: string): string {
   const d = new Date(created_at);
   const today = new Date();
-  const ieri = new Date(today);
-  ieri.setDate(today.getDate() - 1);
-  const time = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-  if (d.toDateString() === today.toDateString()) return `Oggi, ${time}`;
-  if (d.toDateString() === ieri.toDateString()) return `Ieri, ${time}`;
-  return d.toLocaleDateString("it-IT", { day: "numeric", month: "short" }) + `, ${time}`;
+  const ayer = new Date(today);
+  ayer.setDate(today.getDate() - 1);
+  const time = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === today.toDateString()) return `Hoy, ${time}`;
+  if (d.toDateString() === ayer.toDateString()) return `Ayer, ${time}`;
+  return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" }) + `, ${time}`;
 }
 
 function Icon({ name, className = "" }: { name: string; className?: string }) {
@@ -110,7 +112,7 @@ export default function AdminDashboard() {
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }),
       supabase.from("orari").select("*", { count: "exact", head: true }).eq("giorno", todayEs).eq("attivo", true),
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
-      supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, discipline(nome)").eq("attivo", true),
+      supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(orario_id)").eq("attivo", true),
       supabase
         .from("iscrizioni")
         .select("id, nome, cognome, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))")
@@ -161,19 +163,19 @@ export default function AdminDashboard() {
           >
             Studio Admin
           </h1>
-          <p className="font-label-md text-label-md text-on-surface-variant">Gestione Studio</p>
+          <p className="font-label-md text-label-md text-on-surface-variant">Gestión del Estudio</p>
         </div>
 
         <button className="bg-primary text-on-primary rounded-full py-3 px-6 mb-stack-md font-label-md text-label-md hover:bg-secondary transition-colors">
-          Nuova Lezione
+          Nueva Clase
         </button>
 
         <ul className="flex-1 space-y-2">
           {[
             { icon: "calendar_month", label: "Calendario", active: true },
-            { icon: "event_seat", label: "Prenotazioni", active: false },
-            { icon: "fitness_center", label: "Discipline", active: false },
-            { icon: "group", label: "Utenti", active: false },
+            { icon: "event_seat", label: "Reservas", active: false },
+            { icon: "fitness_center", label: "Disciplinas", active: false },
+            { icon: "group", label: "Usuarios", active: false },
           ].map((item) => (
             <li key={item.label}>
               <a
@@ -193,8 +195,8 @@ export default function AdminDashboard() {
 
         <ul className="mt-auto space-y-2 border-t border-outline-variant pt-4">
           {[
-            { icon: "settings", label: "Impostazioni" },
-            { icon: "help_outline", label: "Supporto" },
+            { icon: "settings", label: "Configuración" },
+            { icon: "help_outline", label: "Soporte" },
           ].map((item) => (
             <li key={item.label}>
               <a
@@ -215,7 +217,7 @@ export default function AdminDashboard() {
         {/* Top bar */}
         <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant fixed top-0 right-0 w-[calc(100%-16rem)] h-16 shadow-sm flex justify-between items-center px-margin-desktop z-40">
           <h2 className="font-title-lg text-title-lg text-secondary">
-            Dashboard Amministratore
+            Panel de Administración
           </h2>
           <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-semibold text-sm border-2 border-surface-container-high">
             AC
@@ -231,7 +233,7 @@ export default function AdminDashboard() {
             <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm shadow-[#3D2B1F]/5 flex flex-col justify-between border border-surface-container-high">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-label-md text-label-md text-on-surface-variant mb-1">Totale Iscritti</p>
+                  <p className="font-label-md text-label-md text-on-surface-variant mb-1">Total Inscritos</p>
                   <h3 className="font-headline-md text-headline-md text-primary">
                     {loading ? "—" : iscrittiCount}
                   </h3>
@@ -241,7 +243,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <p className="font-body-md text-body-md text-on-surface-variant mt-4 text-sm">
-                <span className="text-secondary font-semibold">+{loading ? "—" : iscrittiCount}</span> totale registrati
+                <span className="text-secondary font-semibold">+{loading ? "—" : iscrittiCount}</span> total registrados
               </p>
             </div>
 
@@ -249,7 +251,7 @@ export default function AdminDashboard() {
             <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm shadow-[#3D2B1F]/5 flex flex-col justify-between border border-surface-container-high">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-label-md text-label-md text-on-surface-variant mb-1">Lezioni Odierne</p>
+                  <p className="font-label-md text-label-md text-on-surface-variant mb-1">Clases de Hoy</p>
                   <h3 className="font-headline-md text-headline-md text-primary">
                     {loading ? "—" : lezioniCount}
                   </h3>
@@ -259,7 +261,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <p className="font-body-md text-body-md text-on-surface-variant mt-4 text-sm">
-                <span className="text-secondary font-semibold">{loading ? "—" : lezioniCount}</span> lezioni programmate oggi
+                <span className="text-secondary font-semibold">{loading ? "—" : lezioniCount}</span> clases programadas hoy
               </p>
             </div>
 
@@ -267,7 +269,7 @@ export default function AdminDashboard() {
             <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm shadow-[#3D2B1F]/5 flex flex-col justify-between border border-surface-container-high">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-label-md text-label-md text-on-surface-variant mb-1">Pagamenti in Sospeso</p>
+                  <p className="font-label-md text-label-md text-on-surface-variant mb-1">Pagos Pendientes</p>
                   <h3 className="font-headline-md text-headline-md text-error">
                     {loading ? "—" : pendingCount}
                   </h3>
@@ -277,7 +279,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <button className="mt-4 text-left font-label-md text-label-md text-secondary hover:text-primary transition-colors">
-                Visualizza dettagli →
+                Ver detalles →
               </button>
             </div>
           </section>
@@ -285,7 +287,7 @@ export default function AdminDashboard() {
           {/* ── Calendario ── */}
           <section>
             <h3 className="font-headline-md text-headline-md text-primary mb-stack-md">
-              Calendario Settimanale
+              Calendario Semanal
             </h3>
             <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm shadow-[#3D2B1F]/5 border border-surface-container-high overflow-x-auto">
               {loading ? (
@@ -299,7 +301,7 @@ export default function AdminDashboard() {
                 <div className="min-w-[800px]">
                   {/* Header */}
                   <div className="grid grid-cols-6 gap-4 mb-4 border-b border-outline-variant pb-4">
-                    <div className="font-label-md text-label-md text-on-surface-variant text-center">Orario</div>
+                    <div className="font-label-md text-label-md text-on-surface-variant text-center">Horario</div>
                     {weekDates.map((d, i) => {
                       const isToday = d.toDateString() === new Date().toDateString();
                       return (
@@ -318,7 +320,7 @@ export default function AdminDashboard() {
                   {/* Rows */}
                   <div className="space-y-4">
                     {times.length === 0 ? (
-                      <p className="text-center text-on-surface-variant py-8">Nessun orario configurato</p>
+                      <p className="text-center text-on-surface-variant py-8">No hay horarios configurados</p>
                     ) : (
                       times.map((time, ti) => (
                         <div
@@ -342,6 +344,16 @@ export default function AdminDashboard() {
                                 <p className="font-body-md text-body-md text-on-surface-variant text-xs mt-1">
                                   {time} – {o.ora_fine.substring(0, 5)}
                                 </p>
+                                {(() => {
+                                  const ocupados = o.iscrizione_orari?.length ?? 0;
+                                  const disponibles = Math.max(0, o.posti_totali - ocupados);
+                                  const lleno = disponibles === 0;
+                                  return (
+                                    <p className={`text-xs font-semibold mt-1.5 ${lleno ? "text-error" : "text-on-surface-variant"}`}>
+                                      {disponibles}/{o.posti_totali} plazas
+                                    </p>
+                                  );
+                                })()}
                               </div>
                             );
                           })}
@@ -357,30 +369,30 @@ export default function AdminDashboard() {
           {/* ── Prenotazioni recenti ── */}
           <section>
             <div className="flex justify-between items-center mb-stack-md">
-              <h3 className="font-headline-md text-headline-md text-primary">Prenotazioni Recenti</h3>
+              <h3 className="font-headline-md text-headline-md text-primary">Reservas Recientes</h3>
               <button className="font-label-md text-label-md text-secondary hover:text-primary transition-colors flex items-center">
-                Vedi tutte <Icon name="arrow_forward" className="ml-1 text-sm" />
+                Ver todas <Icon name="arrow_forward" className="ml-1 text-sm" />
               </button>
             </div>
             <div className="bg-surface-container-lowest rounded-[24px] shadow-sm shadow-[#3D2B1F]/5 border border-surface-container-high overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead className="bg-surface-container-low border-b border-outline-variant">
                   <tr>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Utente</th>
+                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Usuario</th>
                     <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Disciplina</th>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Data Iscrizione</th>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Stato Pagamento</th>
+                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Fecha Inscripción</th>
+                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Estado de Pago</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/50">
                   {loading ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-on-surface-variant">Caricamento...</td>
+                      <td colSpan={4} className="py-8 text-center text-on-surface-variant">Cargando...</td>
                     </tr>
                   ) : bookings.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="py-10 text-center text-on-surface-variant font-body-md text-body-md">
-                        Nessuna prenotazione ancora
+                        No hay reservas aún
                       </td>
                     </tr>
                   ) : (
@@ -398,11 +410,11 @@ export default function AdminDashboard() {
                         <td className="py-4 px-6">
                           {b.stato === "attesa" ? (
                             <span className="inline-flex items-center px-3 py-1 rounded-full bg-error-container text-on-error-container font-label-md text-xs">
-                              In sospeso
+                              Pendiente
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e8f5e9] text-[#2e7d32] font-label-md text-xs">
-                              Pagato
+                              Pagado
                             </span>
                           )}
                         </td>
