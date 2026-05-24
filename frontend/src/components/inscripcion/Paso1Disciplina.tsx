@@ -11,7 +11,7 @@ interface Props {
 export default function Paso1Disciplina({ disciplinas, value, onSelect }: Props) {
   return (
     <div className="max-w-5xl mx-auto px-8 pb-16">
-      <div className="mb-10">
+      <div className="mb-10 text-center">
         <h2
           className="text-4xl sm:text-5xl mb-3"
           style={{
@@ -19,11 +19,10 @@ export default function Paso1Disciplina({ disciplinas, value, onSelect }: Props)
             color: "#7d2b13",
           }}
         >
-          Inscripción — Disciplina
+          Todo empieza con una elección
         </h2>
-        <p className="text-base" style={{ color: "#56423d" }}>
-          Selecciona la disciplina con la que deseas conectar tu cuerpo y mente.
-          Nuestra propuesta abraza el movimiento orgánico y la precisión.
+        <p className="text-base max-w-xl mx-auto" style={{ color: "#56423d" }}>
+          Un estudio con formación certificada y método real. Elige la disciplina que más conecte contigo — cada una tiene su propio camino y su propia transformación.
         </p>
       </div>
 
