@@ -90,6 +90,7 @@ export default function AdminDashboard() {
   const [orari, setOrari] = useState<AdminOrario[]>([]);
   const [bookings, setBookings] = useState<IscrzioneRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const loadStats = async () => {
     const todayEs = DOW_ES[new Date().getDay()];
@@ -147,11 +148,38 @@ export default function AdminDashboard() {
   const times = [...new Set(orari.map((o) => o.ora_inizio.substring(0, 5)))].sort();
   const grid = buildGrid(orari);
 
+  const navItems = [
+    { icon: "calendar_month", label: "Calendario", active: true },
+    { icon: "event_seat", label: "Reservas", active: false },
+    { icon: "fitness_center", label: "Disciplinas", active: false },
+    { icon: "group", label: "Usuarios", active: false },
+  ];
+
   return (
     <div className="bg-background text-on-background font-body-md min-h-screen flex">
 
+      {/* ── Overlay backdrop (mobile) ── */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* ── Sidebar ── */}
-      <nav className="bg-surface-container-low text-primary h-screen w-64 fixed left-0 top-0 border-r border-outline-variant flex flex-col py-gutter px-4 z-50">
+      <nav
+        className={`bg-surface-container-low text-primary h-screen w-64 fixed left-0 top-0 border-r border-outline-variant flex flex-col py-gutter px-4 z-50 transition-transform duration-300
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
+      >
+        {/* Close button (mobile only) */}
+        <button
+          className="absolute top-4 right-4 md:hidden text-on-surface-variant"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Cerrar menú"
+        >
+          <Icon name="close" />
+        </button>
+
         <div className="mb-stack-lg flex flex-col items-center">
           <Image
             src="/logo.png"
@@ -160,9 +188,7 @@ export default function AdminDashboard() {
             height={96}
             className="rounded-full object-cover mb-4"
           />
-          <h1
-            className="font-display-lg text-2xl font-semibold text-primary text-center tracking-tight"
-          >
+          <h1 className="font-display-lg text-2xl font-semibold text-primary text-center tracking-tight">
             Studio Admin
           </h1>
           <p className="font-label-md text-label-md text-on-surface-variant">Gestión del Estudio</p>
@@ -173,15 +199,11 @@ export default function AdminDashboard() {
         </button>
 
         <ul className="flex-1 space-y-2">
-          {[
-            { icon: "calendar_month", label: "Calendario", active: true },
-            { icon: "event_seat", label: "Reservas", active: false },
-            { icon: "fitness_center", label: "Disciplinas", active: false },
-            { icon: "group", label: "Usuarios", active: false },
-          ].map((item) => (
+          {navItems.map((item) => (
             <li key={item.label}>
               <a
                 href="#"
+                onClick={() => setSidebarOpen(false)}
                 className={`flex items-center px-4 py-3 rounded-lg transition-all font-label-md text-label-md ${
                   item.active
                     ? "text-primary border-r-4 border-primary bg-surface-container-highest font-bold scale-95"
@@ -214,20 +236,33 @@ export default function AdminDashboard() {
       </nav>
 
       {/* ── Main ── */}
-      <div className="ml-64 flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen md:ml-64">
 
         {/* Top bar */}
-        <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant fixed top-0 right-0 w-[calc(100%-16rem)] h-16 shadow-sm flex justify-between items-center px-margin-desktop z-40">
-          <h2 className="font-title-lg text-title-lg text-secondary">
+        <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant fixed top-0 left-0 right-0 md:left-64 h-16 shadow-sm flex justify-between items-center px-4 md:px-margin-desktop z-40">
+          {/* Hamburger (mobile only) */}
+          <button
+            className="md:hidden p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menú"
+          >
+            <Icon name="menu" />
+          </button>
+
+          <h2 className="font-title-lg text-title-lg text-secondary hidden md:block">
             Panel de Administración
           </h2>
+          <p className="font-title-lg text-title-lg text-secondary md:hidden text-sm">
+            Studio Admin
+          </p>
+
           <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-semibold text-sm border-2 border-surface-container-high">
             AC
           </div>
         </header>
 
         {/* Content */}
-        <main className="pt-[80px] p-margin-desktop flex-1 overflow-y-auto space-y-section-gap">
+        <main className="pt-[80px] p-4 md:p-margin-desktop flex-1 overflow-y-auto space-y-section-gap">
 
           {/* ── Stats ── */}
           <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -376,13 +411,14 @@ export default function AdminDashboard() {
               </button>
             </div>
             <div className="bg-surface-container-lowest rounded-[24px] shadow-sm shadow-[#3D2B1F]/5 border border-surface-container-high overflow-hidden">
-              <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[540px]">
                 <thead className="bg-surface-container-low border-b border-outline-variant">
                   <tr>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Usuario</th>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Disciplina</th>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Fecha Inscripción</th>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant">Estado de Pago</th>
+                    <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Usuario</th>
+                    <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Disciplina</th>
+                    <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Fecha</th>
+                    <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/50">
@@ -399,7 +435,7 @@ export default function AdminDashboard() {
                   ) : (
                     bookings.map((b) => (
                       <tr key={b.id} className="hover:bg-surface-container-low transition-colors">
-                        <td className="py-4 px-6 font-body-md text-body-md text-on-surface">
+                        <td className="py-4 px-4 md:px-6 font-body-md text-body-md text-on-surface">
                           <span>{b.nome} {b.cognome}</span>
                           {b.nome_alumna && (
                             <span className="block text-xs mt-0.5" style={{ color: "#89726c" }}>
@@ -407,15 +443,15 @@ export default function AdminDashboard() {
                             </span>
                           )}
                         </td>
-                        <td className="py-4 px-6 font-body-md text-body-md text-on-surface">
+                        <td className="py-4 px-4 md:px-6 font-body-md text-body-md text-on-surface">
                           {b.discipline?.nome ?? "—"}
                         </td>
-                        <td className="py-4 px-6 font-body-md text-body-md text-on-surface-variant">
+                        <td className="py-4 px-4 md:px-6 font-body-md text-body-md text-on-surface-variant whitespace-nowrap">
                           {formatData(b.created_at)}
                         </td>
-                        <td className="py-4 px-6">
+                        <td className="py-4 px-4 md:px-6">
                           {b.stato === "attesa" ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-error-container text-on-error-container font-label-md text-xs">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-error-container text-on-error-container font-label-md text-xs whitespace-nowrap">
                               Pendiente
                             </span>
                           ) : (
@@ -429,6 +465,7 @@ export default function AdminDashboard() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </section>
 
