@@ -42,6 +42,23 @@ type OrarioAlumno = {
   } | null;
 };
 
+type KpiStudentRow = {
+  id: string;
+  nome: string;
+  cognome: string;
+  nome_alumna: string | null;
+  cognome_alumna: string | null;
+  disciplina_id: string;
+  piano_id: string;
+  stato: string;
+  created_at: string;
+  discipline: { nome: string } | null;
+  prezzo: number | null;
+};
+
+type OcupacionClase = { id: string; giorno: string; ora_inizio: string; ora_fine: string; ocupados: number; total: number };
+type OcupacionDisciplina = { disciplina_id: string; nombre: string; ocupados: number; total: number; clases: OcupacionClase[] };
+
 type IscrizioneDetalle = {
   id: string;
   nome: string;
@@ -145,6 +162,20 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // KPI metrics
+  const [facturacionMes, setFacturacionMes] = useState(0);
+  const [facturacionMesAnterior, setFacturacionMesAnterior] = useState(0);
+  const [pendingAmount, setPendingAmount] = useState(0);
+  const [ocupacionMedia, setOcupacionMedia] = useState(0);
+  const [ocupacionDisciplinas, setOcupacionDisciplinas] = useState<OcupacionDisciplina[]>([]);
+
+  // KPI drawer
+  const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | null>(null);
+  const [kpiLoading, setKpiLoading] = useState(false);
+  const [kpiStudents, setKpiStudents] = useState<KpiStudentRow[]>([]);
+  const [kpiStudentProfile, setKpiStudentProfile] = useState<IscrizioneDetalle | null>(null);
+  const [kpiOcupacionDisciplina, setKpiOcupacionDisciplina] = useState<OcupacionDisciplina | null>(null);
+
   // Drawer: class detail + student profile
   const [drawerOrario, setDrawerOrario] = useState<AdminOrario | null>(null);
   const [drawerView, setDrawerView] = useState<"class" | "student">("class");
@@ -220,6 +251,42 @@ export default function AdminDashboard() {
     setDrawerLoading(false);
   };
 
+  const fetchKpiStudents = async (filter?: { stato: string }) => {
+    setKpiLoading(true);
+    setKpiStudentProfile(null);
+    setKpiOcupacionDisciplina(null);
+    let q = supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").order("created_at", { ascending: false });
+    if (filter) q = q.eq("stato", filter.stato);
+    const [{ data: isc }, { data: piani }] = await Promise.all([q, supabase.from("piani").select("id, disciplina_id, prezzo")]);
+    const pm: Record<string, number> = {};
+    for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[]) pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
+    setKpiStudents(((isc ?? []) as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+    setKpiLoading(false);
+  };
+
+  const handleKpiStudentClick = async (id: string) => {
+    setKpiLoading(true);
+    const { data } = await supabase
+      .from("iscrizioni")
+      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
+      .eq("id", id).single();
+    if (data) {
+      const { data: pd } = await supabase.from("piani").select("prezzo").eq("id", (data as unknown as IscrizioneDetalle).piano_id).eq("disciplina_id", (data as unknown as IscrizioneDetalle).disciplina_id).single();
+      setKpiStudentProfile({ ...(data as unknown as IscrizioneDetalle), prezzo: pd?.prezzo ?? null });
+    }
+    setKpiLoading(false);
+  };
+
+  const handleCambiarStatoKpi = async (nuevoStato: string) => {
+    if (!kpiStudentProfile) return;
+    const { error } = await supabase.from("iscrizioni").update({ stato: nuevoStato }).eq("id", kpiStudentProfile.id);
+    if (!error) {
+      setKpiStudentProfile((p) => p ? { ...p, stato: nuevoStato } : p);
+      setKpiStudents((prev) => prev.map((s) => s.id === kpiStudentProfile.id ? { ...s, stato: nuevoStato } : s));
+      setPendingCount((c) => nuevoStato === "pagato" ? c - 1 : c + 1);
+    }
+  };
+
   useEffect(() => {
     const todayEs = DOW_ES[new Date().getDay()];
     Promise.all([
@@ -227,17 +294,54 @@ export default function AdminDashboard() {
       supabase.from("orari").select("*", { count: "exact", head: true }).eq("giorno", todayEs).eq("attivo", true),
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(orario_id)").eq("attivo", true),
-      supabase
-        .from("iscrizioni")
-        .select("id, nome, cognome, nome_alumna, cognome_alumna, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))")
-        .order("created_at", { ascending: false })
-        .limit(5),
-    ]).then(([r1, r2, r3, r4, r5]) => {
+      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))").order("created_at", { ascending: false }).limit(5),
+      supabase.from("iscrizioni").select("disciplina_id, piano_id, stato, created_at"),
+      supabase.from("piani").select("id, disciplina_id, prezzo"),
+    ]).then(([r1, r2, r3, r4, r5, r6, r7]) => {
       setIscrittiCount(r1.count ?? 0);
       setLezioniCount(r2.count ?? 0);
       setPendingCount(r3.count ?? 0);
-      setOrari((r4.data as unknown as AdminOrario[]) ?? []);
+      const orariData = (r4.data as unknown as AdminOrario[]) ?? [];
+      setOrari(orariData);
       setBookings((r5.data as unknown as IscrzioneRow[]) ?? []);
+
+      // Build price map: `${piano_id}:${disciplina_id}` → prezzo
+      const pm: Record<string, number> = {};
+      for (const p of (r7.data ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
+        pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
+
+      const now2 = new Date();
+      const tm = now2.getMonth(), ty = now2.getFullYear();
+      const pm2 = tm === 0 ? 11 : tm - 1, py = tm === 0 ? ty - 1 : ty;
+      let factMes = 0, factAnt = 0, pendAmt = 0;
+      for (const isc of (r6.data ?? []) as { disciplina_id: string; piano_id: string; stato: string; created_at: string }[]) {
+        const prezzo = pm[`${isc.piano_id}:${isc.disciplina_id}`] ?? 0;
+        if (isc.stato === "attesa") { pendAmt += prezzo; }
+        if (isc.stato === "pagato") {
+          const d = new Date(isc.created_at);
+          if (d.getMonth() === tm && d.getFullYear() === ty) factMes += prezzo;
+          if (d.getMonth() === pm2 && d.getFullYear() === py) factAnt += prezzo;
+        }
+      }
+      setFacturacionMes(factMes);
+      setFacturacionMesAnterior(factAnt);
+      setPendingAmount(pendAmt);
+
+      // Ocupación por disciplina
+      const dm: Record<string, OcupacionDisciplina> = {};
+      for (const o of orariData) {
+        const ocupados = (o.iscrizione_orari as { orario_id: string }[])?.length ?? 0;
+        if (!dm[o.disciplina_id]) dm[o.disciplina_id] = { disciplina_id: o.disciplina_id, nombre: o.discipline?.nome ?? o.disciplina_id, ocupados: 0, total: 0, clases: [] };
+        dm[o.disciplina_id].ocupados += ocupados;
+        dm[o.disciplina_id].total += o.posti_totali;
+        dm[o.disciplina_id].clases.push({ id: o.id, giorno: o.giorno, ora_inizio: o.ora_inizio, ora_fine: o.ora_fine, ocupados, total: o.posti_totali });
+      }
+      const discList = Object.values(dm);
+      const totOc = discList.reduce((s, d) => s + d.ocupados, 0);
+      const totPl = discList.reduce((s, d) => s + d.total, 0);
+      setOcupacionMedia(totPl > 0 ? Math.round((totOc / totPl) * 100) : 0);
+      setOcupacionDisciplinas(discList);
+
       setLoading(false);
     });
 
@@ -375,61 +479,80 @@ export default function AdminDashboard() {
         {/* Content */}
         <main className="pt-[80px] p-4 md:p-margin-desktop flex-1 overflow-y-auto space-y-section-gap">
 
-          {/* ── Stats ── */}
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Totale iscritti */}
-            <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm shadow-[#3D2B1F]/5 flex flex-col justify-between border border-surface-container-high">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-label-md text-label-md text-on-surface-variant mb-1">Total Inscritos</p>
-                  <h3 className="font-headline-md text-headline-md text-primary">
-                    {loading ? "—" : iscrittiCount}
-                  </h3>
-                </div>
-                <div className="p-3 bg-secondary-container rounded-full text-on-secondary-container">
-                  <Icon name="group" />
+          {/* ── KPI Cards ── */}
+          <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+            {/* Total Alumnos */}
+            <button
+              onClick={() => { setKpiDrawer("alumnos"); fetchKpiStudents(); }}
+              className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Total Alumnos</p>
+                <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
+                  <Icon name="group" className="text-base" />
                 </div>
               </div>
-              <p className="font-body-md text-body-md text-on-surface-variant mt-4 text-sm">
-                <span className="text-secondary font-semibold">+{loading ? "—" : iscrittiCount}</span> total registrados
+              <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : iscrittiCount}</p>
+              <p className="text-xs mt-2" style={{ color: "#89726c" }}>Ver listado →</p>
+            </button>
+
+            {/* Facturación Mensual */}
+            <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-3">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Facturación Mes</p>
+                <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
+                  <Icon name="euro" className="text-base" />
+                </div>
+              </div>
+              <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : `${facturacionMes}€`}</p>
+              <p className="text-xs mt-2 flex items-center gap-1" style={{ color: "#89726c" }}>
+                {!loading && facturacionMesAnterior > 0 ? (
+                  <>
+                    <span>{facturacionMesAnterior}€ mes ant.</span>
+                    <span className={`font-semibold ${facturacionMes >= facturacionMesAnterior ? "text-green-600" : "text-red-500"}`}>
+                      {facturacionMes >= facturacionMesAnterior ? "+" : ""}
+                      {facturacionMesAnterior > 0 ? Math.round(((facturacionMes - facturacionMesAnterior) / facturacionMesAnterior) * 100) : 0}%
+                    </span>
+                  </>
+                ) : <span>Nuevas inscripciones pagadas</span>}
               </p>
             </div>
 
-            {/* Lezioni odierne */}
-            <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm shadow-[#3D2B1F]/5 flex flex-col justify-between border border-surface-container-high">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-label-md text-label-md text-on-surface-variant mb-1">Clases de Hoy</p>
-                  <h3 className="font-headline-md text-headline-md text-primary">
-                    {loading ? "—" : lezioniCount}
-                  </h3>
-                </div>
-                <div className="p-3 bg-primary-container rounded-full text-on-primary-container">
-                  <Icon name="event" />
+            {/* Pagos Pendientes */}
+            <button
+              onClick={() => { setKpiDrawer("pendientes"); fetchKpiStudents({ stato: "attesa" }); }}
+              className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Pagos Pendientes</p>
+                <div className="p-2 bg-error-container rounded-full text-on-error-container">
+                  <Icon name="payments" className="text-base" />
                 </div>
               </div>
-              <p className="font-body-md text-body-md text-on-surface-variant mt-4 text-sm">
-                <span className="text-secondary font-semibold">{loading ? "—" : lezioniCount}</span> clases programadas hoy
+              <p className="text-3xl font-bold text-error">{loading ? "—" : pendingCount}</p>
+              <p className="text-xs mt-2" style={{ color: "#89726c" }}>
+                {loading ? "—" : `${pendingAmount}€ por cobrar →`}
               </p>
-            </div>
+            </button>
 
-            {/* Pagamenti in sospeso */}
-            <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm shadow-[#3D2B1F]/5 flex flex-col justify-between border border-surface-container-high">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-label-md text-label-md text-on-surface-variant mb-1">Pagos Pendientes</p>
-                  <h3 className="font-headline-md text-headline-md text-error">
-                    {loading ? "—" : pendingCount}
-                  </h3>
-                </div>
-                <div className="p-3 bg-error-container rounded-full text-on-error-container">
-                  <Icon name="payments" />
+            {/* Ocupación Media */}
+            <button
+              onClick={() => { setKpiDrawer("ocupacion"); setKpiStudentProfile(null); setKpiOcupacionDisciplina(null); }}
+              className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Ocupación Media</p>
+                <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
+                  <Icon name="monitoring" className="text-base" />
                 </div>
               </div>
-              <button className="mt-4 text-left font-label-md text-label-md text-secondary hover:text-primary transition-colors">
-                Ver detalles →
-              </button>
-            </div>
+              <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : `${ocupacionMedia}%`}</p>
+              <div className="mt-2 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${ocupacionMedia}%`, backgroundColor: ocupacionMedia > 75 ? "#2e7d32" : "#7d2b13" }} />
+              </div>
+            </button>
+
           </section>
 
           {/* ── Calendario ── */}
@@ -640,6 +763,186 @@ export default function AdminDashboard() {
 
         </main>
       </div>
+
+      {/* ── KPI Drawer ── */}
+      {kpiDrawer && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[60]" onClick={() => setKpiDrawer(null)} />
+          <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white z-[70] flex flex-col shadow-2xl">
+
+            {/* Header */}
+            <div className="flex items-center gap-3 p-4 border-b border-outline-variant" style={{ backgroundColor: "#fff8f5" }}>
+              {(kpiStudentProfile || kpiOcupacionDisciplina) && (
+                <button onClick={() => { setKpiStudentProfile(null); setKpiOcupacionDisciplina(null); }} className="p-2 rounded-full hover:bg-surface-container-high transition-colors" style={{ color: "#7d2b13" }}>
+                  <Icon name="arrow_back" />
+                </button>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm truncate" style={{ color: "#7d2b13" }}>
+                  {kpiStudentProfile
+                    ? (NINAS_IDS.has(kpiStudentProfile.disciplina_id) && kpiStudentProfile.nome_alumna
+                      ? `${kpiStudentProfile.nome_alumna} ${kpiStudentProfile.cognome_alumna}`
+                      : `${kpiStudentProfile.nome} ${kpiStudentProfile.cognome}`)
+                    : kpiOcupacionDisciplina ? kpiOcupacionDisciplina.nombre
+                    : kpiDrawer === "pendientes" ? "Pagos Pendientes"
+                    : kpiDrawer === "alumnos" ? "Todos los Alumnos"
+                    : "Ocupación por Disciplina"}
+                </p>
+                <p className="text-xs" style={{ color: "#89726c" }}>
+                  {kpiStudentProfile ? "Perfil" : kpiOcupacionDisciplina ? "Clases" : kpiDrawer === "pendientes" ? `${pendingCount} alumnos · ${pendingAmount}€` : kpiDrawer === "alumnos" ? `${iscrittiCount} alumnos` : `${ocupacionMedia}% media`}
+                </p>
+              </div>
+              <button onClick={() => setKpiDrawer(null)} className="p-2 rounded-full hover:bg-surface-container-high" style={{ color: "#89726c" }}>
+                <Icon name="close" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {kpiLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#7d2b13", borderTopColor: "transparent" }} />
+                </div>
+
+              ) : kpiStudentProfile ? (
+                /* ── Perfil alumno (desde KPI) ── */
+                <div className="space-y-5">
+                  <div className="rounded-2xl p-4 border" style={{ backgroundColor: "#fff1e9", borderColor: "#dcc1b9" }}>
+                    {NINAS_IDS.has(kpiStudentProfile.disciplina_id) && kpiStudentProfile.nome_alumna ? (
+                      <>
+                        <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#89726c" }}>Alumna</p>
+                        <p className="text-lg font-semibold" style={{ color: "#7d2b13" }}>{kpiStudentProfile.nome_alumna} {kpiStudentProfile.cognome_alumna}</p>
+                        <div className="mt-3 pt-3 border-t" style={{ borderColor: "#dcc1b9" }}>
+                          <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#89726c" }}>Tutor</p>
+                          <p className="text-sm font-medium" style={{ color: "#25190f" }}>{kpiStudentProfile.nome} {kpiStudentProfile.cognome}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#89726c" }}>Alumna</p>
+                        <p className="text-lg font-semibold" style={{ color: "#7d2b13" }}>{kpiStudentProfile.nome} {kpiStudentProfile.cognome}</p>
+                      </>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Contacto</p>
+                    <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}><Icon name="mail" className="text-base" style={{ color: "#7d2b13" }} /><p className="text-sm" style={{ color: "#25190f" }}>{kpiStudentProfile.email}</p></div>
+                    {kpiStudentProfile.telefono && <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}><Icon name="phone" className="text-base" style={{ color: "#7d2b13" }} /><p className="text-sm" style={{ color: "#25190f" }}>{kpiStudentProfile.telefono}</p></div>}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Inscripción</p>
+                    <div className="rounded-xl border divide-y" style={{ borderColor: "#dcc1b9" }}>
+                      {[
+                        { icon: "school", label: "Disciplina", value: kpiStudentProfile.discipline?.nome ?? kpiStudentProfile.disciplina_id },
+                        { icon: "card_membership", label: "Plan", value: PLAN_LABEL[kpiStudentProfile.piano_id] ?? kpiStudentProfile.piano_id },
+                        { icon: "euro", label: "Cuota mensual", value: kpiStudentProfile.prezzo != null ? `${kpiStudentProfile.prezzo} €/mes` : "—" },
+                        { icon: "payments", label: "Pago", value: METODO_LABEL[kpiStudentProfile.metodo_pagamento] ?? kpiStudentProfile.metodo_pagamento },
+                        { icon: "calendar_today", label: "Inscrita desde", value: formatData(kpiStudentProfile.created_at) },
+                        { icon: "history", label: "Antigüedad", value: calcAntigüedad(kpiStudentProfile.created_at) },
+                      ].map(({ icon, label, value }) => (
+                        <div key={label} className="flex items-center justify-between px-4 py-3">
+                          <div className="flex items-center gap-2"><Icon name={icon} className="text-sm" style={{ color: "#7d2b13" }} /><p className="text-xs" style={{ color: "#89726c" }}>{label}</p></div>
+                          <p className="text-sm font-medium" style={{ color: "#25190f" }}>{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
+                    <div className="flex items-center justify-between p-4">
+                      <p className="text-sm font-medium" style={{ color: "#25190f" }}>Estado de pago</p>
+                      {kpiStudentProfile.stato === "attesa"
+                        ? <span className="px-3 py-1 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>
+                        : <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>}
+                    </div>
+                    {kpiStudentProfile.stato === "attesa" ? (
+                      <button onClick={() => handleCambiarStatoKpi("pagato")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#7d2b13", color: "#fff" }}>Marcar como pagado</button>
+                    ) : (
+                      <button onClick={() => handleCambiarStatoKpi("attesa")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#89726c" }}>Deshacer pago</button>
+                    )}
+                  </div>
+                </div>
+
+              ) : kpiDrawer === "ocupacion" && !kpiOcupacionDisciplina ? (
+                /* ── Ocupación por disciplina ── */
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>Por disciplina</p>
+                  {ocupacionDisciplinas.map((d) => {
+                    const pct = d.total > 0 ? Math.round((d.ocupados / d.total) * 100) : 0;
+                    return (
+                      <button key={d.disciplina_id} onClick={() => setKpiOcupacionDisciplina(d)} className="w-full text-left p-4 rounded-xl border hover:shadow-sm transition-shadow" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9" }}>
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="text-sm font-medium" style={{ color: "#25190f" }}>{d.nombre}</p>
+                          <p className="text-sm font-bold" style={{ color: "#7d2b13" }}>{pct}%</p>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct > 75 ? "#2e7d32" : "#7d2b13" }} />
+                        </div>
+                        <p className="text-xs mt-1.5" style={{ color: "#89726c" }}>{d.ocupados}/{d.total} plazas · {d.clases.length} clase{d.clases.length !== 1 ? "s" : ""}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+              ) : kpiDrawer === "ocupacion" && kpiOcupacionDisciplina ? (
+                /* ── Ocupación por clase ── */
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>Clases de {kpiOcupacionDisciplina.nombre}</p>
+                  {kpiOcupacionDisciplina.clases.map((c, i) => {
+                    const pct = c.total > 0 ? Math.round((c.ocupados / c.total) * 100) : 0;
+                    const lleno = c.ocupados >= c.total;
+                    return (
+                      <div key={i} className="p-4 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                        <div className="flex justify-between items-center mb-2">
+                          <div>
+                            <p className="text-sm font-medium" style={{ color: "#25190f" }}>{c.giorno}</p>
+                            <p className="text-xs" style={{ color: "#89726c" }}>{c.ora_inizio.substring(0, 5)} – {c.ora_fine.substring(0, 5)}</p>
+                          </div>
+                          <p className={`text-sm font-bold ${lleno ? "text-error" : ""}`} style={lleno ? {} : { color: "#7d2b13" }}>{c.ocupados}/{c.total}</p>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: lleno ? "#b71c1c" : "#7d2b13" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+              ) : (
+                /* ── Lista alumnos (pendientes / todos) ── */
+                <div className="space-y-2">
+                  {kpiStudents.length === 0 ? (
+                    <p className="text-center py-10 text-sm" style={{ color: "#89726c" }}>No hay alumnos</p>
+                  ) : (
+                    <>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>{kpiStudents.length} alumno{kpiStudents.length !== 1 ? "s" : ""}</p>
+                      {kpiStudents.map((s) => {
+                        const esNina = NINAS_IDS.has(s.disciplina_id);
+                        const displayName = esNina && s.nome_alumna ? `${s.nome_alumna} ${s.cognome_alumna}` : `${s.nome} ${s.cognome}`;
+                        const subLabel = esNina && s.nome_alumna ? `Tutor: ${s.nome} ${s.cognome}` : null;
+                        return (
+                          <button key={s.id} onClick={() => handleKpiStudentClick(s.id)} className="w-full text-left flex items-center justify-between p-3 rounded-xl border hover:shadow-sm transition-shadow" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9" }}>
+                            <div>
+                              <p className="text-sm font-medium" style={{ color: "#25190f" }}>{displayName}</p>
+                              {subLabel && <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{subLabel}</p>}
+                              <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{s.discipline?.nome ?? "—"}{s.prezzo != null ? ` · ${s.prezzo}€/mes` : ""}</p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {s.stato === "attesa"
+                                ? <span className="text-xs px-2 py-0.5 rounded-full bg-error-container text-on-error-container">Pendiente</span>
+                                : <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>}
+                              <Icon name="chevron_right" className="text-base" style={{ color: "#89726c" }} />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Drawer: detalle de clase / alumno ── */}
       {drawerOrario && (
