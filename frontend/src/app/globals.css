@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  /* Tierra y Movimiento — palette */
+  --color-siena: #7d2b13;
+  --color-siena-container: #9c4228;
+  --color-siena-pale: #ffdbd1;
+  --color-siena-light: #ffb5a0;
+  --color-terracota: #95482b;
+  --color-terracota-light: #ff9d79;
+  --color-apricot: #fce4d3;
+  --color-maquillaje: #fff1e9;
+  --color-blanco-roto: #fff8f5;
+  --color-texto: #25190f;
+  --color-texto-muted: #56423d;
+  --color-outline: #89726c;
+  --color-outline-light: #dcc1b9;
+  --color-surface-dim: #eed6c6;
+
+  /* Fonts */
+  --font-display: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --font-body: var(--font-montserrat), "Montserrat", "Helvetica Neue", sans-serif;
+}
+
+html,
+body {
+  background-color: #fff8f5;
+  color: #25190f;
+  font-family: var(--font-montserrat), "Montserrat", sans-serif;
+}
