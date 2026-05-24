@@ -11,7 +11,7 @@ export const disciplinas: Disciplina[] = [
     id: "barre-fit",
     nombre: "Barre Fit",
     descripcion: "Piernas definidas y glúteos trabajados. Combina la técnica del ballet con series de alta repetición que activan la musculatura de forma profunda.",
-    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuDz5OIBKM_u2ZlVPO98dZS592lm2WJUKjj0Dggs7uAeglwN_J88YCHwCVZvXb2KfpmG8ecAgMRz4kkHMNh0w-M8x6aueE7n15_6e-oHYVDf2dE8B0XrseMcztDMuJzx2EHWMpWyO9GdzVPxuu2QbovlNZKeXBSrNB2n5IvIgLCqMRsjWSkmAD9rSEHn1bC3l1_Gfcq55iEr-o-RfnGDW2zHVThkC4k0It6RROZh7tYDbZ1kdCiBqlD5yFS2VEAJ65dwjr9I5BWL7RRh",
+    imagen: "/barre-fit.png",
   },
   {
     id: "pre-ballet",
