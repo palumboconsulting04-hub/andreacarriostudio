@@ -51,6 +51,9 @@ export default function AdminLogin() {
               name="username"
               required
               autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none transition-colors"
               style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#25190f" }}
               onFocus={(e) => (e.currentTarget.style.borderColor = "#7d2b13")}
