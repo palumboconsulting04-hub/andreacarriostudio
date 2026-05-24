@@ -5,12 +5,13 @@ import type { DisciplinaId } from "./types";
 
 interface Props {
   value: DisciplinaId | null;
-  onSelect: (id: DisciplinaId) => void;
+  onChange: (id: DisciplinaId) => void;
+  onContinuar: () => void;
 }
 
-export default function Paso1Disciplina({ value, onSelect }: Props) {
+export default function Paso1Disciplina({ value, onChange, onContinuar }: Props) {
   return (
-    <div className="max-w-5xl mx-auto px-6 pb-16">
+    <div className="max-w-5xl mx-auto px-8 pb-16">
       <div className="mb-10">
         <h2
           className="text-4xl sm:text-5xl mb-3"
@@ -27,13 +28,14 @@ export default function Paso1Disciplina({ value, onSelect }: Props) {
         </p>
       </div>
 
+      {/* Cards grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {disciplinas.map((d) => {
           const seleccionada = value === d.id;
           return (
             <button
               key={d.id}
-              onClick={() => onSelect(d.id)}
+              onClick={() => onChange(d.id)}
               aria-label={`Seleccionar ${d.nombre}`}
               className="group relative overflow-hidden text-left focus:outline-none"
               style={{
@@ -46,20 +48,19 @@ export default function Paso1Disciplina({ value, onSelect }: Props) {
                 transition: "all 0.3s ease",
               }}
             >
-              {/* Photo background */}
+              {/* Photo */}
               <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
                 style={{ backgroundImage: `url('${d.imagen}')` }}
               />
-
-              {/* Gradient overlay */}
+              {/* Gradient */}
               <div
                 className="absolute inset-0"
                 style={{
-                  background: "linear-gradient(to top, rgba(37,25,15,0.85) 0%, rgba(37,25,15,0.2) 50%, transparent 100%)",
+                  background:
+                    "linear-gradient(to top, rgba(37,25,15,0.85) 0%, rgba(37,25,15,0.2) 50%, transparent 100%)",
                 }}
               />
-
               {/* Badge solo intensivo */}
               {d.soloIntensivo && (
                 <div className="absolute top-4 left-4">
@@ -75,35 +76,44 @@ export default function Paso1Disciplina({ value, onSelect }: Props) {
                   </span>
                 </div>
               )}
-
-              {/* Checkmark when selected */}
+              {/* Checkmark selected */}
               {seleccionada && (
                 <div
                   className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center"
                   style={{ backgroundColor: "#7d2b13" }}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M2.5 7l3 3 6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M2.5 7l3 3 6-6"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </div>
               )}
-
-              {/* Arrow icon on hover */}
+              {/* Arrow on hover */}
               {!seleccionada && (
                 <div
                   className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                   style={{ backgroundColor: "rgba(255,248,245,0.9)" }}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M2.5 7h9M8 3.5L11.5 7 8 10.5" stroke="#7d2b13" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M2.5 7h9M8 3.5L11.5 7 8 10.5"
+                      stroke="#7d2b13"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </div>
               )}
-
-              {/* Text at bottom */}
+              {/* Text */}
               <div className="absolute bottom-0 left-0 w-full p-6">
                 <h3
-                  className="text-lg font-semibold mb-1.5 tracking-wide"
+                  className="text-lg font-semibold mb-1.5"
                   style={{
                     fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif",
                     color: "#ffffff",
@@ -122,6 +132,50 @@ export default function Paso1Disciplina({ value, onSelect }: Props) {
             </button>
           );
         })}
+      </div>
+
+      {/* Bottom navigation */}
+      <div className="flex items-center justify-between mt-10">
+        <button
+          className="flex items-center gap-2 text-sm opacity-40 cursor-not-allowed"
+          style={{ color: "#56423d", fontFamily: "var(--font-body)" }}
+          disabled
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M10 3L5 8l5 5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Atrás
+        </button>
+
+        <button
+          onClick={onContinuar}
+          disabled={!value}
+          className="flex items-center gap-2 px-7 py-3 rounded-full text-sm font-semibold uppercase transition-all duration-200"
+          style={{
+            fontFamily: "var(--font-body)",
+            letterSpacing: "0.12em",
+            backgroundColor: value ? "#7d2b13" : "#dcc1b9",
+            color: value ? "#ffffff" : "#89726c",
+            cursor: value ? "pointer" : "not-allowed",
+          }}
+        >
+          Continuar
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M6 3l5 5-5 5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
       </div>
     </div>
   );

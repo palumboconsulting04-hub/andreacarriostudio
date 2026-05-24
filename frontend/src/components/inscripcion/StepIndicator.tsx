@@ -1,60 +1,143 @@
 "use client";
 
+import Image from "next/image";
+
 const pasos = [
-  { num: 1, label: "Disciplina" },
-  { num: 2, label: "Plan" },
-  { num: 3, label: "Horarios" },
-  { num: 4, label: "Pago" },
+  {
+    num: 1,
+    label: "Disciplina",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2c1.5 0 2.5 1 2.5 2.5S13.5 7 12 7s-2.5-1-2.5-2.5S10.5 2 12 2z" />
+        <path d="M12 7v5l-3 4m3-4l3 4" />
+        <path d="M9 11l-3 2m9-2l3 2" />
+      </svg>
+    ),
+  },
+  {
+    num: 2,
+    label: "Plan",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="17" rx="2" />
+        <path d="M16 2v4M8 2v4M3 10h18" />
+        <path d="M8 14h4M8 18h6" />
+      </svg>
+    ),
+  },
+  {
+    num: 3,
+    label: "Horarios",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 3" />
+      </svg>
+    ),
+  },
+  {
+    num: 4,
+    label: "Pago",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="6" width="20" height="13" rx="2" />
+        <path d="M2 11h20" />
+        <path d="M6 16h3" />
+      </svg>
+    ),
+  },
 ];
 
 interface Props {
   pasoActual: number;
+  onContinuar: () => void;
+  continuarEnabled: boolean;
 }
 
-export default function StepIndicator({ pasoActual }: Props) {
+export default function StepIndicator({ pasoActual, onContinuar, continuarEnabled }: Props) {
   return (
-    <div className="flex items-center justify-center gap-0 px-6 py-6">
-      {pasos.map((paso, i) => {
-        const activo = paso.num === pasoActual;
-        const completado = paso.num < pasoActual;
-        return (
-          <div key={paso.num} className="flex items-center">
-            <div className="flex flex-col items-center gap-1.5">
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-body font-semibold transition-all duration-300 ${
-                  completado
-                    ? "bg-siena text-white"
-                    : activo
-                    ? "bg-siena-container text-white ring-4 ring-siena-pale"
-                    : "bg-apricot text-outline"
-                }`}
-              >
-                {completado ? (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8l3.5 3.5L13 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <aside
+      className="hidden md:flex flex-col w-64 shrink-0 border-r"
+      style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9" }}
+    >
+      <div className="flex flex-col h-full px-7 py-8">
+        {/* Logo */}
+        <div className="mb-7">
+          <Image
+            src="/logo.png"
+            alt="Andrea Carrió Studio"
+            width={96}
+            height={96}
+            priority
+          />
+        </div>
+
+        {/* Summary header */}
+        <div className="mb-1">
+          <h2
+            className="text-xl font-semibold leading-tight"
+            style={{ fontFamily: "var(--font-playfair)", color: "#7d2b13" }}
+          >
+            Resumen
+          </h2>
+          <p
+            className="text-xs mt-1"
+            style={{ color: "#89726c", fontFamily: "var(--font-body)" }}
+          >
+            Tu selección actual
+          </p>
+        </div>
+
+        <div className="border-b my-5" style={{ borderColor: "#dcc1b9" }} />
+
+        {/* Steps */}
+        <nav className="flex flex-col gap-5 flex-1">
+          {pasos.map((paso) => {
+            const activo = paso.num === pasoActual;
+            const completado = paso.num < pasoActual;
+            const color = activo ? "#7d2b13" : completado ? "#9c4228" : "#b0958e";
+
+            return (
+              <div key={paso.num} className="flex items-center gap-3" style={{ color }}>
+                <span className="shrink-0">{paso.icon}</span>
+                <span
+                  className={`text-sm ${activo ? "font-semibold" : "font-normal"}`}
+                  style={{ fontFamily: "var(--font-body)" }}
+                >
+                  {paso.label}
+                </span>
+                {completado && (
+                  <svg className="ml-auto shrink-0" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path
+                      d="M2.5 7l3 3 6-6"
+                      stroke="#9c4228"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
-                ) : (
-                  paso.num
                 )}
               </div>
-              <span
-                className={`text-xs font-body tracking-widest uppercase hidden sm:block transition-colors duration-300 ${
-                  activo ? "text-siena font-semibold" : completado ? "text-siena-container" : "text-outline"
-                }`}
-              >
-                {paso.label}
-              </span>
-            </div>
-            {i < pasos.length - 1 && (
-              <div
-                className={`w-16 sm:w-24 h-px mx-3 mb-6 transition-colors duration-500 ${
-                  paso.num < pasoActual ? "bg-siena" : "bg-outline-light"
-                }`}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
+            );
+          })}
+        </nav>
+
+        {/* Continuar button */}
+        <button
+          onClick={onContinuar}
+          disabled={!continuarEnabled}
+          className="mt-8 w-full py-3 rounded-full text-sm font-semibold tracking-widest uppercase transition-all duration-200"
+          style={{
+            fontFamily: "var(--font-body)",
+            backgroundColor: continuarEnabled ? "#7d2b13" : "#dcc1b9",
+            color: continuarEnabled ? "#ffffff" : "#89726c",
+            cursor: continuarEnabled ? "pointer" : "not-allowed",
+            letterSpacing: "0.12em",
+          }}
+        >
+          Continuar
+        </button>
+      </div>
+    </aside>
   );
 }

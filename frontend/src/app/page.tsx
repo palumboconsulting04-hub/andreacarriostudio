@@ -19,6 +19,14 @@ const estadoInicial: InscripcionState = {
   metodoPago: "tarjeta",
 };
 
+function continuarEnabled(paso: number, estado: InscripcionState): boolean {
+  if (paso === 1) return estado.disciplina !== null;
+  if (paso === 2) return estado.plan !== null;
+  if (paso === 3) return estado.horarios.length > 0;
+  if (paso === 4) return !!(estado.nombre && estado.apellido && estado.email);
+  return false;
+}
+
 export default function Home() {
   const [paso, setPaso] = useState(1);
   const [estado, setEstado] = useState<InscripcionState>(estadoInicial);
@@ -26,79 +34,73 @@ export default function Home() {
   const update = (updates: Partial<InscripcionState>) =>
     setEstado((e) => ({ ...e, ...updates }));
 
+  const handleContinuar = () => {
+    if (paso < 4 && continuarEnabled(paso, estado)) setPaso(paso + 1);
+  };
+
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#fff8f5", color: "#25190f" }}>
-      {/* Header */}
-      <header
-        className="sticky top-0 z-50 border-b"
-        style={{ backgroundColor: "rgba(255,248,245,0.92)", borderColor: "#dcc1b9", backdropFilter: "blur(8px)" }}
-      >
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="font-display text-xl tracking-wide" style={{ color: "#7d2b13", fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif" }}>
-            Andrea Carrió Studio
-          </span>
-          <span
-            className="text-xs tracking-widest uppercase hidden sm:block"
-            style={{ color: "#56423d", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
-          >
-            Valencia
-          </span>
-        </div>
-      </header>
 
-      {/* Step Indicator */}
-      <StepIndicator pasoActual={paso} />
+      {/* Sidebar + content */}
+      <div className="flex flex-1">
+        <StepIndicator
+          pasoActual={paso}
+          onContinuar={handleContinuar}
+          continuarEnabled={continuarEnabled(paso, estado)}
+        />
 
-      {/* Content */}
-      <main className="flex-1 py-6">
-        {paso === 1 && (
-          <Paso1Disciplina
-            value={estado.disciplina}
-            onSelect={(id) => {
-              update({ disciplina: id, plan: null, horarios: [] });
-              setPaso(2);
-            }}
-          />
-        )}
+        <main className="flex-1 min-w-0 py-8">
+          {paso === 1 && (
+            <Paso1Disciplina
+              value={estado.disciplina}
+              onChange={(id) => update({ disciplina: id, plan: null, horarios: [] })}
+              onContinuar={() => setPaso(2)}
+            />
+          )}
 
-        {paso === 2 && estado.disciplina && (
-          <Paso2Plan
-            disciplina={estado.disciplina}
-            value={estado.plan}
-            onSelect={(id) => {
-              update({ plan: id, horarios: [] });
-              setPaso(3);
-            }}
-            onBack={() => setPaso(1)}
-          />
-        )}
+          {paso === 2 && estado.disciplina && (
+            <Paso2Plan
+              disciplina={estado.disciplina}
+              value={estado.plan}
+              onSelect={(id) => {
+                update({ plan: id, horarios: [] });
+                setPaso(3);
+              }}
+              onBack={() => setPaso(1)}
+            />
+          )}
 
-        {paso === 3 && estado.disciplina && estado.plan && (
-          <Paso3Horarios
-            disciplina={estado.disciplina}
-            plan={estado.plan}
-            value={estado.horarios}
-            onChange={(horarios) => update({ horarios })}
-            onContinuar={() => setPaso(4)}
-            onBack={() => setPaso(2)}
-          />
-        )}
+          {paso === 3 && estado.disciplina && estado.plan && (
+            <Paso3Horarios
+              disciplina={estado.disciplina}
+              plan={estado.plan}
+              value={estado.horarios}
+              onChange={(horarios) => update({ horarios })}
+              onContinuar={() => setPaso(4)}
+              onBack={() => setPaso(2)}
+            />
+          )}
 
-        {paso === 4 && estado.disciplina && estado.plan && (
-          <Paso4Pago
-            estado={estado}
-            onChange={update}
-            onBack={() => setPaso(3)}
-          />
-        )}
-      </main>
+          {paso === 4 && estado.disciplina && estado.plan && (
+            <Paso4Pago
+              estado={estado}
+              onChange={update}
+              onBack={() => setPaso(3)}
+            />
+          )}
+        </main>
+      </div>
 
       {/* Footer */}
-      <footer className="border-t py-8 mt-auto" style={{ borderColor: "#dcc1b9" }}>
-        <div className="max-w-5xl mx-auto px-6 text-center">
+      <footer className="border-t py-8" style={{ borderColor: "#dcc1b9" }}>
+        <div className="px-6 text-center">
           <p
-            className="text-sm tracking-wide mb-3"
-            style={{ color: "#7d2b13", fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif" }}
+            className="text-xs tracking-widest uppercase mb-3"
+            style={{
+              color: "#7d2b13",
+              fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif",
+              letterSpacing: "0.15em",
+            }}
           >
             Andrea Carrió Studio — Alfahuir, Valencia
           </p>
@@ -108,7 +110,11 @@ export default function Home() {
                 key={link}
                 href="#"
                 className="text-xs tracking-widest uppercase transition-colors hover:opacity-80"
-                style={{ color: "#56423d", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+                style={{
+                  color: "#89726c",
+                  fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif",
+                  letterSpacing: "0.1em",
+                }}
               >
                 {link}
               </a>

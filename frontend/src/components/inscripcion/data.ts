@@ -17,26 +17,26 @@ export const disciplinas: Disciplina[] = [
     id: "pre-ballet",
     nombre: "Pre Ballet 2-6 años",
     descripcion: "Iniciación al movimiento, la musicalidad y la expresión corporal de forma lúdica.",
-    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuAN7JX9zaZ-laqB6biwAAXtAm0DRmgqB270XK0tbKMyYeuZM33512Zva_20xqze2asqxmRLLOtkKlUx4GEVRpfS1JE9dSrGIERnseSGIQLqotjmpa9iQe5dMyqYqAnQdmH3lRpti5lpenkeotMivv4UD6WGpADe0g-jiIedHQ-wn1fzk2JAy0hhLMnuv7qwneyLtvygTlxWJ0BeuideHt6DsoV5nDCCWRI4AhTwe5NEnjcg0Gfkv_o9H0L0vvmkbCwqehEtfZiZevXL",
+    imagen: "/pre-ballet.png",
   },
   {
     id: "ballet-i",
     nombre: "Ballet I 7-9 años",
     descripcion: "Desarrollo de la técnica base, postura y disciplina en un entorno inspirador.",
-    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuBy1SHCTHXADtlvt-Mv9fe6uQ9VkXQHm_oavaWzwRaDgM6DurA2BNOpa6JahtCw6I-Q5x3isTNwdpjBNPqoQcKUBrT8yDjW7YU1_tOaC00TWrzNOFXdhsV7v3HJ9294LI0hAIVjybtHVhp65CVQ7wl0SMQNnXccXn0EaHD8ELWrjBAcp2iFPYMlrXX2B_wnBkRWNsd5HbT1mPxVMjlgHL5QcuKgE-dIc3rOm3wQHJkRKpto1KG9lDuUmJkXfvv8zXvjQCnAk4sQusDb",
+    imagen: "/ballet-i.png",
   },
   {
     id: "ballet-ii",
     nombre: "Ballet II 10-12 años",
     descripcion: "Perfeccionamiento técnico, fuerza y fluidez para jóvenes talentos.",
-    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuCRUp_DadNt3Zuxz76Tdb54gqhb-ottH70KACUrX2vZWKzw7XjcwYqLGA43ypg3Ffc-NxCYfRwxL4-lwAFLVsr3vtLBF9XkCTT3bJkhkDrfPaStIKrSUQFF_O378M3dTxUN3TvJLu0UHAWauacYR3O708MREX5ziEg4VyLV3DRMmMZa91JLXxnVVimri3z5K2T11TwzP9PMlhKyrJ0-NgyMDhXGGcEqKcZ7npo0lCFqajI7i3fq5DodkwSWQm15Dk_rtggqex762mzn",
+    imagen: "/ballet-ii.png",
     soloIntensivo: true,
   },
   {
     id: "ballet-adultos",
     nombre: "Ballet Adultos",
     descripcion: "Nunca es tarde para la gracia. Mejora tu elongación, postura y bienestar general.",
-    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuDYLlrFap58Zb1z0uMA7VY2FX7MNMokhapaUI4qeO1xr7fvND9Q_8bp7jKbaLb8eViwSMzAzE7a6u8LjFLXd4i6i_xLEwfdatyMenTrTEcLzEOjj-tzT4CSvNMCMU14KNvZvxFqMzw2yMSMp1BV9o38sorPpBJQJkuDkqeK1gChtHCjwEThWpUlsY0YjXWYvtY43rkLXFx9bR75ojqal56xouyFSb1hfNouXNxDGXA6H3sm-IHpp-At67wh2g-LjSePzgtcqslhIym0",
+    imagen: "/ballet-adultos.png",
   },
 ];
 
