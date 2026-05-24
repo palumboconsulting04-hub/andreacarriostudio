@@ -87,6 +87,23 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState<IscrzioneRow[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const loadStats = async () => {
+    const todayEs = DOW_ES[new Date().getDay()];
+    const [r1, r3, r5] = await Promise.all([
+      supabase.from("iscrizioni").select("*", { count: "exact", head: true }),
+      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
+      supabase
+        .from("iscrizioni")
+        .select("id, nome, cognome, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))")
+        .order("created_at", { ascending: false })
+        .limit(5),
+    ]);
+    setIscrittiCount(r1.count ?? 0);
+    setPendingCount(r3.count ?? 0);
+    setBookings((r5.data as unknown as IscrzioneRow[]) ?? []);
+    return todayEs;
+  };
+
   useEffect(() => {
     const todayEs = DOW_ES[new Date().getDay()];
     Promise.all([
@@ -107,6 +124,19 @@ export default function AdminDashboard() {
       setBookings((r5.data as unknown as IscrzioneRow[]) ?? []);
       setLoading(false);
     });
+
+    const channel = supabase
+      .channel("iscrizioni-live")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "iscrizioni" }, () => {
+        loadStats();
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "iscrizioni" }, () => {
+        loadStats();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const weekDates = getWeekDates();

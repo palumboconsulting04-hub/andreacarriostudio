@@ -12,11 +12,12 @@ interface Props {
   onBack: () => void;
 }
 
-const metodosPago: { id: MetodoPago; label: string }[] = [
-  { id: "tarjeta", label: "Tarjeta" },
-  { id: "google-pay", label: "Google Pay" },
-  { id: "apple-pay", label: "Apple Pay" },
-  { id: "paypal", label: "PayPal" },
+const metodosPago: { id: MetodoPago; label: string; proximamente?: boolean }[] = [
+  { id: "en-escuela", label: "Pagar en la escuela" },
+  { id: "tarjeta", label: "Tarjeta de crédito", proximamente: true },
+  { id: "google-pay", label: "Google Pay", proximamente: true },
+  { id: "apple-pay", label: "Apple Pay", proximamente: true },
+  { id: "paypal", label: "PayPal", proximamente: true },
 ];
 
 export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Props) {
@@ -140,19 +141,30 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Prop
             <div className="grid grid-cols-2 gap-3">
               {metodosPago.map((m) => {
                 const activo = estado.metodoPago === m.id;
+                const disabled = !!m.proximamente;
                 return (
                   <button
                     key={m.id}
-                    onClick={() => onChange({ metodoPago: m.id })}
-                    className="rounded-xl border px-4 py-3 text-sm transition-all text-left"
+                    onClick={() => !disabled && onChange({ metodoPago: m.id })}
+                    disabled={disabled}
+                    className="rounded-xl border px-4 py-3 text-sm transition-all text-left relative"
                     style={{
                       borderColor: activo ? "#7d2b13" : "#dcc1b9",
-                      backgroundColor: activo ? "#ffdbd1" : "#fff1e9",
-                      color: activo ? "#7d2b13" : "#56423d",
+                      backgroundColor: disabled ? "#f5f5f5" : activo ? "#ffdbd1" : "#fff1e9",
+                      color: disabled ? "#aaa" : activo ? "#7d2b13" : "#56423d",
                       fontWeight: activo ? 600 : 400,
+                      cursor: disabled ? "not-allowed" : "pointer",
                     }}
                   >
                     {m.label}
+                    {m.proximamente && (
+                      <span
+                        className="absolute top-1.5 right-2 text-[10px] tracking-wider uppercase font-semibold px-1.5 py-0.5 rounded-full"
+                        style={{ backgroundColor: "#dcc1b9", color: "#56423d" }}
+                      >
+                        Próximamente
+                      </span>
+                    )}
                   </button>
                 );
               })}

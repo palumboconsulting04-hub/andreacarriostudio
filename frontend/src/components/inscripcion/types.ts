@@ -8,7 +8,7 @@ export type DisciplinaId =
 
 export type PlanId = "basico" | "avanzado" | "intensivo";
 
-export type MetodoPago = "tarjeta" | "google-pay" | "apple-pay" | "paypal";
+export type MetodoPago = "en-escuela" | "tarjeta" | "google-pay" | "apple-pay" | "paypal";
 
 export interface Disciplina {
   id: DisciplinaId;
