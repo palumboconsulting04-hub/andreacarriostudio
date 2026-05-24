@@ -53,8 +53,10 @@ export default function Home() {
           {paso === 1 && (
             <Paso1Disciplina
               value={estado.disciplina}
-              onChange={(id) => update({ disciplina: id, plan: null, horarios: [] })}
-              onContinuar={() => setPaso(2)}
+              onSelect={(id) => {
+                update({ disciplina: id, plan: null, horarios: [] });
+                setPaso(2);
+              }}
             />
           )}
 

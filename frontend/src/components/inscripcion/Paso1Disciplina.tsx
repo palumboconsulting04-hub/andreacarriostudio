@@ -5,11 +5,10 @@ import type { DisciplinaId } from "./types";
 
 interface Props {
   value: DisciplinaId | null;
-  onChange: (id: DisciplinaId) => void;
-  onContinuar: () => void;
+  onSelect: (id: DisciplinaId) => void;
 }
 
-export default function Paso1Disciplina({ value, onChange, onContinuar }: Props) {
+export default function Paso1Disciplina({ value, onSelect }: Props) {
   return (
     <div className="max-w-5xl mx-auto px-8 pb-16">
       <div className="mb-10">
@@ -35,7 +34,7 @@ export default function Paso1Disciplina({ value, onChange, onContinuar }: Props)
           return (
             <button
               key={d.id}
-              onClick={() => onChange(d.id)}
+              onClick={() => onSelect(d.id)}
               aria-label={`Seleccionar ${d.nombre}`}
               className="group relative overflow-hidden text-left focus:outline-none"
               style={{
@@ -134,49 +133,6 @@ export default function Paso1Disciplina({ value, onChange, onContinuar }: Props)
         })}
       </div>
 
-      {/* Bottom navigation */}
-      <div className="flex items-center justify-between mt-10">
-        <button
-          className="flex items-center gap-2 text-sm opacity-40 cursor-not-allowed"
-          style={{ color: "#56423d", fontFamily: "var(--font-body)" }}
-          disabled
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M10 3L5 8l5 5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          Atrás
-        </button>
-
-        <button
-          onClick={onContinuar}
-          disabled={!value}
-          className="flex items-center gap-2 px-7 py-3 rounded-full text-sm font-semibold uppercase transition-all duration-200"
-          style={{
-            fontFamily: "var(--font-body)",
-            letterSpacing: "0.12em",
-            backgroundColor: value ? "#7d2b13" : "#dcc1b9",
-            color: value ? "#ffffff" : "#89726c",
-            cursor: value ? "pointer" : "not-allowed",
-          }}
-        >
-          Continuar
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M6 3l5 5-5 5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      </div>
     </div>
   );
 }

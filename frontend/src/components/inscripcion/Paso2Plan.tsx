@@ -62,7 +62,7 @@ export default function Paso2Plan({ disciplina, onSelect, onBack }: Props) {
             }`}
           >
             {plan.destacado && (
-              <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-terracota-light text-texto text-xs font-body font-semibold tracking-widest uppercase px-4 py-1.5 rounded-full shadow">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-terracota-light text-texto font-body font-semibold tracking-widest uppercase px-3 py-1 rounded-full shadow" style={{ fontSize: "10px" }}>
                 Más popular
               </span>
             )}
@@ -96,7 +96,7 @@ export default function Paso2Plan({ disciplina, onSelect, onBack }: Props) {
                   plan.destacado ? "text-siena-pale" : "text-texto-muted"
                 }`}
               >
-                {plan.sesionesPorSemana} clase{plan.sesionesPorSemana > 1 ? "s" : ""} por semana
+                {plan.precioClase}
               </p>
             </div>
 

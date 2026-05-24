@@ -4,25 +4,25 @@ export const disciplinas: Disciplina[] = [
   {
     id: "pilates-mat",
     nombre: "Pilates Mat",
-    descripcion: "Conecta tu centro, mejora tu postura y fortalece tu cuerpo a través de la respiración.",
+    descripcion: "Core, postura, flexibilidad y respiración. Un método de bajo impacto que trabaja la musculatura profunda y mejora la movilidad articular.",
     imagen: "https://lh3.googleusercontent.com/aida/ADBb0ugojefKfdgnG23qLdP5o5CTxaWkVEUqVO21OhjCuYJCHIH5loDmvuuyiwBxRuL4Jv0hHsO8hy3hevSQalHJXvQg_dval1uqZfHvdTiEGZUS4OD4BradwaMzC8mbv4TPVsreSOAf9lGslGrXxJrA5Wr3_TFhiM1vNM92nZGMV_tah1nAGlE9AI9YzMnf9fX5m8wtxz2Qfvu4bTbNTziZ_qR6Xhi9gLxbC9Yfdf5S2iS4ifKuYkz4JVp11Qs6",
   },
   {
     id: "barre-fit",
     nombre: "Barre Fit",
-    descripcion: "Fusión de técnica clásica, yoga y pilates para esculpir y tonificar con gracia.",
+    descripcion: "Piernas definidas y glúteos trabajados. Combina la técnica del ballet con series de alta repetición que activan la musculatura de forma profunda.",
     imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuDz5OIBKM_u2ZlVPO98dZS592lm2WJUKjj0Dggs7uAeglwN_J88YCHwCVZvXb2KfpmG8ecAgMRz4kkHMNh0w-M8x6aueE7n15_6e-oHYVDf2dE8B0XrseMcztDMuJzx2EHWMpWyO9GdzVPxuu2QbovlNZKeXBSrNB2n5IvIgLCqMRsjWSkmAD9rSEHn1bC3l1_Gfcq55iEr-o-RfnGDW2zHVThkC4k0It6RROZh7tYDbZ1kdCiBqlD5yFS2VEAJ65dwjr9I5BWL7RRh",
   },
   {
     id: "pre-ballet",
     nombre: "Pre Ballet 2-6 años",
-    descripcion: "Iniciación al movimiento, la musicalidad y la expresión corporal de forma lúdica.",
+    descripcion: "Método pedagógico real adaptado a cada etapa desde los 3 años, con preparación oficial RAD y un enfoque en técnica y humanidad.",
     imagen: "/pre-ballet.png",
   },
   {
     id: "ballet-i",
     nombre: "Ballet I 7-9 años",
-    descripcion: "Desarrollo de la técnica base, postura y disciplina en un entorno inspirador.",
+    descripcion: "Desarrollo de la técnica base y disciplina. Fomentamos la consciencia corporal y la expresión artística en un entorno inspirador.",
     imagen: "/ballet-i.png",
   },
   {
@@ -35,7 +35,7 @@ export const disciplinas: Disciplina[] = [
   {
     id: "ballet-adultos",
     nombre: "Ballet Adultos",
-    descripcion: "Nunca es tarde para la gracia. Mejora tu elongación, postura y bienestar general.",
+    descripcion: "Técnica clásica adaptada al cuerpo adulto: postura, coordinación y expresión en un ambiente cercano y sin presión.",
     imagen: "/ballet-adultos.png",
   },
 ];
@@ -47,10 +47,12 @@ export const planesBase: Plan[] = [
     precio: 50,
     sesionesPorSemana: 1,
     sesionesMes: 4,
+    precioClase: "Menos de 13€ por clase",
     features: [
-      "4 clases por mes",
-      "1 clase semanal",
-      "Acceso a la app del estudio",
+      "1 clase fija a la semana",
+      "Elige tu disciplina",
+      "Grupo reducido y cercano",
+      "Para quien quiere empezar y no tiene tiempo",
     ],
   },
   {
@@ -59,11 +61,12 @@ export const planesBase: Plan[] = [
     precio: 70,
     sesionesPorSemana: 2,
     sesionesMes: 8,
+    precioClase: "Menos de 9€ por clase",
     features: [
-      "8 clases por mes",
-      "2 clases semanales",
-      "Acceso a la app del estudio",
-      "Material de clase incluido",
+      "2 clases fijas a la semana",
+      "Misma disciplina, doble progreso",
+      "Grupo reducido y cercano",
+      "La frecuencia perfecta para ver resultados",
     ],
     destacado: true,
   },
@@ -73,12 +76,12 @@ export const planesBase: Plan[] = [
     precio: 90,
     sesionesPorSemana: 3,
     sesionesMes: 12,
+    precioClase: "Menos de 8€ por clase",
     features: [
-      "12 clases por mes",
-      "3 clases semanales",
-      "Acceso a la app del estudio",
-      "Material de clase incluido",
-      "Evaluación mensual personalizada",
+      "3 clases fijas a la semana",
+      "Máxima transformación",
+      "Resultados más rápidos",
+      "Grupo reducido y cercano",
     ],
   },
 ];
@@ -90,20 +93,23 @@ export const planBallet2: Plan[] = [
     precio: 90,
     sesionesPorSemana: 3,
     sesionesMes: 12,
+    precioClase: "Menos de 8€ por clase",
     features: [
-      "12 clases por mes",
-      "3 clases semanales",
-      "Material de clase incluido",
-      "Evaluación mensual personalizada",
-      "Zapatillas de punta incluidas",
-      "Acceso a ensayos y actuaciones",
+      "3 clases fijas a la semana",
+      "Máxima transformación",
+      "Resultados más rápidos",
+      "Grupo reducido y cercano",
     ],
     destacado: true,
   },
 ];
 
+const planesSinIntensivo = planesBase.filter((p) => p.id !== "intensivo");
+
 export function getPlanes(disciplinaId: DisciplinaId): Plan[] {
   if (disciplinaId === "ballet-ii") return planBallet2;
+  if (disciplinaId === "ballet-i" || disciplinaId === "pre-ballet" || disciplinaId === "ballet-adultos")
+    return planesSinIntensivo;
   return planesBase;
 }
 
@@ -120,51 +126,38 @@ const slots = (
 
 export const horariosPorDisciplina: Record<DisciplinaId, HorarioSlot[]> = {
   "pilates-mat": slots("pm", [
-    { dia: "Lunes",     hora: "09:00", disponibles: 3,  total: 10 },
-    { dia: "Lunes",     hora: "18:30", disponibles: 8,  total: 10 },
-    { dia: "Martes",    hora: "10:00", disponibles: 0,  total: 10 },
-    { dia: "Miércoles", hora: "09:00", disponibles: 5,  total: 10 },
-    { dia: "Miércoles", hora: "18:30", disponibles: 2,  total: 10 },
-    { dia: "Jueves",    hora: "10:00", disponibles: 7,  total: 10 },
-    { dia: "Viernes",   hora: "09:00", disponibles: 1,  total: 10 },
-    { dia: "Viernes",   hora: "19:00", disponibles: 9,  total: 10 },
-    { dia: "Sábado",    hora: "10:00", disponibles: 4,  total: 10 },
+    { dia: "Lunes",     hora: "09:00", disponibles: 4,  total: 10 },
+    { dia: "Lunes",     hora: "11:30", disponibles: 7,  total: 10 },
+    { dia: "Lunes",     hora: "20:15", disponibles: 5,  total: 10 },
+    { dia: "Martes",    hora: "10:15", disponibles: 3,  total: 10 },
+    { dia: "Miércoles", hora: "09:00", disponibles: 6,  total: 10 },
+    { dia: "Miércoles", hora: "11:30", disponibles: 2,  total: 10 },
+    { dia: "Miércoles", hora: "20:15", disponibles: 8,  total: 10 },
+    { dia: "Jueves",    hora: "10:15", disponibles: 0,  total: 10 },
+    { dia: "Viernes",   hora: "09:00", disponibles: 5,  total: 10 },
+    { dia: "Viernes",   hora: "11:30", disponibles: 9,  total: 10 },
   ]),
   "barre-fit": slots("bf", [
-    { dia: "Lunes",     hora: "10:00", disponibles: 6,  total: 12 },
-    { dia: "Lunes",     hora: "19:30", disponibles: 0,  total: 12 },
-    { dia: "Martes",    hora: "09:00", disponibles: 9,  total: 12 },
-    { dia: "Miércoles", hora: "10:00", disponibles: 3,  total: 12 },
-    { dia: "Jueves",    hora: "18:30", disponibles: 11, total: 12 },
-    { dia: "Viernes",   hora: "09:00", disponibles: 5,  total: 12 },
-    { dia: "Viernes",   hora: "19:00", disponibles: 0,  total: 12 },
-    { dia: "Sábado",    hora: "10:00", disponibles: 8,  total: 12 },
+    { dia: "Lunes",     hora: "10:15", disponibles: 6,  total: 12 },
+    { dia: "Martes",    hora: "09:00", disponibles: 4,  total: 12 },
+    { dia: "Miércoles", hora: "10:15", disponibles: 3,  total: 12 },
+    { dia: "Jueves",    hora: "09:00", disponibles: 8,  total: 12 },
+    { dia: "Viernes",   hora: "10:15", disponibles: 11, total: 12 },
   ]),
   "pre-ballet": slots("pb", [
-    { dia: "Lunes",     hora: "17:00", disponibles: 8,  total: 10 },
-    { dia: "Miércoles", hora: "17:00", disponibles: 5,  total: 10 },
-    { dia: "Viernes",   hora: "17:00", disponibles: 3,  total: 10 },
-    { dia: "Sábado",    hora: "10:00", disponibles: 10, total: 10 },
+    { dia: "Lunes",     hora: "17:45", disponibles: 5,  total: 8 },
+    { dia: "Miércoles", hora: "17:45", disponibles: 3,  total: 8 },
   ]),
   "ballet-i": slots("b1", [
-    { dia: "Lunes",     hora: "18:00", disponibles: 5,  total: 10 },
-    { dia: "Martes",    hora: "17:30", disponibles: 0,  total: 10 },
-    { dia: "Miércoles", hora: "18:00", disponibles: 3,  total: 10 },
-    { dia: "Jueves",    hora: "17:30", disponibles: 7,  total: 10 },
-    { dia: "Viernes",   hora: "18:00", disponibles: 2,  total: 10 },
-    { dia: "Sábado",    hora: "09:00", disponibles: 8,  total: 10 },
+    { dia: "Martes",    hora: "17:45", disponibles: 4,  total: 8 },
+    { dia: "Jueves",    hora: "17:45", disponibles: 6,  total: 8 },
   ]),
   "ballet-ii": slots("b2", [
-    { dia: "Lunes",     hora: "19:00", disponibles: 4,  total: 8 },
-    { dia: "Miércoles", hora: "19:00", disponibles: 0,  total: 8 },
-    { dia: "Jueves",    hora: "19:30", disponibles: 2,  total: 8 },
-    { dia: "Viernes",   hora: "19:00", disponibles: 6,  total: 8 },
-    { dia: "Sábado",    hora: "10:30", disponibles: 3,  total: 8 },
+    { dia: "Martes",    hora: "19:00", disponibles: 2,  total: 6 },
+    { dia: "Jueves",    hora: "19:00", disponibles: 4,  total: 6 },
   ]),
   "ballet-adultos": slots("ba", [
-    { dia: "Lunes",     hora: "20:00", disponibles: 7,  total: 12 },
-    { dia: "Miércoles", hora: "20:00", disponibles: 4,  total: 12 },
-    { dia: "Jueves",    hora: "19:30", disponibles: 9,  total: 12 },
-    { dia: "Sábado",    hora: "11:00", disponibles: 12, total: 12 },
+    { dia: "Lunes",     hora: "19:00", disponibles: 7,  total: 10 },
+    { dia: "Miércoles", hora: "19:00", disponibles: 5,  total: 10 },
   ]),
 };

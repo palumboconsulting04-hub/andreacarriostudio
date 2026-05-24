@@ -25,6 +25,7 @@ export interface Plan {
   sesionesPorSemana: number;
   sesionesMes: number;
   features: string[];
+  precioClase: string;
   destacado?: boolean;
 }
 
