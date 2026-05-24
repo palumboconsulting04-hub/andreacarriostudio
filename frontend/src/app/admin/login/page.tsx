@@ -1,20 +1,18 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { loginAction } from "./actions";
 import Image from "next/image";
 
 const initialState = { error: "", success: false };
 
 export default function AdminLogin() {
-  const router = useRouter();
   const [state, formAction, pending] = useActionState(loginAction, initialState);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (state.success) router.push("/admin");
-  }, [state.success, router]);
+    if (state.success) window.location.href = "/admin";
+  }, [state.success]);
 
   return (
     <div
