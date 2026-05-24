@@ -326,7 +326,7 @@ export default function AdminDashboard() {
             <h3 className="font-headline-md text-headline-md text-primary mb-stack-md">
               Calendario Semanal
             </h3>
-            <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm shadow-[#3D2B1F]/5 border border-surface-container-high overflow-x-auto">
+            <div className="bg-surface-container-lowest rounded-[24px] p-4 md:p-6 shadow-sm shadow-[#3D2B1F]/5 border border-surface-container-high">
               {loading ? (
                 <div className="flex items-center justify-center h-32">
                   <div
@@ -335,69 +335,125 @@ export default function AdminDashboard() {
                   />
                 </div>
               ) : (
-                <div className="min-w-[800px]">
-                  {/* Header */}
-                  <div className="grid grid-cols-6 gap-4 mb-4 border-b border-outline-variant pb-4">
-                    <div className="font-label-md text-label-md text-on-surface-variant text-center">Horario</div>
-                    {weekDates.map((d, i) => {
-                      const isToday = d.toDateString() === new Date().toDateString();
-                      return (
-                        <div
-                          key={i}
-                          className={`font-label-md text-label-md text-center ${
-                            isToday ? "text-primary font-bold" : "text-on-surface-variant"
-                          }`}
-                        >
-                          {DAYS_SHORT_ES[d.getDay()]} {d.getDate()}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Rows */}
-                  <div className="space-y-4">
+                <>
+                  {/* ── Vista mobile: lista vertical por día ── */}
+                  <div className="md:hidden space-y-5">
                     {times.length === 0 ? (
                       <p className="text-center text-on-surface-variant py-8">No hay horarios configurados</p>
                     ) : (
-                      times.map((time, ti) => (
-                        <div
-                          key={time}
-                          className={`grid grid-cols-6 gap-4 items-center ${
-                            ti > 0 ? "border-t border-outline-variant/50 pt-4" : ""
-                          }`}
-                        >
-                          <div className="font-body-md text-body-md text-on-surface-variant text-center">{time}</div>
-                          {GIORNI.map((giorno) => {
-                            const o = grid[time]?.[giorno];
-                            if (!o) return <div key={giorno} />;
-                            return (
-                              <div
-                                key={giorno}
-                                className={`${getDcClasses(o.disciplina_id)} rounded-lg p-3 text-center hover:shadow-md transition-shadow cursor-pointer`}
-                              >
-                                <p className="font-label-md text-label-md text-on-surface">
-                                  {o.discipline?.nome ?? o.disciplina_id}
-                                </p>
-                                <p className="font-body-md text-body-md text-on-surface-variant text-xs mt-1">
-                                  {time} – {o.ora_fine.substring(0, 5)}
-                                </p>
-                                {(() => {
-                                  const ocupados = o.iscrizione_orari?.length ?? 0;
-                                  const lleno = ocupados >= o.posti_totali;
-                                  return (
-                                    <p className={`text-xs font-semibold mt-1.5 ${lleno ? "text-error" : "text-on-surface-variant"}`}>
-                                      {ocupados}/{o.posti_totali} inscritos
+                      GIORNI.map((giorno, i) => {
+                        const date = weekDates[i];
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        const slots = orari
+                          .filter((o) => o.giorno === giorno)
+                          .sort((a, b) => a.ora_inizio.localeCompare(b.ora_inizio));
+                        if (slots.length === 0) return null;
+                        return (
+                          <div key={giorno}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`text-sm font-semibold ${isToday ? "text-primary" : "text-on-surface-variant"}`}>
+                                {giorno} {date.getDate()}
+                              </span>
+                              {isToday && (
+                                <span className="text-xs bg-primary text-on-primary px-2 py-0.5 rounded-full">Hoy</span>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              {slots.map((o) => {
+                                const ocupados = o.iscrizione_orari?.length ?? 0;
+                                const lleno = ocupados >= o.posti_totali;
+                                return (
+                                  <div
+                                    key={o.id}
+                                    className={`${getDcClasses(o.disciplina_id)} rounded-xl p-3 flex justify-between items-center`}
+                                  >
+                                    <div>
+                                      <p className="text-sm font-medium text-on-surface">
+                                        {o.discipline?.nome ?? o.disciplina_id}
+                                      </p>
+                                      <p className="text-xs text-on-surface-variant mt-0.5">
+                                        {o.ora_inizio.substring(0, 5)} – {o.ora_fine.substring(0, 5)}
+                                      </p>
+                                    </div>
+                                    <p className={`text-sm font-bold ${lleno ? "text-error" : "text-on-surface-variant"}`}>
+                                      {ocupados}/{o.posti_totali}
                                     </p>
-                                  );
-                                })()}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ))
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
-                </div>
+
+                  {/* ── Vista desktop: grilla semanal ── */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <div className="min-w-[800px]">
+                      {/* Header */}
+                      <div className="grid grid-cols-6 gap-4 mb-4 border-b border-outline-variant pb-4">
+                        <div className="font-label-md text-label-md text-on-surface-variant text-center">Horario</div>
+                        {weekDates.map((d, i) => {
+                          const isToday = d.toDateString() === new Date().toDateString();
+                          return (
+                            <div
+                              key={i}
+                              className={`font-label-md text-label-md text-center ${
+                                isToday ? "text-primary font-bold" : "text-on-surface-variant"
+                              }`}
+                            >
+                              {DAYS_SHORT_ES[d.getDay()]} {d.getDate()}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Rows */}
+                      <div className="space-y-4">
+                        {times.length === 0 ? (
+                          <p className="text-center text-on-surface-variant py-8">No hay horarios configurados</p>
+                        ) : (
+                          times.map((time, ti) => (
+                            <div
+                              key={time}
+                              className={`grid grid-cols-6 gap-4 items-center ${
+                                ti > 0 ? "border-t border-outline-variant/50 pt-4" : ""
+                              }`}
+                            >
+                              <div className="font-body-md text-body-md text-on-surface-variant text-center">{time}</div>
+                              {GIORNI.map((giorno) => {
+                                const o = grid[time]?.[giorno];
+                                if (!o) return <div key={giorno} />;
+                                return (
+                                  <div
+                                    key={giorno}
+                                    className={`${getDcClasses(o.disciplina_id)} rounded-lg p-3 text-center hover:shadow-md transition-shadow cursor-pointer`}
+                                  >
+                                    <p className="font-label-md text-label-md text-on-surface">
+                                      {o.discipline?.nome ?? o.disciplina_id}
+                                    </p>
+                                    <p className="font-body-md text-body-md text-on-surface-variant text-xs mt-1">
+                                      {time} – {o.ora_fine.substring(0, 5)}
+                                    </p>
+                                    {(() => {
+                                      const ocupados = o.iscrizione_orari?.length ?? 0;
+                                      const lleno = ocupados >= o.posti_totali;
+                                      return (
+                                        <p className={`text-xs font-semibold mt-1.5 ${lleno ? "text-error" : "text-on-surface-variant"}`}>
+                                          {ocupados}/{o.posti_totali} inscritos
+                                        </p>
+                                      );
+                                    })()}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </section>
