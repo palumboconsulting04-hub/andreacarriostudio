@@ -97,7 +97,14 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Prop
   const [rgpdAceptado, setRgpdAceptado] = useState(false);
   const [modalPrivacidad, setModalPrivacidad] = useState(false);
 
-  const puedeConfirmar = estado.nombre.trim() !== "" && estado.email.trim() !== "" && rgpdAceptado;
+  const esNinas = ["ballet-i", "ballet-ii", "pre-ballet"].includes(disc.id);
+
+  const puedeConfirmar =
+    estado.nombre.trim() !== "" &&
+    estado.apellido.trim() !== "" &&
+    estado.email.trim() !== "" &&
+    rgpdAceptado &&
+    (!esNinas || (estado.nombreAlumna.trim() !== "" && estado.apellidoAlumna.trim() !== ""));
 
   const handleConfirmar = async () => {
     if (!puedeConfirmar || enviando) return;
@@ -169,38 +176,45 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Prop
             Datos personales
           </h2>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field
-              label="Nombre"
-              type="text"
-              value={estado.nombre}
-              onChange={(v) => onChange({ nombre: v })}
-              placeholder="Ana"
-            />
-            <Field
-              label="Apellido"
-              type="text"
-              value={estado.apellido}
-              onChange={(v) => onChange({ apellido: v })}
-              placeholder="García"
-            />
-          </div>
+          {esNinas ? (
+            <>
+              <p className="text-sm" style={{ color: "#89726c" }}>
+                Al tratarse de una disciplina infantil, indica primero los datos del tutor y luego los de la alumna.
+              </p>
 
-          <Field
-            label="Email"
-            type="email"
-            value={estado.email}
-            onChange={(v) => onChange({ email: v })}
-            placeholder="ana@email.com"
-          />
+              <div>
+                <p className="text-xs tracking-widest uppercase font-semibold mb-3" style={{ color: "#7d2b13", fontFamily: "var(--font-montserrat)" }}>
+                  Tutor / Responsable
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Nombre tutor" type="text" value={estado.nombre} onChange={(v) => onChange({ nombre: v })} placeholder="Ana" />
+                  <Field label="Apellido tutor" type="text" value={estado.apellido} onChange={(v) => onChange({ apellido: v })} placeholder="García" />
+                </div>
+              </div>
 
-          <Field
-            label="Teléfono"
-            type="tel"
-            value={estado.telefono}
-            onChange={(v) => onChange({ telefono: v })}
-            placeholder="+34 600 000 000"
-          />
+              <Field label="Email" type="email" value={estado.email} onChange={(v) => onChange({ email: v })} placeholder="ana@email.com" />
+              <Field label="Teléfono" type="tel" value={estado.telefono} onChange={(v) => onChange({ telefono: v })} placeholder="+34 600 000 000" />
+
+              <div>
+                <p className="text-xs tracking-widest uppercase font-semibold mb-3" style={{ color: "#7d2b13", fontFamily: "var(--font-montserrat)" }}>
+                  Datos de la alumna
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Nombre alumna" type="text" value={estado.nombreAlumna} onChange={(v) => onChange({ nombreAlumna: v })} placeholder="María" />
+                  <Field label="Apellido alumna" type="text" value={estado.apellidoAlumna} onChange={(v) => onChange({ apellidoAlumna: v })} placeholder="García" />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Nombre" type="text" value={estado.nombre} onChange={(v) => onChange({ nombre: v })} placeholder="Ana" />
+                <Field label="Apellido" type="text" value={estado.apellido} onChange={(v) => onChange({ apellido: v })} placeholder="García" />
+              </div>
+              <Field label="Email" type="email" value={estado.email} onChange={(v) => onChange({ email: v })} placeholder="ana@email.com" />
+              <Field label="Teléfono" type="tel" value={estado.telefono} onChange={(v) => onChange({ telefono: v })} placeholder="+34 600 000 000" />
+            </>
+          )}
 
           {/* Payment method */}
           <div>

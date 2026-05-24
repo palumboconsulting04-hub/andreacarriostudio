@@ -18,6 +18,8 @@ const estadoInicial: InscripcionState = {
   email: "",
   telefono: "",
   metodoPago: "en-escuela",
+  nombreAlumna: "",
+  apellidoAlumna: "",
 };
 
 function continuarEnabled(paso: number, estado: InscripcionState): boolean {

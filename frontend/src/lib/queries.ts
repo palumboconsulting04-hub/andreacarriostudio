@@ -103,6 +103,8 @@ export async function submitIscrizione(estado: InscripcionState): Promise<void> 
       piano_id: estado.plan,
       metodo_pagamento: estado.metodoPago,
       stato: "attesa",
+      nome_alumna: estado.nombreAlumna || null,
+      cognome_alumna: estado.apellidoAlumna || null,
     })
     .select("id")
     .single();

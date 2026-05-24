@@ -47,4 +47,6 @@ export interface InscripcionState {
   email: string;
   telefono: string;
   metodoPago: MetodoPago;
+  nombreAlumna: string;
+  apellidoAlumna: string;
 }
