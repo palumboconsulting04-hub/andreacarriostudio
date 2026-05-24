@@ -57,6 +57,7 @@ type IscrizioneDetalle = {
   metodo_pagamento: string;
   discipline: { nome: string } | null;
   iscrizione_orari: { orari: { giorno: string; ora_inizio: string; ora_fine: string } | null }[];
+  prezzo?: number | null;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -107,6 +108,15 @@ function getDcClasses(id: string): string {
   if (id === "pilates-mat") return "bg-surface-variant border border-outline-variant";
   if (id === "barre-fit") return "bg-secondary-container/30 border border-secondary-container";
   return "bg-primary-container/20 border border-primary-container/50";
+}
+
+function calcAntigüedad(created_at: string): string {
+  const start = new Date(created_at);
+  const now = new Date();
+  const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+  if (months <= 0) return "Menos de 1 mes";
+  if (months === 1) return "1 mes";
+  return `${months} meses`;
 }
 
 function formatData(created_at: string): string {
@@ -180,7 +190,15 @@ export default function AdminDashboard() {
       .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
       .eq("id", iscrizioneId)
       .single();
-    setDrawerDetalle(data as unknown as IscrizioneDetalle);
+    if (data) {
+      const { data: pianoData } = await supabase
+        .from("piani")
+        .select("prezzo")
+        .eq("id", (data as unknown as IscrizioneDetalle).piano_id)
+        .eq("disciplina_id", (data as unknown as IscrizioneDetalle).disciplina_id)
+        .single();
+      setDrawerDetalle({ ...(data as unknown as IscrizioneDetalle), prezzo: pianoData?.prezzo ?? null });
+    }
     setDrawerLoading(false);
   };
 
@@ -774,8 +792,10 @@ export default function AdminDashboard() {
                       {[
                         { icon: "school", label: "Disciplina", value: drawerDetalle.discipline?.nome ?? drawerDetalle.disciplina_id },
                         { icon: "card_membership", label: "Plan", value: PLAN_LABEL[drawerDetalle.piano_id] ?? drawerDetalle.piano_id },
+                        { icon: "euro", label: "Cuota mensual", value: drawerDetalle.prezzo != null ? `${drawerDetalle.prezzo} €/mes` : "—" },
                         { icon: "payments", label: "Pago", value: METODO_LABEL[drawerDetalle.metodo_pagamento] ?? drawerDetalle.metodo_pagamento },
-                        { icon: "calendar_today", label: "Fecha inscripción", value: formatData(drawerDetalle.created_at) },
+                        { icon: "calendar_today", label: "Inscrita desde", value: formatData(drawerDetalle.created_at) },
+                        { icon: "history", label: "Antigüedad", value: calcAntigüedad(drawerDetalle.created_at) },
                       ].map(({ icon, label, value }) => (
                         <div key={label} className="flex items-center justify-between px-4 py-3">
                           <div className="flex items-center gap-2">
