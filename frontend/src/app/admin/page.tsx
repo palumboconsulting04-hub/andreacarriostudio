@@ -220,6 +220,7 @@ export default function AdminDashboard() {
       .update({ stato: nuevoStato })
       .eq("id", drawerDetalle.id);
     if (!error) {
+      ajustarMetrics(drawerDetalle, drawerDetalle.stato, nuevoStato);
       setDrawerDetalle((prev) => prev ? { ...prev, stato: nuevoStato } : prev);
       setDrawerAlumnos((prev) =>
         prev.map((a) =>
@@ -249,6 +250,22 @@ export default function AdminDashboard() {
       setDrawerDetalle({ ...(data as unknown as IscrizioneDetalle), prezzo: pianoData?.prezzo ?? null });
     }
     setDrawerLoading(false);
+  };
+
+  const ajustarMetrics = (iscrizione: { created_at: string; prezzo?: number | null }, fromStato: string, toStato: string) => {
+    const prezzo = iscrizione.prezzo ?? 0;
+    const now = new Date();
+    const d = new Date(iscrizione.created_at);
+    const isThisMonth = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if (fromStato === "attesa" && toStato === "pagato") {
+      setPendingAmount((p) => p - prezzo);
+      setPendingCount((p) => p - 1);
+      if (isThisMonth) setFacturacionMes((p) => p + prezzo);
+    } else if (fromStato !== "attesa" && toStato === "attesa") {
+      setPendingAmount((p) => p + prezzo);
+      setPendingCount((p) => p + 1);
+      if (isThisMonth) setFacturacionMes((p) => p - prezzo);
+    }
   };
 
   const fetchKpiStudents = async (filter?: { stato: string }) => {
@@ -281,9 +298,9 @@ export default function AdminDashboard() {
     if (!kpiStudentProfile) return;
     const { error } = await supabase.from("iscrizioni").update({ stato: nuevoStato }).eq("id", kpiStudentProfile.id);
     if (!error) {
+      ajustarMetrics(kpiStudentProfile, kpiStudentProfile.stato, nuevoStato);
       setKpiStudentProfile((p) => p ? { ...p, stato: nuevoStato } : p);
       setKpiStudents((prev) => prev.map((s) => s.id === kpiStudentProfile.id ? { ...s, stato: nuevoStato } : s));
-      setPendingCount((c) => nuevoStato === "pagato" ? c - 1 : c + 1);
     }
   };
 
