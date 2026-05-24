@@ -346,11 +346,10 @@ export default function AdminDashboard() {
                                 </p>
                                 {(() => {
                                   const ocupados = o.iscrizione_orari?.length ?? 0;
-                                  const disponibles = Math.max(0, o.posti_totali - ocupados);
-                                  const lleno = disponibles === 0;
+                                  const lleno = ocupados >= o.posti_totali;
                                   return (
                                     <p className={`text-xs font-semibold mt-1.5 ${lleno ? "text-error" : "text-on-surface-variant"}`}>
-                                      {disponibles}/{o.posti_totali} plazas
+                                      {ocupados}/{o.posti_totali} inscritos
                                     </p>
                                   );
                                 })()}
