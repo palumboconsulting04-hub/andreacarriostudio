@@ -1,17 +1,16 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 export async function loginAction(
-  _prevState: { error: string },
+  _prevState: { error: string; success: boolean },
   formData: FormData
-): Promise<{ error: string }> {
+): Promise<{ error: string; success: boolean }> {
   const username = (formData.get("username") as string ?? "").trim();
   const password = (formData.get("password") as string ?? "").trim();
 
-  const validUser = process.env.ADMIN_USERNAME ?? "";
-  const validPass = process.env.ADMIN_PASSWORD ?? "";
+  const validUser = (process.env.ADMIN_USERNAME ?? "").trim();
+  const validPass = (process.env.ADMIN_PASSWORD ?? "").trim();
 
   if (username === validUser && password === validPass) {
     const cookieStore = await cookies();
@@ -22,8 +21,8 @@ export async function loginAction(
       maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
-    redirect("/admin");
+    return { error: "", success: true };
   }
 
-  return { error: "Usuario o contraseña incorrectos" };
+  return { error: "Usuario o contraseña incorrectos", success: false };
 }

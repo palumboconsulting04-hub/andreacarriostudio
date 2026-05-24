@@ -1,13 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { loginAction } from "./actions";
 import Image from "next/image";
 
-const initialState = { error: "" };
+const initialState = { error: "", success: false };
 
 export default function AdminLogin() {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(loginAction, initialState);
+
+  useEffect(() => {
+    if (state.success) router.push("/admin");
+  }, [state.success, router]);
 
   return (
     <div
