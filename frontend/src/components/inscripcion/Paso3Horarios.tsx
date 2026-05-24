@@ -56,14 +56,14 @@ export default function Paso3Horarios({
 
       <div className="text-center mb-8">
         <h2 className="font-display text-4xl sm:text-5xl text-siena mb-3">
-          Elige tus horarios
+          Elige tus clases
         </h2>
         <p className="font-body text-texto-muted text-base">
           Con el plan{" "}
           <strong className="text-siena font-semibold">{planInfo.nombre}</strong>{" "}
           puedes elegir hasta{" "}
           <strong className="text-siena font-semibold">
-            {maxSlots} horario{maxSlots > 1 ? "s" : ""} semanal
+            {maxSlots} clase{maxSlots > 1 ? "s" : ""} semanal
             {maxSlots > 1 ? "es" : ""}
           </strong>
         </p>
@@ -72,7 +72,7 @@ export default function Paso3Horarios({
       {/* progress counter */}
       <div className="flex items-center justify-between mb-5 px-1">
         <span className="font-body text-sm text-texto-muted">
-          {value.length} de {maxSlots} seleccionado{value.length !== 1 ? "s" : ""}
+          {value.length} de {maxSlots} clase{maxSlots !== 1 ? "s" : ""} seleccionada{value.length !== 1 ? "s" : ""}
         </span>
         <div className="flex gap-1.5">
           {Array.from({ length: maxSlots }).map((_, i) => (
@@ -164,7 +164,7 @@ export default function Paso3Horarios({
 
       {value.length > 0 && value.length < maxSlots && (
         <p className="text-center text-sm font-body font-semibold mb-4" style={{ color: "#7d2b13" }}>
-          Te falta{maxSlots - value.length > 1 ? "n" : ""} {maxSlots - value.length} horario{maxSlots - value.length > 1 ? "s" : ""} por elegir
+          Te falta{maxSlots - value.length > 1 ? "n" : ""} {maxSlots - value.length} clase{maxSlots - value.length > 1 ? "s" : ""} por elegir
         </p>
       )}
 
@@ -174,10 +174,10 @@ export default function Paso3Horarios({
         className="w-full py-4 rounded-full font-body font-semibold text-sm tracking-widest uppercase bg-siena text-white hover:bg-siena-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {value.length === 0
-          ? `Selecciona ${maxSlots} horario${maxSlots > 1 ? "s" : ""} para continuar`
+          ? `Selecciona ${maxSlots} clase${maxSlots > 1 ? "s" : ""} para continuar`
           : value.length < maxSlots
-          ? `Selecciona ${maxSlots - value.length} más para continuar`
-          : `Continuar con ${value.length} horario${value.length > 1 ? "s" : ""}`}
+          ? `Selecciona ${maxSlots - value.length} clase${maxSlots - value.length > 1 ? "s" : ""} más para continuar`
+          : `Continuar con ${value.length} clase${value.length > 1 ? "s" : ""}`}
       </button>
     </div>
   );
