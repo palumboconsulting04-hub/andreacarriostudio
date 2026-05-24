@@ -5,7 +5,7 @@ export const disciplinas: Disciplina[] = [
     id: "pilates-mat",
     nombre: "Pilates Mat",
     descripcion: "Conecta tu centro, mejora tu postura y fortalece tu cuerpo a través de la respiración.",
-    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuAlybn-HoWbFM79hz4LaQds5yuddHY7BkUAKastDz20qWYjTjlb3xFb12TaQf72F9_9Oz5ZWRkGgdbORdBlHZvofORM3XT_qjBUIr5TeEyrlzwIhmbMTAqzeiovtuRLfwQRbVNeLrbLAHYbcsWdlUTuZ9bZrLoYlFghli8aYT7grreWaMODWDMEWp0jCZpDeDK_RjgOzuSWFo3GP9qKbBnFKdrq5REkpjPbbNg-Ri1QgwEQLDVEXgcsEyxM_QPsXsER0Y5CLNeRE8mH",
+    imagen: "https://lh3.googleusercontent.com/aida/ADBb0ugojefKfdgnG23qLdP5o5CTxaWkVEUqVO21OhjCuYJCHIH5loDmvuuyiwBxRuL4Jv0hHsO8hy3hevSQalHJXvQg_dval1uqZfHvdTiEGZUS4OD4BradwaMzC8mbv4TPVsreSOAf9lGslGrXxJrA5Wr3_TFhiM1vNM92nZGMV_tah1nAGlE9AI9YzMnf9fX5m8wtxz2Qfvu4bTbNTziZ_qR6Xhi9gLxbC9Yfdf5S2iS4ifKuYkz4JVp11Qs6",
   },
   {
     id: "barre-fit",
