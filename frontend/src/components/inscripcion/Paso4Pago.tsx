@@ -20,7 +20,7 @@ const metodosPago: { id: MetodoPago; label: string; proximamente?: boolean }[] =
   { id: "paypal", label: "PayPal", proximamente: true },
 ];
 
-function ModalPrivacidad({ onClose }: { onClose: () => void }) {
+function ModalPrivacidad({ onClose, onAceptar }: { onClose: () => void; onAceptar: () => void }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
@@ -79,7 +79,7 @@ function ModalPrivacidad({ onClose }: { onClose: () => void }) {
         </div>
 
         <button
-          onClick={onClose}
+          onClick={() => { onAceptar(); onClose(); }}
           className="mt-6 w-full py-3 rounded-full text-sm font-semibold tracking-widest uppercase transition-colors"
           style={{ backgroundColor: "#7d2b13", color: "#ffffff" }}
         >
@@ -289,7 +289,7 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Prop
               </div>
             </div>
 
-            {modalPrivacidad && <ModalPrivacidad onClose={() => setModalPrivacidad(false)} />}
+            {modalPrivacidad && <ModalPrivacidad onClose={() => setModalPrivacidad(false)} onAceptar={() => setRgpdAceptado(true)} />}
 
             <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
               <input
