@@ -13,7 +13,7 @@ type AdminOrario = {
   ora_fine: string;
   disciplina_id: string;
   posti_totali: number;
-  iscrizione_orari: { orario_id: string }[];
+  iscrizione_orari: { iscrizione_id: string }[];
   discipline: { nome: string } | null;
 };
 
@@ -175,6 +175,8 @@ export default function AdminDashboard() {
   const [kpiStudents, setKpiStudents] = useState<KpiStudentRow[]>([]);
   const [kpiStudentProfile, setKpiStudentProfile] = useState<IscrizioneDetalle | null>(null);
   const [kpiOcupacionDisciplina, setKpiOcupacionDisciplina] = useState<OcupacionDisciplina | null>(null);
+  const [kpiDiscSummary, setKpiDiscSummary] = useState<{ disciplina_id: string; nombre: string; enrolled: number; maxCapacity: number }[]>([]);
+  const [kpiAlumnosDisciplina, setKpiAlumnosDisciplina] = useState<{ disciplina_id: string; nombre: string } | null>(null);
 
   // Drawer: class detail + student profile
   const [drawerOrario, setDrawerOrario] = useState<AdminOrario | null>(null);
@@ -304,13 +306,50 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleKpiAlumnos = async () => {
+    setKpiDrawer("alumnos");
+    setKpiStudentProfile(null);
+    setKpiAlumnosDisciplina(null);
+    setKpiStudents([]);
+    setKpiLoading(true);
+    const { data: isc } = await supabase.from("iscrizioni").select("disciplina_id, discipline(nome)");
+    const countMap: Record<string, { nombre: string; count: number }> = {};
+    for (const i of (isc ?? []) as unknown as { disciplina_id: string; discipline: { nome: string } | null }[]) {
+      const did = i.disciplina_id;
+      if (!countMap[did]) countMap[did] = { nombre: i.discipline?.nome ?? did, count: 0 };
+      countMap[did].count++;
+    }
+    const capMap: Record<string, number> = {};
+    for (const o of orari) capMap[o.disciplina_id] = (capMap[o.disciplina_id] ?? 0) + o.posti_totali;
+    for (const did in capMap) capMap[did] = Math.round(capMap[did] / 2);
+    setKpiDiscSummary(
+      Object.entries(countMap).map(([disciplina_id, { nombre, count }]) => ({
+        disciplina_id, nombre, enrolled: count, maxCapacity: capMap[disciplina_id] ?? 0,
+      }))
+    );
+    setKpiLoading(false);
+  };
+
+  const handleKpiDisciplinaClick = async (disc: { disciplina_id: string; nombre: string }) => {
+    setKpiAlumnosDisciplina(disc);
+    setKpiLoading(true);
+    const [{ data: isc }, { data: piani }] = await Promise.all([
+      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").eq("disciplina_id", disc.disciplina_id).order("created_at", { ascending: false }),
+      supabase.from("piani").select("id, disciplina_id, prezzo"),
+    ]);
+    const pm: Record<string, number> = {};
+    for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[]) pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
+    setKpiStudents(((isc ?? []) as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+    setKpiLoading(false);
+  };
+
   useEffect(() => {
     const todayEs = DOW_ES[new Date().getDay()];
     Promise.all([
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }),
       supabase.from("orari").select("*", { count: "exact", head: true }).eq("giorno", todayEs).eq("attivo", true),
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
-      supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(orario_id)").eq("attivo", true),
+      supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true),
       supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))").order("created_at", { ascending: false }).limit(5),
       supabase.from("iscrizioni").select("disciplina_id, piano_id, stato, created_at"),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
@@ -345,13 +384,23 @@ export default function AdminDashboard() {
       setPendingAmount(pendAmt);
 
       // Ocupación por disciplina
+      // ocupados = alumnas únicas (Set de iscrizione_id)
+      // total = sum(posti_totali) / 2  → cada alumna va a 2 clases/semana
       const dm: Record<string, OcupacionDisciplina> = {};
+      const discIscIds: Record<string, Set<string>> = {};
       for (const o of orariData) {
-        const ocupados = (o.iscrizione_orari as { orario_id: string }[])?.length ?? 0;
-        if (!dm[o.disciplina_id]) dm[o.disciplina_id] = { disciplina_id: o.disciplina_id, nombre: o.discipline?.nome ?? o.disciplina_id, ocupados: 0, total: 0, clases: [] };
-        dm[o.disciplina_id].ocupados += ocupados;
+        const sesOcupados = o.iscrizione_orari?.length ?? 0;
+        if (!dm[o.disciplina_id]) {
+          dm[o.disciplina_id] = { disciplina_id: o.disciplina_id, nombre: o.discipline?.nome ?? o.disciplina_id, ocupados: 0, total: 0, clases: [] };
+          discIscIds[o.disciplina_id] = new Set();
+        }
+        for (const x of o.iscrizione_orari ?? []) discIscIds[o.disciplina_id].add(x.iscrizione_id);
         dm[o.disciplina_id].total += o.posti_totali;
-        dm[o.disciplina_id].clases.push({ id: o.id, giorno: o.giorno, ora_inizio: o.ora_inizio, ora_fine: o.ora_fine, ocupados, total: o.posti_totali });
+        dm[o.disciplina_id].clases.push({ id: o.id, giorno: o.giorno, ora_inizio: o.ora_inizio, ora_fine: o.ora_fine, ocupados: sesOcupados, total: o.posti_totali });
+      }
+      for (const [did, ids] of Object.entries(discIscIds)) {
+        dm[did].ocupados = ids.size;
+        dm[did].total = Math.round(dm[did].total / 2);
       }
       const discList = Object.values(dm);
       const totOc = discList.reduce((s, d) => s + d.ocupados, 0);
@@ -501,7 +550,7 @@ export default function AdminDashboard() {
 
             {/* Total Alumnos */}
             <button
-              onClick={() => { setKpiDrawer("alumnos"); fetchKpiStudents(); }}
+              onClick={handleKpiAlumnos}
               className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between"
             >
               <div className="flex justify-between items-start mb-3">
@@ -789,8 +838,16 @@ export default function AdminDashboard() {
 
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b border-outline-variant" style={{ backgroundColor: "#fff8f5" }}>
-              {(kpiStudentProfile || kpiOcupacionDisciplina) && (
-                <button onClick={() => { setKpiStudentProfile(null); setKpiOcupacionDisciplina(null); }} className="p-2 rounded-full hover:bg-surface-container-high transition-colors" style={{ color: "#7d2b13" }}>
+              {(kpiStudentProfile || kpiOcupacionDisciplina || kpiAlumnosDisciplina) && (
+                <button
+                  onClick={() => {
+                    if (kpiStudentProfile) { setKpiStudentProfile(null); }
+                    else if (kpiOcupacionDisciplina) { setKpiOcupacionDisciplina(null); }
+                    else if (kpiAlumnosDisciplina) { setKpiAlumnosDisciplina(null); setKpiStudents([]); }
+                  }}
+                  className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
+                  style={{ color: "#7d2b13" }}
+                >
                   <Icon name="arrow_back" />
                 </button>
               )}
@@ -801,12 +858,18 @@ export default function AdminDashboard() {
                       ? `${kpiStudentProfile.nome_alumna} ${kpiStudentProfile.cognome_alumna}`
                       : `${kpiStudentProfile.nome} ${kpiStudentProfile.cognome}`)
                     : kpiOcupacionDisciplina ? kpiOcupacionDisciplina.nombre
+                    : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? kpiAlumnosDisciplina.nombre
                     : kpiDrawer === "pendientes" ? "Pagos Pendientes"
                     : kpiDrawer === "alumnos" ? "Todos los Alumnos"
                     : "Ocupación por Disciplina"}
                 </p>
                 <p className="text-xs" style={{ color: "#89726c" }}>
-                  {kpiStudentProfile ? "Perfil" : kpiOcupacionDisciplina ? "Clases" : kpiDrawer === "pendientes" ? `${pendingCount} alumnos · ${pendingAmount}€` : kpiDrawer === "alumnos" ? `${iscrittiCount} alumnos` : `${ocupacionMedia}% media`}
+                  {kpiStudentProfile ? "Perfil"
+                    : kpiOcupacionDisciplina ? "Clases"
+                    : kpiDrawer === "pendientes" ? `${pendingCount} alumnos · ${pendingAmount}€`
+                    : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? `${kpiStudents.length} alumno${kpiStudents.length !== 1 ? "s" : ""}`
+                    : kpiDrawer === "alumnos" ? `${iscrittiCount} alumnos`
+                    : `${ocupacionMedia}% media`}
                 </p>
               </div>
               <button onClick={() => setKpiDrawer(null)} className="p-2 rounded-full hover:bg-surface-container-high" style={{ color: "#89726c" }}>
@@ -924,8 +987,42 @@ export default function AdminDashboard() {
                   })}
                 </div>
 
+              ) : kpiDrawer === "alumnos" && !kpiAlumnosDisciplina ? (
+                /* ── Disciplinas (nivel 1) ── */
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>Por disciplina</p>
+                  {kpiDiscSummary.length === 0 ? (
+                    <p className="text-center py-10 text-sm" style={{ color: "#89726c" }}>No hay datos</p>
+                  ) : (
+                    kpiDiscSummary.map((d) => {
+                      const pct = d.maxCapacity > 0 ? Math.round((d.enrolled / d.maxCapacity) * 100) : 0;
+                      return (
+                        <button
+                          key={d.disciplina_id}
+                          onClick={() => handleKpiDisciplinaClick(d)}
+                          className="w-full text-left p-4 rounded-xl border hover:shadow-sm transition-shadow"
+                          style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9" }}
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <p className="text-sm font-medium" style={{ color: "#25190f" }}>{d.nombre}</p>
+                            <p className="text-sm font-bold" style={{ color: "#7d2b13" }}>{d.enrolled}/{d.maxCapacity}</p>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct > 75 ? "#2e7d32" : "#7d2b13" }} />
+                          </div>
+                          <p className="text-xs mt-1.5 flex items-center gap-1" style={{ color: "#89726c" }}>
+                            <span>{d.enrolled} alumno{d.enrolled !== 1 ? "s" : ""}</span>
+                            <span>·</span>
+                            <span>Ver listado →</span>
+                          </p>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
               ) : (
-                /* ── Lista alumnos (pendientes / todos) ── */
+                /* ── Lista alumnos (pendientes / disciplina) ── */
                 <div className="space-y-2">
                   {kpiStudents.length === 0 ? (
                     <p className="text-center py-10 text-sm" style={{ color: "#89726c" }}>No hay alumnos</p>
