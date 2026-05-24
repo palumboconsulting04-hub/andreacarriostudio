@@ -91,11 +91,11 @@ export const planBallet2: Plan[] = [
     id: "intensivo",
     nombre: "Intensivo",
     precio: 90,
-    sesionesPorSemana: 3,
-    sesionesMes: 12,
-    precioClase: "Menos de 8€ por clase",
+    sesionesPorSemana: 2,
+    sesionesMes: 8,
+    precioClase: "Menos de 12€ por clase",
     features: [
-      "3 clases fijas a la semana",
+      "2 clases de hora y media a la semana",
       "Máxima transformación",
       "Resultados más rápidos",
       "Grupo reducido y cercano",
@@ -120,44 +120,44 @@ export function getMaxSlots(planId: PlanId): number {
 
 const slots = (
   prefix: string,
-  list: { dia: string; hora: string; disponibles: number; total: number }[]
+  list: { dia: string; hora: string; horaFin: string; disponibles: number; total: number }[]
 ): HorarioSlot[] =>
   list.map((s, i) => ({ id: `${prefix}-${i}`, ...s }));
 
 export const horariosPorDisciplina: Record<DisciplinaId, HorarioSlot[]> = {
   "pilates-mat": slots("pm", [
-    { dia: "Lunes",     hora: "09:00", disponibles: 4,  total: 10 },
-    { dia: "Lunes",     hora: "11:30", disponibles: 7,  total: 10 },
-    { dia: "Lunes",     hora: "20:15", disponibles: 5,  total: 10 },
-    { dia: "Martes",    hora: "10:15", disponibles: 3,  total: 10 },
-    { dia: "Miércoles", hora: "09:00", disponibles: 6,  total: 10 },
-    { dia: "Miércoles", hora: "11:30", disponibles: 2,  total: 10 },
-    { dia: "Miércoles", hora: "20:15", disponibles: 8,  total: 10 },
-    { dia: "Jueves",    hora: "10:15", disponibles: 0,  total: 10 },
-    { dia: "Viernes",   hora: "09:00", disponibles: 5,  total: 10 },
-    { dia: "Viernes",   hora: "11:30", disponibles: 9,  total: 10 },
+    { dia: "Lunes",     hora: "09:00", horaFin: "10:00", disponibles: 4,  total: 10 },
+    { dia: "Lunes",     hora: "11:30", horaFin: "12:30", disponibles: 7,  total: 10 },
+    { dia: "Lunes",     hora: "20:15", horaFin: "21:15", disponibles: 5,  total: 10 },
+    { dia: "Martes",    hora: "10:15", horaFin: "11:15", disponibles: 3,  total: 10 },
+    { dia: "Miércoles", hora: "09:00", horaFin: "10:00", disponibles: 6,  total: 10 },
+    { dia: "Miércoles", hora: "11:30", horaFin: "12:30", disponibles: 2,  total: 10 },
+    { dia: "Miércoles", hora: "20:15", horaFin: "21:15", disponibles: 8,  total: 10 },
+    { dia: "Jueves",    hora: "10:15", horaFin: "11:15", disponibles: 0,  total: 10 },
+    { dia: "Viernes",   hora: "09:00", horaFin: "10:00", disponibles: 5,  total: 10 },
+    { dia: "Viernes",   hora: "11:30", horaFin: "12:30", disponibles: 9,  total: 10 },
   ]),
   "barre-fit": slots("bf", [
-    { dia: "Lunes",     hora: "10:15", disponibles: 6,  total: 12 },
-    { dia: "Martes",    hora: "09:00", disponibles: 4,  total: 12 },
-    { dia: "Miércoles", hora: "10:15", disponibles: 3,  total: 12 },
-    { dia: "Jueves",    hora: "09:00", disponibles: 8,  total: 12 },
-    { dia: "Viernes",   hora: "10:15", disponibles: 11, total: 12 },
+    { dia: "Lunes",     hora: "10:15", horaFin: "11:15", disponibles: 6,  total: 12 },
+    { dia: "Martes",    hora: "09:00", horaFin: "10:00", disponibles: 4,  total: 12 },
+    { dia: "Miércoles", hora: "10:15", horaFin: "11:15", disponibles: 3,  total: 12 },
+    { dia: "Jueves",    hora: "09:00", horaFin: "10:00", disponibles: 8,  total: 12 },
+    { dia: "Viernes",   hora: "10:15", horaFin: "11:15", disponibles: 11, total: 12 },
   ]),
   "pre-ballet": slots("pb", [
-    { dia: "Lunes",     hora: "17:45", disponibles: 5,  total: 8 },
-    { dia: "Miércoles", hora: "17:45", disponibles: 3,  total: 8 },
+    { dia: "Lunes",     hora: "17:45", horaFin: "18:45", disponibles: 5,  total: 8 },
+    { dia: "Miércoles", hora: "17:45", horaFin: "18:45", disponibles: 3,  total: 8 },
   ]),
   "ballet-i": slots("b1", [
-    { dia: "Martes",    hora: "17:45", disponibles: 4,  total: 8 },
-    { dia: "Jueves",    hora: "17:45", disponibles: 6,  total: 8 },
+    { dia: "Martes",    hora: "17:45", horaFin: "18:45", disponibles: 4,  total: 8 },
+    { dia: "Jueves",    hora: "17:45", horaFin: "18:45", disponibles: 6,  total: 8 },
   ]),
   "ballet-ii": slots("b2", [
-    { dia: "Martes",    hora: "19:00", disponibles: 2,  total: 6 },
-    { dia: "Jueves",    hora: "19:00", disponibles: 4,  total: 6 },
+    { dia: "Martes",    hora: "19:00", horaFin: "20:30", disponibles: 2,  total: 6 },
+    { dia: "Jueves",    hora: "19:00", horaFin: "20:30", disponibles: 4,  total: 6 },
   ]),
   "ballet-adultos": slots("ba", [
-    { dia: "Lunes",     hora: "19:00", disponibles: 7,  total: 10 },
-    { dia: "Miércoles", hora: "19:00", disponibles: 5,  total: 10 },
+    { dia: "Lunes",     hora: "19:00", horaFin: "20:00", disponibles: 7,  total: 10 },
+    { dia: "Miércoles", hora: "19:00", horaFin: "20:00", disponibles: 5,  total: 10 },
   ]),
 };

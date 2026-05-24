@@ -33,6 +33,7 @@ export interface HorarioSlot {
   id: string;
   dia: string;
   hora: string;
+  horaFin: string;
   disponibles: number;
   total: number;
 }

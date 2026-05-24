@@ -148,7 +148,7 @@ export default function Paso3Horarios({
 
                         <div>
                           <span className="font-body font-semibold text-texto text-sm">
-                            {slot.hora}
+                            {slot.hora} – {slot.horaFin}
                           </span>
                           {seleccionado && (
                             <span className="ml-2 text-xs font-body font-semibold text-siena tracking-wider uppercase">
