@@ -21,6 +21,8 @@ type IscrzioneRow = {
   id: string;
   nome: string;
   cognome: string;
+  nome_alumna: string | null;
+  cognome_alumna: string | null;
   stato: string;
   created_at: string;
   discipline: { nome: string } | null;
@@ -96,7 +98,7 @@ export default function AdminDashboard() {
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
       supabase
         .from("iscrizioni")
-        .select("id, nome, cognome, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))")
+        .select("id, nome, cognome, nome_alumna, cognome_alumna, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))")
         .order("created_at", { ascending: false })
         .limit(5),
     ]);
@@ -115,7 +117,7 @@ export default function AdminDashboard() {
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(orario_id)").eq("attivo", true),
       supabase
         .from("iscrizioni")
-        .select("id, nome, cognome, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))")
+        .select("id, nome, cognome, nome_alumna, cognome_alumna, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))")
         .order("created_at", { ascending: false })
         .limit(5),
     ]).then(([r1, r2, r3, r4, r5]) => {
@@ -398,7 +400,12 @@ export default function AdminDashboard() {
                     bookings.map((b) => (
                       <tr key={b.id} className="hover:bg-surface-container-low transition-colors">
                         <td className="py-4 px-6 font-body-md text-body-md text-on-surface">
-                          {b.nome} {b.cognome}
+                          <span>{b.nome} {b.cognome}</span>
+                          {b.nome_alumna && (
+                            <span className="block text-xs mt-0.5" style={{ color: "#89726c" }}>
+                              Alumna: {b.nome_alumna} {b.cognome_alumna}
+                            </span>
+                          )}
                         </td>
                         <td className="py-4 px-6 font-body-md text-body-md text-on-surface">
                           {b.discipline?.nome ?? "—"}
