@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
@@ -29,11 +29,55 @@ type IscrzioneRow = {
   iscrizione_orari: { orari: { giorno: string; ora_inizio: string } | null }[];
 };
 
+type OrarioAlumno = {
+  iscrizione_id: string;
+  iscrizioni: {
+    id: string;
+    nome: string;
+    cognome: string;
+    nome_alumna: string | null;
+    cognome_alumna: string | null;
+    disciplina_id: string;
+    stato: string;
+  } | null;
+};
+
+type IscrizioneDetalle = {
+  id: string;
+  nome: string;
+  cognome: string;
+  nome_alumna: string | null;
+  cognome_alumna: string | null;
+  email: string;
+  telefono: string | null;
+  stato: string;
+  created_at: string;
+  disciplina_id: string;
+  piano_id: string;
+  metodo_pagamento: string;
+  discipline: { nome: string } | null;
+  piani: { nome: string; prezzo: number; classi_settimana: number } | null;
+  iscrizione_orari: { orari: { giorno: string; ora_inizio: string; ora_fine: string } | null }[];
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DOW_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const DAYS_SHORT_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const GIORNI = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+const NINAS_IDS = new Set(["pre-ballet", "ballet-i", "ballet-ii"]);
+const METODO_LABEL: Record<string, string> = {
+  "en-escuela": "En la escuela",
+  "tarjeta": "Tarjeta",
+  "google-pay": "Google Pay",
+  "apple-pay": "Apple Pay",
+  "paypal": "PayPal",
+};
+const PLAN_LABEL: Record<string, string> = {
+  "basico": "Básico",
+  "avanzado": "Avanzado",
+  "intensivo": "Intensivo",
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -77,8 +121,8 @@ function formatData(created_at: string): string {
   return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" }) + `, ${time}`;
 }
 
-function Icon({ name, className = "" }: { name: string; className?: string }) {
-  return <span className={`material-symbols-outlined ${className}`}>{name}</span>;
+function Icon({ name, className = "", style }: { name: string; className?: string; style?: React.CSSProperties }) {
+  return <span className={`material-symbols-outlined ${className}`} style={style}>{name}</span>;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -91,6 +135,13 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState<IscrzioneRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Drawer: class detail + student profile
+  const [drawerOrario, setDrawerOrario] = useState<AdminOrario | null>(null);
+  const [drawerView, setDrawerView] = useState<"class" | "student">("class");
+  const [drawerAlumnos, setDrawerAlumnos] = useState<OrarioAlumno[]>([]);
+  const [drawerDetalle, setDrawerDetalle] = useState<IscrizioneDetalle | null>(null);
+  const [drawerLoading, setDrawerLoading] = useState(false);
 
   const loadStats = async () => {
     const todayEs = DOW_ES[new Date().getDay()];
@@ -107,6 +158,31 @@ export default function AdminDashboard() {
     setPendingCount(r3.count ?? 0);
     setBookings((r5.data as unknown as IscrzioneRow[]) ?? []);
     return todayEs;
+  };
+
+  const handleOrarioClick = async (orario: AdminOrario) => {
+    setDrawerOrario(orario);
+    setDrawerView("class");
+    setDrawerDetalle(null);
+    setDrawerLoading(true);
+    const { data } = await supabase
+      .from("iscrizione_orari")
+      .select("iscrizione_id, iscrizioni(id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, stato)")
+      .eq("orario_id", orario.id);
+    setDrawerAlumnos((data as unknown as OrarioAlumno[]) ?? []);
+    setDrawerLoading(false);
+  };
+
+  const handleAlumnoClick = async (iscrizioneId: string) => {
+    setDrawerView("student");
+    setDrawerLoading(true);
+    const { data } = await supabase
+      .from("iscrizioni")
+      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, discipline(nome), piani(nome, prezzo, classi_settimana), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
+      .eq("id", iscrizioneId)
+      .single();
+    setDrawerDetalle(data as unknown as IscrizioneDetalle);
+    setDrawerLoading(false);
   };
 
   useEffect(() => {
@@ -365,7 +441,8 @@ export default function AdminDashboard() {
                                 return (
                                   <div
                                     key={o.id}
-                                    className={`${getDcClasses(o.disciplina_id)} rounded-xl p-3 flex justify-between items-center`}
+                                    onClick={() => handleOrarioClick(o)}
+                                    className={`${getDcClasses(o.disciplina_id)} rounded-xl p-3 flex justify-between items-center cursor-pointer hover:shadow-md transition-shadow`}
                                   >
                                     <div>
                                       <p className="text-sm font-medium text-on-surface">
@@ -427,6 +504,7 @@ export default function AdminDashboard() {
                                 return (
                                   <div
                                     key={giorno}
+                                    onClick={() => handleOrarioClick(o)}
                                     className={`${getDcClasses(o.disciplina_id)} rounded-lg p-3 text-center hover:shadow-md transition-shadow cursor-pointer`}
                                   >
                                     <p className="font-label-md text-label-md text-on-surface">
@@ -527,6 +605,226 @@ export default function AdminDashboard() {
 
         </main>
       </div>
+
+      {/* ── Drawer: detalle de clase / alumno ── */}
+      {drawerOrario && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40 z-[60]"
+            onClick={() => setDrawerOrario(null)}
+          />
+
+          {/* Panel */}
+          <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white z-[70] flex flex-col shadow-2xl">
+
+            {/* Header */}
+            <div className="flex items-center gap-3 p-4 border-b border-outline-variant" style={{ backgroundColor: "#fff8f5" }}>
+              {drawerView === "student" && (
+                <button
+                  onClick={() => setDrawerView("class")}
+                  className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
+                  style={{ color: "#7d2b13" }}
+                  aria-label="Volver"
+                >
+                  <Icon name="arrow_back" />
+                </button>
+              )}
+              <div className="flex-1 min-w-0">
+                {drawerView === "class" ? (
+                  <>
+                    <p className="font-semibold text-sm truncate" style={{ color: "#7d2b13" }}>
+                      {drawerOrario.discipline?.nome ?? drawerOrario.disciplina_id}
+                    </p>
+                    <p className="text-xs" style={{ color: "#89726c" }}>
+                      {drawerOrario.giorno} · {drawerOrario.ora_inizio.substring(0, 5)} – {drawerOrario.ora_fine.substring(0, 5)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>
+                      {drawerDetalle
+                        ? (NINAS_IDS.has(drawerDetalle.disciplina_id) && drawerDetalle.nome_alumna
+                          ? `${drawerDetalle.nome_alumna} ${drawerDetalle.cognome_alumna}`
+                          : `${drawerDetalle.nome} ${drawerDetalle.cognome}`)
+                        : "Cargando..."}
+                    </p>
+                    <p className="text-xs" style={{ color: "#89726c" }}>Perfil completo</p>
+                  </>
+                )}
+              </div>
+              <button
+                onClick={() => setDrawerOrario(null)}
+                className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
+                style={{ color: "#89726c" }}
+                aria-label="Cerrar"
+              >
+                <Icon name="close" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {drawerLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div
+                    className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: "#7d2b13", borderTopColor: "transparent" }}
+                  />
+                </div>
+              ) : drawerView === "class" ? (
+
+                /* ── Lista alumnos ── */
+                <div className="space-y-2">
+                  {drawerAlumnos.length === 0 ? (
+                    <p className="text-center py-10 text-sm" style={{ color: "#89726c" }}>
+                      No hay alumnos inscritos en esta clase
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>
+                        {drawerAlumnos.length} inscrito{drawerAlumnos.length !== 1 ? "s" : ""}
+                      </p>
+                      {drawerAlumnos.map((a) => {
+                        const isc = a.iscrizioni;
+                        if (!isc) return null;
+                        const esNina = NINAS_IDS.has(isc.disciplina_id);
+                        const displayName = esNina && isc.nome_alumna
+                          ? `${isc.nome_alumna} ${isc.cognome_alumna}`
+                          : `${isc.nome} ${isc.cognome}`;
+                        const subLabel = esNina && isc.nome_alumna
+                          ? `Tutor: ${isc.nome} ${isc.cognome}`
+                          : null;
+                        return (
+                          <button
+                            key={a.iscrizione_id}
+                            onClick={() => handleAlumnoClick(a.iscrizione_id)}
+                            className="w-full text-left flex items-center justify-between p-3 rounded-xl border transition-colors hover:shadow-sm"
+                            style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9" }}
+                          >
+                            <div>
+                              <p className="text-sm font-medium" style={{ color: "#25190f" }}>{displayName}</p>
+                              {subLabel && (
+                                <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{subLabel}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isc.stato === "attesa" ? (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-error-container text-on-error-container">Pendiente</span>
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>
+                              )}
+                              <Icon name="chevron_right" className="text-base" style={{ color: "#89726c" } as React.CSSProperties} />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+
+              ) : drawerDetalle ? (
+
+                /* ── Perfil alumno ── */
+                <div className="space-y-5">
+
+                  {/* Nombre principal */}
+                  <div className="rounded-2xl p-4 border" style={{ backgroundColor: "#fff1e9", borderColor: "#dcc1b9" }}>
+                    {NINAS_IDS.has(drawerDetalle.disciplina_id) && drawerDetalle.nome_alumna ? (
+                      <>
+                        <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#89726c" }}>Alumna</p>
+                        <p className="text-lg font-semibold" style={{ color: "#7d2b13" }}>
+                          {drawerDetalle.nome_alumna} {drawerDetalle.cognome_alumna}
+                        </p>
+                        <div className="mt-3 pt-3 border-t" style={{ borderColor: "#dcc1b9" }}>
+                          <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#89726c" }}>Tutor</p>
+                          <p className="text-sm font-medium" style={{ color: "#25190f" }}>
+                            {drawerDetalle.nome} {drawerDetalle.cognome}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#89726c" }}>Alumna</p>
+                        <p className="text-lg font-semibold" style={{ color: "#7d2b13" }}>
+                          {drawerDetalle.nome} {drawerDetalle.cognome}
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Contacto */}
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Contacto</p>
+                    <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                      <Icon name="mail" className="text-base" style={{ color: "#7d2b13" } as React.CSSProperties} />
+                      <p className="text-sm" style={{ color: "#25190f" }}>{drawerDetalle.email}</p>
+                    </div>
+                    {drawerDetalle.telefono && (
+                      <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                        <Icon name="phone" className="text-base" style={{ color: "#7d2b13" } as React.CSSProperties} />
+                        <p className="text-sm" style={{ color: "#25190f" }}>{drawerDetalle.telefono}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Inscripción */}
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Inscripción</p>
+                    <div className="rounded-xl border divide-y" style={{ borderColor: "#dcc1b9" }}>
+                      {[
+                        { icon: "school", label: "Disciplina", value: drawerDetalle.discipline?.nome ?? drawerDetalle.disciplina_id },
+                        { icon: "card_membership", label: "Plan", value: PLAN_LABEL[drawerDetalle.piano_id] ?? drawerDetalle.piano_id },
+                        { icon: "payments", label: "Pago", value: METODO_LABEL[drawerDetalle.metodo_pagamento] ?? drawerDetalle.metodo_pagamento },
+                        { icon: "calendar_today", label: "Fecha inscripción", value: formatData(drawerDetalle.created_at) },
+                      ].map(({ icon, label, value }) => (
+                        <div key={label} className="flex items-center justify-between px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Icon name={icon} className="text-sm" style={{ color: "#7d2b13" } as React.CSSProperties} />
+                            <p className="text-xs" style={{ color: "#89726c" }}>{label}</p>
+                          </div>
+                          <p className="text-sm font-medium" style={{ color: "#25190f" }}>{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Estado de pago */}
+                  <div className="flex items-center justify-between p-4 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                    <p className="text-sm font-medium" style={{ color: "#25190f" }}>Estado de pago</p>
+                    {drawerDetalle.stato === "attesa" ? (
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>
+                    ) : (
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>
+                    )}
+                  </div>
+
+                  {/* Horarios */}
+                  {drawerDetalle.iscrizione_orari.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Clases semanales</p>
+                      <div className="space-y-1.5">
+                        {drawerDetalle.iscrizione_orari
+                          .filter((io) => io.orari)
+                          .map((io, idx) => (
+                            <div key={idx} className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                              <Icon name="schedule" className="text-sm" style={{ color: "#7d2b13" } as React.CSSProperties} />
+                              <p className="text-sm" style={{ color: "#25190f" }}>
+                                {io.orari!.giorno} · {io.orari!.ora_inizio.substring(0, 5)} – {io.orari!.ora_fine.substring(0, 5)}
+                              </p>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </>
+      )}
+
     </div>
   );
 }
