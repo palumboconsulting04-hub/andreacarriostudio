@@ -12,17 +12,6 @@ interface Props {
   onBack: () => void;
 }
 
-function getDisponibilidadColor(disponibles: number, total: number) {
-  if (disponibles === 0) return "text-red-500";
-  const ratio = disponibles / total;
-  if (ratio <= 0.3) return "text-terracota";
-  return "text-green-700";
-}
-
-function getDisponibilidadLabel(disponibles: number, total: number) {
-  if (disponibles === 0) return "Completo";
-  return `${disponibles}/${total} plazas`;
-}
 
 export default function Paso3Horarios({
   disc,
@@ -121,9 +110,11 @@ export default function Paso3Horarios({
                       onClick={() => toggleSlot(slot.id, slot.disponibles)}
                       disabled={disabled}
                       className={`w-full flex items-center justify-between px-5 py-4 text-left transition-all duration-200 ${
-                        seleccionado
+                        lleno
+                          ? "bg-red-50 cursor-not-allowed"
+                          : seleccionado
                           ? "bg-siena-pale"
-                          : disabled
+                          : maxAlcanzado
                           ? "opacity-40 cursor-not-allowed"
                           : "hover:bg-blanco-roto"
                       }`}
@@ -132,7 +123,9 @@ export default function Paso3Horarios({
                         {/* checkbox */}
                         <div
                           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                            seleccionado
+                            lleno
+                              ? "border-red-300"
+                              : seleccionado
                               ? "bg-siena border-siena"
                               : "border-outline-light"
                           }`}
@@ -145,7 +138,7 @@ export default function Paso3Horarios({
                         </div>
 
                         <div>
-                          <span className="font-body font-semibold text-texto text-sm">
+                          <span className={`font-body font-semibold text-sm ${lleno ? "text-red-400" : "text-texto"}`}>
                             {slot.hora} – {slot.horaFin}
                           </span>
                           {seleccionado && (
@@ -153,18 +146,13 @@ export default function Paso3Horarios({
                               Seleccionado
                             </span>
                           )}
+                          {lleno && (
+                            <span className="ml-2 text-xs font-body font-semibold text-red-400 tracking-wider uppercase">
+                              Completo
+                            </span>
+                          )}
                         </div>
                       </div>
-
-                      {/* availability badge */}
-                      <span
-                        className={`font-body text-xs font-semibold ${getDisponibilidadColor(
-                          slot.disponibles,
-                          slot.total
-                        )}`}
-                      >
-                        {getDisponibilidadLabel(slot.disponibles, slot.total)}
-                      </span>
                     </button>
                   );
                 })}
