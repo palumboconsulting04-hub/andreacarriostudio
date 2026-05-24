@@ -16,26 +16,26 @@ export const disciplinas: Disciplina[] = [
   {
     id: "pre-ballet",
     nombre: "Pre Ballet 3-6 años",
-    descripcion: "Ritmo, coordinación y conciencia corporal desde los 3 años.",
+    descripcion: "Ritmo y conciencia corporal desde los 3 años.",
     imagen: "/pre-ballet.png",
   },
   {
     id: "ballet-i",
     nombre: "Ballet I 7-9 años",
-    descripcion: "Danza clásica con método y rigor. Exámenes oficiales RAD.",
+    descripcion: "Danza clásica con método y exámenes RAD.",
     imagen: "/ballet-i.png",
   },
   {
     id: "ballet-ii",
     nombre: "Ballet II 10-12 años",
-    descripcion: "Mayor exigencia técnica. Metodología RAD en profundidad.",
+    descripcion: "Mayor exigencia técnica con metodología RAD.",
     imagen: "/ballet-ii.png",
     soloIntensivo: true,
   },
   {
     id: "ballet-adultos",
     nombre: "Ballet Adultos",
-    descripcion: "Para quien empieza o retoma el ballet. Técnica real a tu ritmo.",
+    descripcion: "Para quien empieza o retoma el ballet.",
     imagen: "/ballet-adultos.png",
   },
 ];

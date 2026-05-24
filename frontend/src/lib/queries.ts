@@ -5,10 +5,10 @@ import type { Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId, InscripcionSt
 const DESCRIPCIONES: Record<string, string> = {
   "pilates-mat": "Core, postura y flexibilidad. Bajo impacto, resultados reales.",
   "barre-fit": "Ballet y fuerza en una sola clase. Piernas, glúteos y técnica.",
-  "pre-ballet": "Ritmo, coordinación y conciencia corporal desde los 3 años.",
-  "ballet-i": "Danza clásica con método y rigor. Exámenes oficiales RAD.",
-  "ballet-ii": "Mayor exigencia técnica. Metodología RAD en profundidad.",
-  "ballet-adultos": "Para quien empieza o retoma el ballet. Técnica real a tu ritmo.",
+  "pre-ballet": "Ritmo y conciencia corporal desde los 3 años.",
+  "ballet-i": "Danza clásica con método y exámenes RAD.",
+  "ballet-ii": "Mayor exigencia técnica con metodología RAD.",
+  "ballet-adultos": "Para quien empieza o retoma el ballet.",
 };
 
 const SOLO_INTENSIVO = new Set(["ballet-ii"]);
