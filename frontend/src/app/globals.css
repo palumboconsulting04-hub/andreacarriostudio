@@ -17,9 +17,76 @@
   --color-outline-light: #dcc1b9;
   --color-surface-dim: #eed6c6;
 
+  /* MD3 tokens (admin backoffice) */
+  --color-primary: #7d2b13;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #9c4228;
+  --color-on-primary-container: #ffccbf;
+  --color-secondary: #95482b;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #ff9d79;
+  --color-on-secondary-container: #783216;
+  --color-tertiary: #6c391e;
+  --color-tertiary-container: #885033;
+  --color-on-tertiary-container: #ffceb7;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-background: #fff8f5;
+  --color-on-background: #25190f;
+  --color-surface: #fff8f5;
+  --color-on-surface: #25190f;
+  --color-surface-variant: #f6dece;
+  --color-on-surface-variant: #56423d;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #fff1e9;
+  --color-surface-container: #ffeadd;
+  --color-surface-container-high: #fce4d3;
+  --color-surface-container-highest: #f6dece;
+  --color-surface-bright: #fff8f5;
+  --color-outline-variant: #dcc1b9;
+  --color-inverse-surface: #3c2d23;
+  --color-inverse-on-surface: #ffede3;
+  --color-inverse-primary: #ffb5a0;
+
+  /* Spacing tokens */
+  --spacing-gutter: 1.5rem;
+  --spacing-stack-sm: 0.75rem;
+  --spacing-stack-md: 1.5rem;
+  --spacing-stack-lg: 3rem;
+  --spacing-margin-desktop: 4rem;
+  --spacing-section-gap: 7.5rem;
+
+  /* Font family tokens */
+  --font-headline-md: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --font-headline-lg: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --font-display-lg: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --font-label-md: var(--font-montserrat), "Montserrat", sans-serif;
+  --font-title-lg: var(--font-montserrat), "Montserrat", sans-serif;
+  --font-body-md: var(--font-montserrat), "Montserrat", sans-serif;
+  --font-body-lg: var(--font-montserrat), "Montserrat", sans-serif;
+
+  /* Font size tokens */
+  --text-display-lg: 4rem;
+  --text-headline-md: 2rem;
+  --text-title-lg: 1.375rem;
+  --text-label-md: 0.875rem;
+  --text-body-md: 1rem;
+  --text-body-lg: 1.125rem;
+
   /* Fonts */
   --font-display: var(--font-playfair), "Playfair Display", Georgia, serif;
   --font-body: var(--font-montserrat), "Montserrat", "Helvetica Neue", sans-serif;
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-size: 1.5rem;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+  user-select: none;
 }
 
 html,
