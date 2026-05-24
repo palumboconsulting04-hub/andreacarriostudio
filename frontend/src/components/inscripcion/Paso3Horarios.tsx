@@ -162,13 +162,21 @@ export default function Paso3Horarios({
         })}
       </div>
 
+      {value.length > 0 && value.length < maxSlots && (
+        <p className="text-center text-sm font-body font-semibold mb-4" style={{ color: "#7d2b13" }}>
+          Te falta{maxSlots - value.length > 1 ? "n" : ""} {maxSlots - value.length} horario{maxSlots - value.length > 1 ? "s" : ""} por elegir
+        </p>
+      )}
+
       <button
         onClick={onContinuar}
-        disabled={value.length === 0}
+        disabled={value.length < maxSlots}
         className="w-full py-4 rounded-full font-body font-semibold text-sm tracking-widest uppercase bg-siena text-white hover:bg-siena-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {value.length === 0
-          ? "Selecciona al menos un horario"
+          ? `Selecciona ${maxSlots} horario${maxSlots > 1 ? "s" : ""} para continuar`
+          : value.length < maxSlots
+          ? `Selecciona ${maxSlots - value.length} más para continuar`
           : `Continuar con ${value.length} horario${value.length > 1 ? "s" : ""}`}
       </button>
     </div>
