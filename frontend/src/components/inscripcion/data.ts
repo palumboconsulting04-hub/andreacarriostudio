@@ -15,7 +15,7 @@ export const disciplinas: Disciplina[] = [
   },
   {
     id: "pre-ballet",
-    nombre: "Pre Ballet 2-6 años",
+    nombre: "Pre Ballet 3-6 años",
     descripcion: "Método pedagógico real adaptado a cada etapa desde los 3 años, con preparación oficial RAD y un enfoque en técnica y humanidad.",
     imagen: "/pre-ballet.png",
   },
