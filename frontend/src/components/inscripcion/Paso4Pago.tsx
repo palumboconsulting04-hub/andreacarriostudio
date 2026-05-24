@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { disciplinas, getPlanes } from "./data";
-import type { InscripcionState, MetodoPago } from "./types";
+import { submitIscrizione } from "@/lib/queries";
+import type { InscripcionState, MetodoPago, Disciplina, Plan } from "./types";
 
 interface Props {
   estado: InscripcionState;
+  disc: Disciplina;
+  plan: Plan;
   onChange: (updates: Partial<InscripcionState>) => void;
   onBack: () => void;
 }
@@ -17,13 +19,26 @@ const metodosPago: { id: MetodoPago; label: string }[] = [
   { id: "paypal", label: "PayPal" },
 ];
 
-export default function Paso4Pago({ estado, onChange, onBack }: Props) {
+export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Props) {
   const [confirmado, setConfirmado] = useState(false);
-
-  const disc = disciplinas.find((d) => d.id === estado.disciplina)!;
-  const plan = getPlanes(estado.disciplina!).find((p) => p.id === estado.plan)!;
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const puedeConfirmar = estado.nombre.trim() !== "" && estado.email.trim() !== "";
+
+  const handleConfirmar = async () => {
+    if (!puedeConfirmar || enviando) return;
+    setEnviando(true);
+    setError(null);
+    try {
+      await submitIscrizione(estado);
+      setConfirmado(true);
+    } catch {
+      setError("Ha ocurrido un error. Por favor, inténtalo de nuevo.");
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   if (confirmado) {
     return (
@@ -190,17 +205,21 @@ export default function Paso4Pago({ estado, onChange, onBack }: Props) {
               </div>
             </div>
 
+            {error && (
+              <p className="text-xs text-red-600 text-center mb-3">{error}</p>
+            )}
+
             <button
-              onClick={() => setConfirmado(true)}
-              disabled={!puedeConfirmar}
+              onClick={handleConfirmar}
+              disabled={!puedeConfirmar || enviando}
               className="w-full py-4 rounded-full text-sm tracking-widest uppercase font-semibold transition-colors"
               style={{
-                backgroundColor: puedeConfirmar ? "#7d2b13" : "#dcc1b9",
+                backgroundColor: puedeConfirmar && !enviando ? "#7d2b13" : "#dcc1b9",
                 color: "#ffffff",
-                cursor: puedeConfirmar ? "pointer" : "not-allowed",
+                cursor: puedeConfirmar && !enviando ? "pointer" : "not-allowed",
               }}
             >
-              Confirmar inscripción
+              {enviando ? "Enviando..." : "Confirmar inscripción"}
             </button>
 
             <p className="text-xs text-center mt-3" style={{ color: "#89726c" }}>

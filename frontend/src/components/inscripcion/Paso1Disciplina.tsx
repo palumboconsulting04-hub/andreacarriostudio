@@ -1,14 +1,14 @@
 "use client";
 
-import { disciplinas } from "./data";
-import type { DisciplinaId } from "./types";
+import type { Disciplina, DisciplinaId } from "./types";
 
 interface Props {
+  disciplinas: Disciplina[];
   value: DisciplinaId | null;
   onSelect: (id: DisciplinaId) => void;
 }
 
-export default function Paso1Disciplina({ value, onSelect }: Props) {
+export default function Paso1Disciplina({ disciplinas, value, onSelect }: Props) {
   return (
     <div className="max-w-5xl mx-auto px-8 pb-16">
       <div className="mb-10">

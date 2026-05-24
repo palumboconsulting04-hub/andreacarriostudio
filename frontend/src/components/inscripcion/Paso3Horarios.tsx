@@ -1,11 +1,11 @@
 "use client";
 
-import { horariosPorDisciplina, getMaxSlots, disciplinas, getPlanes } from "./data";
-import type { DisciplinaId, PlanId } from "./types";
+import type { Disciplina, Plan, HorarioSlot } from "./types";
 
 interface Props {
-  disciplina: DisciplinaId;
-  plan: PlanId;
+  disc: Disciplina;
+  planInfo: Plan;
+  slots: HorarioSlot[];
   value: string[];
   onChange: (horarios: string[]) => void;
   onContinuar: () => void;
@@ -25,17 +25,15 @@ function getDisponibilidadLabel(disponibles: number, total: number) {
 }
 
 export default function Paso3Horarios({
-  disciplina,
-  plan,
+  disc,
+  planInfo,
+  slots,
   value,
   onChange,
   onContinuar,
   onBack,
 }: Props) {
-  const slots = horariosPorDisciplina[disciplina];
-  const maxSlots = getMaxSlots(plan);
-  const disc = disciplinas.find((d) => d.id === disciplina)!;
-  const planInfo = getPlanes(disciplina).find((p) => p.id === plan)!;
+  const maxSlots = planInfo.sesionesPorSemana;
 
   const toggleSlot = (id: string, disponibles: number) => {
     if (disponibles === 0) return;

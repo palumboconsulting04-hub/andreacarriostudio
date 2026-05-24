@@ -1,19 +1,16 @@
 "use client";
 
-import { getPlanes, disciplinas } from "./data";
-import type { DisciplinaId, PlanId } from "./types";
+import type { Disciplina, Plan, PlanId } from "./types";
 
 interface Props {
-  disciplina: DisciplinaId;
+  disc: Disciplina;
+  planes: Plan[];
   value: PlanId | null;
   onSelect: (plan: PlanId) => void;
   onBack: () => void;
 }
 
-export default function Paso2Plan({ disciplina, onSelect, onBack }: Props) {
-  const planes = getPlanes(disciplina);
-  const disc = disciplinas.find((d) => d.id === disciplina)!;
-
+export default function Paso2Plan({ disc, planes, onSelect, onBack }: Props) {
   return (
     <div className="max-w-4xl mx-auto px-6 pb-16">
       {/* breadcrumb */}
@@ -36,7 +33,7 @@ export default function Paso2Plan({ disciplina, onSelect, onBack }: Props) {
           Elige tu plan
         </h2>
         <p className="font-body text-texto-muted text-base">
-          {disciplina === "ballet-ii"
+          {disc.soloIntensivo
             ? "Ballet Clásico II requiere dedicación plena — disponible en modalidad Intensiva"
             : "Selecciona la frecuencia que mejor se adapta a tu ritmo de vida"}
         </p>
