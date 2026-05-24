@@ -3,12 +3,12 @@ import type { Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId, InscripcionSt
 
 // Static content not stored in DB
 const DESCRIPCIONES: Record<string, string> = {
-  "pilates-mat": "Core, postura, flexibilidad y respiración. Un método de bajo impacto que trabaja la musculatura profunda y mejora la movilidad articular.",
-  "barre-fit": "Piernas definidas y glúteos trabajados. Combina la técnica del ballet con series de alta repetición que activan la musculatura de forma profunda.",
-  "pre-ballet": "Método pedagógico real adaptado a cada etapa desde los 3 años, con preparación oficial RAD y un enfoque en técnica y humanidad.",
-  "ballet-i": "Desarrollo de la técnica base y disciplina. Fomentamos la consciencia corporal y la expresión artística en un entorno inspirador.",
-  "ballet-ii": "Perfeccionamiento técnico, fuerza y fluidez para jóvenes talentos.",
-  "ballet-adultos": "Técnica clásica adaptada al cuerpo adulto: postura, coordinación y expresión en un ambiente cercano y sin presión.",
+  "pilates-mat": "Core, postura y flexibilidad. Bajo impacto, resultados reales.",
+  "barre-fit": "Ballet y fuerza en una sola clase. Piernas, glúteos y técnica.",
+  "pre-ballet": "Primeros pasos en el movimiento. Ritmo, coordinación y conciencia corporal desde los 3 años.",
+  "ballet-i": "Un inicio sólido en la danza clásica con método y rigor. Preparación con exámenes oficiales RAD.",
+  "ballet-ii": "Para alumnas que ya tienen la base y buscan mayor exigencia. Técnica RAD en profundidad y progresión real.",
+  "ballet-adultos": "Para quienes empiezan o retoman el ballet. Técnica real, buen ambiente y progresión a tu ritmo.",
 };
 
 const SOLO_INTENSIVO = new Set(["ballet-ii"]);
