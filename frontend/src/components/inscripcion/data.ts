@@ -16,26 +16,26 @@ export const disciplinas: Disciplina[] = [
   {
     id: "pre-ballet",
     nombre: "Pre Ballet 3-6 años",
-    descripcion: "Primeros pasos en el movimiento. Ritmo, coordinación y conciencia corporal desde los 3 años.",
+    descripcion: "Ritmo, coordinación y conciencia corporal desde los 3 años.",
     imagen: "/pre-ballet.png",
   },
   {
     id: "ballet-i",
     nombre: "Ballet I 7-9 años",
-    descripcion: "Un inicio sólido en la danza clásica con método y rigor. Preparación con exámenes oficiales RAD.",
+    descripcion: "Danza clásica con método y rigor. Exámenes oficiales RAD.",
     imagen: "/ballet-i.png",
   },
   {
     id: "ballet-ii",
     nombre: "Ballet II 10-12 años",
-    descripcion: "Para alumnas que ya tienen la base y buscan mayor exigencia. Técnica RAD en profundidad y progresión real.",
+    descripcion: "Mayor exigencia técnica. Metodología RAD en profundidad.",
     imagen: "/ballet-ii.png",
     soloIntensivo: true,
   },
   {
     id: "ballet-adultos",
     nombre: "Ballet Adultos",
-    descripcion: "Para quienes empiezan o retoman el ballet. Técnica real, buen ambiente y progresión a tu ritmo.",
+    descripcion: "Para quien empieza o retoma el ballet. Técnica real a tu ritmo.",
     imagen: "/ballet-adultos.png",
   },
 ];
