@@ -20,11 +20,82 @@ const metodosPago: { id: MetodoPago; label: string; proximamente?: boolean }[] =
   { id: "paypal", label: "PayPal", proximamente: true },
 ];
 
+function ModalPrivacidad({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ backgroundColor: "rgba(37,25,15,0.6)" }}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-3xl p-8"
+        style={{ backgroundColor: "#fff8f5", boxShadow: "0 8px 40px rgba(37,25,15,0.2)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 text-sm font-semibold hover:opacity-70 transition-opacity"
+          style={{ color: "#89726c" }}
+        >
+          ✕
+        </button>
+
+        <h2
+          className="text-2xl mb-6"
+          style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}
+        >
+          Protección de Datos
+        </h2>
+
+        <div className="space-y-4 text-sm leading-relaxed" style={{ color: "#56423d" }}>
+          <div>
+            <p className="font-semibold mb-1" style={{ color: "#25190f" }}>Responsable del tratamiento</p>
+            <p>Andrea Carrió, titular de Andrea Carrió Studio, C/ Motilla del Palancar 34, Alfauir (Valencia). Contacto: andreacarriostudio@gmail.com</p>
+          </div>
+          <div>
+            <p className="font-semibold mb-1" style={{ color: "#25190f" }}>Finalidad</p>
+            <p>Gestionar la inscripción, impartir las clases, cobrar las cuotas, cumplir las obligaciones fiscales y contables y adaptar la práctica a la información médica facilitada.</p>
+          </div>
+          <div>
+            <p className="font-semibold mb-1" style={{ color: "#25190f" }}>Base jurídica</p>
+            <p>Ejecución del contrato de prestación del servicio y cumplimiento de obligaciones legales (RGPD, art. 6.1.b y c). Para datos de salud, su consentimiento explícito (RGPD, art. 9.2.a).</p>
+          </div>
+          <div>
+            <p className="font-semibold mb-1" style={{ color: "#25190f" }}>Conservación</p>
+            <p>Durante la relación con el estudio y, una vez finalizada, durante los plazos legalmente exigidos (hasta 6 años a efectos fiscales). Los datos médicos se suprimirán al finalizar la relación.</p>
+          </div>
+          <div>
+            <p className="font-semibold mb-1" style={{ color: "#25190f" }}>Destinatarios</p>
+            <p>No se cederán datos a terceros salvo obligación legal. Podrán acceder proveedores necesarios para la gestión del estudio (gestoría, entidad bancaria, software de gestión), que actuarán como encargados del tratamiento conforme al art. 28 RGPD.</p>
+          </div>
+          <div>
+            <p className="font-semibold mb-1" style={{ color: "#25190f" }}>Derechos</p>
+            <p>Puede ejercer los derechos de acceso, rectificación, supresión, oposición, limitación y portabilidad escribiendo a andreacarriostudio@gmail.com, adjuntando copia de su DNI. Tiene derecho a reclamar ante la Agencia Española de Protección de Datos (www.aepd.es).</p>
+          </div>
+          <div>
+            <p className="font-semibold mb-1" style={{ color: "#25190f" }}>Menores</p>
+            <p>El tratamiento de datos de alumnas menores de 14 años requiere el consentimiento de su madre, padre o tutor legal (art. 7 LOPDGDD).</p>
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="mt-6 w-full py-3 rounded-full text-sm font-semibold tracking-widest uppercase transition-colors"
+          style={{ backgroundColor: "#7d2b13", color: "#ffffff" }}
+        >
+          Entendido
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Props) {
   const [confirmado, setConfirmado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rgpdAceptado, setRgpdAceptado] = useState(false);
+  const [modalPrivacidad, setModalPrivacidad] = useState(false);
 
   const puedeConfirmar = estado.nombre.trim() !== "" && estado.email.trim() !== "" && rgpdAceptado;
 
@@ -218,6 +289,8 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Prop
               </div>
             </div>
 
+            {modalPrivacidad && <ModalPrivacidad onClose={() => setModalPrivacidad(false)} />}
+
             <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
               <input
                 type="checkbox"
@@ -227,9 +300,14 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Prop
               />
               <span className="text-xs leading-snug" style={{ color: "#56423d" }}>
                 Acepto el tratamiento de mis datos personales según la{" "}
-                <a href="#" className="underline hover:opacity-70" style={{ color: "#7d2b13" }}>
+                <button
+                  type="button"
+                  onClick={() => setModalPrivacidad(true)}
+                  className="underline hover:opacity-70 transition-opacity"
+                  style={{ color: "#7d2b13" }}
+                >
                   política de privacidad
-                </a>
+                </button>
               </span>
             </label>
 
