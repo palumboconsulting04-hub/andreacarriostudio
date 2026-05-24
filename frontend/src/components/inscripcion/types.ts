@@ -1,10 +1,10 @@
 export type DisciplinaId =
-  | "pilates-suelo"
-  | "pilates-reformer"
-  | "barre"
+  | "pilates-mat"
+  | "barre-fit"
+  | "pre-ballet"
   | "ballet-i"
   | "ballet-ii"
-  | "stretch";
+  | "ballet-adultos";
 
 export type PlanId = "basico" | "avanzado" | "intensivo";
 
@@ -14,9 +14,7 @@ export interface Disciplina {
   id: DisciplinaId;
   nombre: string;
   descripcion: string;
-  emoji: string;
-  gradientFrom: string;
-  gradientTo: string;
+  imagen: string;
   soloIntensivo?: boolean;
 }
 

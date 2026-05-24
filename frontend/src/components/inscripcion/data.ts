@@ -2,53 +2,41 @@ import type { Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId } from "./type
 
 export const disciplinas: Disciplina[] = [
   {
-    id: "pilates-suelo",
-    nombre: "Pilates Suelo",
-    descripcion: "Control, respiración y fluidez. Fortalece tu core con ejercicios de mat.",
-    emoji: "🧘‍♀️",
-    gradientFrom: "#fce4d3",
-    gradientTo: "#ffdbd1",
+    id: "pilates-mat",
+    nombre: "Pilates Mat",
+    descripcion: "Conecta tu centro, mejora tu postura y fortalece tu cuerpo a través de la respiración.",
+    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuAlybn-HoWbFM79hz4LaQds5yuddHY7BkUAKastDz20qWYjTjlb3xFb12TaQf72F9_9Oz5ZWRkGgdbORdBlHZvofORM3XT_qjBUIr5TeEyrlzwIhmbMTAqzeiovtuRLfwQRbVNeLrbLAHYbcsWdlUTuZ9bZrLoYlFghli8aYT7grreWaMODWDMEWp0jCZpDeDK_RjgOzuSWFo3GP9qKbBnFKdrq5REkpjPbbNg-Ri1QgwEQLDVEXgcsEyxM_QPsXsER0Y5CLNeRE8mH",
   },
   {
-    id: "pilates-reformer",
-    nombre: "Pilates Reformer",
-    descripcion: "Entrenamiento en máquina reformer. Mayor resistencia, tonificación y control.",
-    emoji: "⚡",
-    gradientFrom: "#fff1e9",
-    gradientTo: "#fce4d3",
+    id: "barre-fit",
+    nombre: "Barre Fit",
+    descripcion: "Fusión de técnica clásica, yoga y pilates para esculpir y tonificar con gracia.",
+    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuDz5OIBKM_u2ZlVPO98dZS592lm2WJUKjj0Dggs7uAeglwN_J88YCHwCVZvXb2KfpmG8ecAgMRz4kkHMNh0w-M8x6aueE7n15_6e-oHYVDf2dE8B0XrseMcztDMuJzx2EHWMpWyO9GdzVPxuu2QbovlNZKeXBSrNB2n5IvIgLCqMRsjWSkmAD9rSEHn1bC3l1_Gfcq55iEr-o-RfnGDW2zHVThkC4k0It6RROZh7tYDbZ1kdCiBqlD5yFS2VEAJ65dwjr9I5BWL7RRh",
   },
   {
-    id: "barre",
-    nombre: "Barre Fitness",
-    descripcion: "La fusión de ballet, pilates y yoga. Moldea y define tu cuerpo con gracia.",
-    emoji: "🩰",
-    gradientFrom: "#ffdbd1",
-    gradientTo: "#ffb5a0",
+    id: "pre-ballet",
+    nombre: "Pre Ballet 2-6 años",
+    descripcion: "Iniciación al movimiento, la musicalidad y la expresión corporal de forma lúdica.",
+    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuAN7JX9zaZ-laqB6biwAAXtAm0DRmgqB270XK0tbKMyYeuZM33512Zva_20xqze2asqxmRLLOtkKlUx4GEVRpfS1JE9dSrGIERnseSGIQLqotjmpa9iQe5dMyqYqAnQdmH3lRpti5lpenkeotMivv4UD6WGpADe0g-jiIedHQ-wn1fzk2JAy0hhLMnuv7qwneyLtvygTlxWJ0BeuideHt6DsoV5nDCCWRI4AhTwe5NEnjcg0Gfkv_o9H0L0vvmkbCwqehEtfZiZevXL",
   },
   {
     id: "ballet-i",
-    nombre: "Ballet Clásico I",
-    descripcion: "Iniciación e intermedio. Técnica, expresión artística y elegancia en movimiento.",
-    emoji: "🌸",
-    gradientFrom: "#f6dece",
-    gradientTo: "#fce4d3",
+    nombre: "Ballet I 7-9 años",
+    descripcion: "Desarrollo de la técnica base, postura y disciplina en un entorno inspirador.",
+    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuBy1SHCTHXADtlvt-Mv9fe6uQ9VkXQHm_oavaWzwRaDgM6DurA2BNOpa6JahtCw6I-Q5x3isTNwdpjBNPqoQcKUBrT8yDjW7YU1_tOaC00TWrzNOFXdhsV7v3HJ9294LI0hAIVjybtHVhp65CVQ7wl0SMQNnXccXn0EaHD8ELWrjBAcp2iFPYMlrXX2B_wnBkRWNsd5HbT1mPxVMjlgHL5QcuKgE-dIc3rOm3wQHJkRKpto1KG9lDuUmJkXfvv8zXvjQCnAk4sQusDb",
   },
   {
     id: "ballet-ii",
-    nombre: "Ballet Clásico II",
-    descripcion: "Nivel avanzado con formación intensiva. Incluye acceso a ensayos y actuaciones.",
-    emoji: "👑",
-    gradientFrom: "#9c4228",
-    gradientTo: "#7d2b13",
+    nombre: "Ballet II 10-12 años",
+    descripcion: "Perfeccionamiento técnico, fuerza y fluidez para jóvenes talentos.",
+    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuCRUp_DadNt3Zuxz76Tdb54gqhb-ottH70KACUrX2vZWKzw7XjcwYqLGA43ypg3Ffc-NxCYfRwxL4-lwAFLVsr3vtLBF9XkCTT3bJkhkDrfPaStIKrSUQFF_O378M3dTxUN3TvJLu0UHAWauacYR3O708MREX5ziEg4VyLV3DRMmMZa91JLXxnVVimri3z5K2T11TwzP9PMlhKyrJ0-NgyMDhXGGcEqKcZ7npo0lCFqajI7i3fq5DodkwSWQm15Dk_rtggqex762mzn",
     soloIntensivo: true,
   },
   {
-    id: "stretch",
-    nombre: "Stretch & Movilidad",
-    descripcion: "Mejora tu flexibilidad, libera tensiones y recupera el equilibrio corporal.",
-    emoji: "🌿",
-    gradientFrom: "#fff8f5",
-    gradientTo: "#fff1e9",
+    id: "ballet-adultos",
+    nombre: "Ballet Adultos",
+    descripcion: "Nunca es tarde para la gracia. Mejora tu elongación, postura y bienestar general.",
+    imagen: "https://lh3.googleusercontent.com/aida-public/AB6AXuDYLlrFap58Zb1z0uMA7VY2FX7MNMokhapaUI4qeO1xr7fvND9Q_8bp7jKbaLb8eViwSMzAzE7a6u8LjFLXd4i6i_xLEwfdatyMenTrTEcLzEOjj-tzT4CSvNMCMU14KNvZvxFqMzw2yMSMp1BV9o38sorPpBJQJkuDkqeK1gChtHCjwEThWpUlsY0YjXWYvtY43rkLXFx9bR75ojqal56xouyFSb1hfNouXNxDGXA6H3sm-IHpp-At67wh2g-LjSePzgtcqslhIym0",
   },
 ];
 
@@ -131,7 +119,7 @@ const slots = (
   list.map((s, i) => ({ id: `${prefix}-${i}`, ...s }));
 
 export const horariosPorDisciplina: Record<DisciplinaId, HorarioSlot[]> = {
-  "pilates-suelo": slots("ps", [
+  "pilates-mat": slots("pm", [
     { dia: "Lunes",     hora: "09:00", disponibles: 3,  total: 10 },
     { dia: "Lunes",     hora: "18:30", disponibles: 8,  total: 10 },
     { dia: "Martes",    hora: "10:00", disponibles: 0,  total: 10 },
@@ -142,17 +130,7 @@ export const horariosPorDisciplina: Record<DisciplinaId, HorarioSlot[]> = {
     { dia: "Viernes",   hora: "19:00", disponibles: 9,  total: 10 },
     { dia: "Sábado",    hora: "10:00", disponibles: 4,  total: 10 },
   ]),
-  "pilates-reformer": slots("pr", [
-    { dia: "Lunes",     hora: "09:00", disponibles: 2,  total: 6 },
-    { dia: "Lunes",     hora: "17:00", disponibles: 0,  total: 6 },
-    { dia: "Martes",    hora: "09:00", disponibles: 4,  total: 6 },
-    { dia: "Miércoles", hora: "18:00", disponibles: 1,  total: 6 },
-    { dia: "Jueves",    hora: "09:00", disponibles: 3,  total: 6 },
-    { dia: "Jueves",    hora: "19:00", disponibles: 5,  total: 6 },
-    { dia: "Viernes",   hora: "10:00", disponibles: 2,  total: 6 },
-    { dia: "Sábado",    hora: "09:30", disponibles: 6,  total: 6 },
-  ]),
-  barre: slots("ba", [
+  "barre-fit": slots("bf", [
     { dia: "Lunes",     hora: "10:00", disponibles: 6,  total: 12 },
     { dia: "Lunes",     hora: "19:30", disponibles: 0,  total: 12 },
     { dia: "Martes",    hora: "09:00", disponibles: 9,  total: 12 },
@@ -161,7 +139,12 @@ export const horariosPorDisciplina: Record<DisciplinaId, HorarioSlot[]> = {
     { dia: "Viernes",   hora: "09:00", disponibles: 5,  total: 12 },
     { dia: "Viernes",   hora: "19:00", disponibles: 0,  total: 12 },
     { dia: "Sábado",    hora: "10:00", disponibles: 8,  total: 12 },
-    { dia: "Sábado",    hora: "11:30", disponibles: 12, total: 12 },
+  ]),
+  "pre-ballet": slots("pb", [
+    { dia: "Lunes",     hora: "17:00", disponibles: 8,  total: 10 },
+    { dia: "Miércoles", hora: "17:00", disponibles: 5,  total: 10 },
+    { dia: "Viernes",   hora: "17:00", disponibles: 3,  total: 10 },
+    { dia: "Sábado",    hora: "10:00", disponibles: 10, total: 10 },
   ]),
   "ballet-i": slots("b1", [
     { dia: "Lunes",     hora: "18:00", disponibles: 5,  total: 10 },
@@ -170,7 +153,6 @@ export const horariosPorDisciplina: Record<DisciplinaId, HorarioSlot[]> = {
     { dia: "Jueves",    hora: "17:30", disponibles: 7,  total: 10 },
     { dia: "Viernes",   hora: "18:00", disponibles: 2,  total: 10 },
     { dia: "Sábado",    hora: "09:00", disponibles: 8,  total: 10 },
-    { dia: "Sábado",    hora: "11:00", disponibles: 1,  total: 10 },
   ]),
   "ballet-ii": slots("b2", [
     { dia: "Lunes",     hora: "19:00", disponibles: 4,  total: 8 },
@@ -179,12 +161,10 @@ export const horariosPorDisciplina: Record<DisciplinaId, HorarioSlot[]> = {
     { dia: "Viernes",   hora: "19:00", disponibles: 6,  total: 8 },
     { dia: "Sábado",    hora: "10:30", disponibles: 3,  total: 8 },
   ]),
-  stretch: slots("st", [
-    { dia: "Lunes",     hora: "09:00", disponibles: 10, total: 15 },
-    { dia: "Martes",    hora: "20:00", disponibles: 8,  total: 15 },
-    { dia: "Miércoles", hora: "09:00", disponibles: 0,  total: 15 },
-    { dia: "Jueves",    hora: "20:00", disponibles: 13, total: 15 },
-    { dia: "Viernes",   hora: "09:00", disponibles: 5,  total: 15 },
-    { dia: "Sábado",    hora: "11:00", disponibles: 12, total: 15 },
+  "ballet-adultos": slots("ba", [
+    { dia: "Lunes",     hora: "20:00", disponibles: 7,  total: 12 },
+    { dia: "Miércoles", hora: "20:00", disponibles: 4,  total: 12 },
+    { dia: "Jueves",    hora: "19:30", disponibles: 9,  total: 12 },
+    { dia: "Sábado",    hora: "11:00", disponibles: 12, total: 12 },
   ]),
 };
