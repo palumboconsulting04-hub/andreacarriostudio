@@ -182,6 +182,24 @@ export default function AdminDashboard() {
     setDrawerLoading(false);
   };
 
+  const handleMarcarPagado = async () => {
+    if (!drawerDetalle) return;
+    const { error } = await supabase
+      .from("iscrizioni")
+      .update({ stato: "pagato" })
+      .eq("id", drawerDetalle.id);
+    if (!error) {
+      setDrawerDetalle((prev) => prev ? { ...prev, stato: "pagato" } : prev);
+      setDrawerAlumnos((prev) =>
+        prev.map((a) =>
+          a.iscrizione_id === drawerDetalle.id && a.iscrizioni
+            ? { ...a, iscrizioni: { ...a.iscrizioni, stato: "pagato" } }
+            : a
+        )
+      );
+    }
+  };
+
   const handleAlumnoClick = async (iscrizioneId: string) => {
     setDrawerView("student");
     setDrawerLoading(true);
@@ -809,12 +827,23 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Estado de pago */}
-                  <div className="flex items-center justify-between p-4 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
-                    <p className="text-sm font-medium" style={{ color: "#25190f" }}>Estado de pago</p>
-                    {drawerDetalle.stato === "attesa" ? (
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>
-                    ) : (
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>
+                  <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
+                    <div className="flex items-center justify-between p-4">
+                      <p className="text-sm font-medium" style={{ color: "#25190f" }}>Estado de pago</p>
+                      {drawerDetalle.stato === "attesa" ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>
+                      )}
+                    </div>
+                    {drawerDetalle.stato === "attesa" && (
+                      <button
+                        onClick={handleMarcarPagado}
+                        className="w-full py-3 text-sm font-semibold tracking-wide border-t transition-colors"
+                        style={{ borderColor: "#dcc1b9", backgroundColor: "#7d2b13", color: "#ffffff" }}
+                      >
+                        Marcar como pagado
+                      </button>
                     )}
                   </div>
 
