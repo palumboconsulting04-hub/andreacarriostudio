@@ -56,7 +56,6 @@ type IscrizioneDetalle = {
   piano_id: string;
   metodo_pagamento: string;
   discipline: { nome: string } | null;
-  piani: { nome: string; prezzo: number; classi_settimana: number } | null;
   iscrizione_orari: { orari: { giorno: string; ora_inizio: string; ora_fine: string } | null }[];
 };
 
@@ -178,7 +177,7 @@ export default function AdminDashboard() {
     setDrawerLoading(true);
     const { data } = await supabase
       .from("iscrizioni")
-      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, discipline(nome), piani(nome, prezzo, classi_settimana), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
+      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
       .eq("id", iscrizioneId)
       .single();
     setDrawerDetalle(data as unknown as IscrizioneDetalle);
