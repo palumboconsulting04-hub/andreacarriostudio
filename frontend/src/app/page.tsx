@@ -170,7 +170,7 @@ export default function Home() {
               slots={slots}
               value={estado.horarios}
               onChange={(horarios) => update({ horarios })}
-              onContinuar={() => setPaso(4)}
+              onContinuar={() => bozze.length > 0 ? handleCrossSellContinuar() : setPaso(4)}
               onBack={() => setPaso(2)}
             />
           )}
