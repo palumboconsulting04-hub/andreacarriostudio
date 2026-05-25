@@ -13,6 +13,8 @@ const DESCRIPCIONES: Record<string, string> = {
 
 const SOLO_INTENSIVO = new Set(["ballet-ii"]);
 
+const DISCIPLINA_ORDER = ["barre-fit", "pilates-mat", "ballet-adultos", "pre-ballet", "ballet-i", "ballet-ii"];
+
 const DIA_ORDER = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
 function buildPrecioClase(prezzo: number, classi: number): string {
@@ -36,13 +38,19 @@ export async function fetchDiscipline(): Promise<Disciplina[]> {
 
   if (error) throw error;
 
-  return (data ?? []).map((d) => ({
-    id: d.id as DisciplinaId,
-    nombre: d.nome,
-    imagen: d.immagine_url ?? "",
-    descripcion: DESCRIPCIONES[d.id] ?? "",
-    soloIntensivo: SOLO_INTENSIVO.has(d.id),
-  }));
+  return (data ?? [])
+    .map((d) => ({
+      id: d.id as DisciplinaId,
+      nombre: d.nome,
+      imagen: d.immagine_url ?? "",
+      descripcion: DESCRIPCIONES[d.id] ?? "",
+      soloIntensivo: SOLO_INTENSIVO.has(d.id),
+    }))
+    .sort((a, b) => {
+      const iA = DISCIPLINA_ORDER.indexOf(a.id);
+      const iB = DISCIPLINA_ORDER.indexOf(b.id);
+      return (iA === -1 ? 999 : iA) - (iB === -1 ? 999 : iB);
+    });
 }
 
 export async function fetchPiani(disciplinaId: string): Promise<Plan[]> {
