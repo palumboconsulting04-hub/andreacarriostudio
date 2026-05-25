@@ -166,6 +166,14 @@ function Icon({ name, className = "", style }: { name: string; className?: strin
   return <span className={`material-symbols-outlined ${className}`} style={style}>{name}</span>;
 }
 
+// Sep=1, Oct=2, Nov=3, Dec=4, Jan=5, Feb=6, Mar=7, Apr=8, May=9, Jun=10, Jul/Aug=1
+function getSchoolYearMonth(): number {
+  const m = new Date().getMonth();
+  if (m >= 8) return m - 7;
+  if (m <= 5) return m + 5;
+  return 1;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -176,7 +184,7 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState<IscrzioneRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState("Calendario");
+  const [activeSection, setActiveSection] = useState("Resumen");
 
   // ── Finanzas state ──
   const [finanzasLoading, setFinanzasLoading] = useState(false);
@@ -226,6 +234,14 @@ export default function AdminDashboard() {
   const [pendingAmount, setPendingAmount] = useState(0);
   const [ocupacionMedia, setOcupacionMedia] = useState(0);
   const [ocupacionDisciplinas, setOcupacionDisciplinas] = useState<OcupacionDisciplina[]>([]);
+  const [nuevasInscripcionesMes, setNuevasInscripcionesMes] = useState(0);
+  const [avgPricePerStudent, setAvgPricePerStudent] = useState(0);
+
+  // Sofia chat
+  type SofiaMessage = { role: "user" | "assistant"; content: string };
+  const [sofiaMessages, setSofiaMessages] = useState<SofiaMessage[]>([]);
+  const [sofiaInput, setSofiaInput] = useState("");
+  const [sofiaLoading, setSofiaLoading] = useState(false);
 
   // KPI drawer
   const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | null>(null);
@@ -314,7 +330,7 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    if (activeSection !== "Finanzas") return;
+    if (activeSection !== "Finanzas" && activeSection !== "Resumen") return;
     setFinanzasLoading(true);
     Promise.all([
       supabase.from("iscrizioni").select("created_at, disciplina_id, piano_id").eq("stato", "pagato"),
@@ -370,6 +386,35 @@ export default function AdminDashboard() {
     setVentasData(((isc ?? []) as unknown as VentaRow[]).map(i => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
     setVentasLoading(false);
   }
+
+  // ── Sofia chat ──
+  const sendSofiaMessage = async () => {
+    const text = sofiaInput.trim();
+    if (!text || sofiaLoading) return;
+    const newMessages: SofiaMessage[] = [...sofiaMessages, { role: "user", content: text }];
+    setSofiaMessages(newMessages);
+    setSofiaInput("");
+    setSofiaLoading(true);
+    try {
+      const res = await fetch("/api/sofia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: newMessages,
+          studioData: {
+            iscrittiCount, facturacionMes, facturacionMesAnterior, pendingCount, pendingAmount,
+            ocupacionMedia, nuevasInscripcionesMes, finanzasCosteMensual, objetivoFacturacion,
+            objetivoProgress, objetivoAlumnos, avgPricePerStudent, finResultadoMes, ocupacionDisciplinas,
+          },
+        }),
+      });
+      const data = await res.json();
+      setSofiaMessages([...newMessages, { role: "assistant", content: data.reply ?? data.error ?? "Error" }]);
+    } catch {
+      setSofiaMessages([...newMessages, { role: "assistant", content: "No he podido conectar. Inténtalo de nuevo." }]);
+    }
+    setSofiaLoading(false);
+  };
 
   // ── Costes CRUD ──
   const handleCosteEdit = (c: { id: string; concepto: string; importe_mensual: number; importe_anual: number; notas: string | null }) => {
@@ -602,6 +647,16 @@ export default function AdminDashboard() {
       setFacturacionMes(factMes);
       setFacturacionMesAnterior(factAnt);
       setPendingAmount(pendAmt);
+      const nuevasEstesMes = ((r6.data ?? []) as { created_at: string }[]).filter(i => {
+        const d = new Date(i.created_at);
+        return d.getMonth() === tm && d.getFullYear() === ty;
+      }).length;
+      setNuevasInscripcionesMes(nuevasEstesMes);
+
+      // Precio medio por alumna (sobre todas las pagato)
+      const pagati = ((r6.data ?? []) as { disciplina_id: string; piano_id: string; stato: string }[]).filter(i => i.stato === "pagato");
+      const totalPagati = pagati.reduce((s, i) => s + (pm[`${i.piano_id}:${i.disciplina_id}`] ?? 0), 0);
+      setAvgPricePerStudent(pagati.length > 0 ? totalPagati / pagati.length : 0);
 
       // Ocupación por disciplina
       // ocupados = alumnas únicas (Set de iscrizione_id)
@@ -664,6 +719,14 @@ export default function AdminDashboard() {
   const finCostesYTD = ytdMeses.reduce((s, m) => s + m.costes, 0);
   const finResultadoYTD = finIngresosYTD - finCostesYTD;
   const finChart6 = finanzasMensual.slice(-6);
+
+  // ── Objetivo mensual progresivo ──
+  const schoolYearMes = getSchoolYearMonth();
+  const targetMargin = 0.15 + (schoolYearMes - 1) * 0.025;
+  const objetivoFacturacion = finanzasCosteMensual > 0 ? Math.round(finanzasCosteMensual * (1 + targetMargin)) : 0;
+  const objetivoProgress = objetivoFacturacion > 0 ? Math.min(100, Math.round((facturacionMes / objetivoFacturacion) * 100)) : 0;
+  const objetivoAlumnos = avgPricePerStudent > 0 ? Math.ceil(objetivoFacturacion / avgPricePerStudent) : 0;
+  const objetivoAlumnosProgress = objetivoAlumnos > 0 ? Math.min(100, Math.round((iscrittiCount / objetivoAlumnos) * 100)) : 0;
 
   // ── Discipline disponibili (da orari) ──
   const disciplinasDisponibles = [...new Map(orari.map(o => [o.disciplina_id, { id: o.disciplina_id, nome: o.discipline?.nome ?? o.disciplina_id }])).values()];
@@ -737,6 +800,7 @@ export default function AdminDashboard() {
   const maxPlan = Math.max(...planBreakdownV.map(p => p.ingresos), 1);
 
   const navItems = [
+    { icon: "dashboard", label: "Resumen" },
     { icon: "calendar_month", label: "Calendario" },
     { icon: "event_seat", label: "Reservas" },
     { icon: "fitness_center", label: "Disciplinas" },
@@ -744,6 +808,7 @@ export default function AdminDashboard() {
     { icon: "receipt_long", label: "Costes" },
     { icon: "trending_up", label: "Ventas" },
     { icon: "account_balance", label: "Finanzas" },
+    { icon: "diamond", label: "Sofía" },
   ];
 
   return (
@@ -792,7 +857,7 @@ export default function AdminDashboard() {
           <Icon name="person_add" className="text-base" /> Añadir alumna
         </button>
 
-        <ul className="flex-1 space-y-2">
+        <ul className="flex-1 space-y-2 overflow-y-auto min-h-0">
           {navItems.map((item) => (
             <li key={item.label}>
               <a
@@ -857,6 +922,274 @@ export default function AdminDashboard() {
 
         {/* Content */}
         <main className="pt-[80px] p-4 md:p-margin-desktop flex-1 overflow-y-auto space-y-section-gap">
+
+          {/* ── Resumen ── */}
+          {activeSection === "Resumen" && (
+            <section className="space-y-8">
+
+              <div>
+                <h3 className="font-headline-md text-headline-md text-primary mb-1">Resumen del Estudio</h3>
+                <p className="text-sm" style={{ color: "#89726c" }}>{new Date().toLocaleDateString("es-ES", { month: "long", year: "numeric" })}</p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+
+                {/* Total Alumnos */}
+                <button
+                  onClick={handleKpiAlumnos}
+                  className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Total Alumnos</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
+                      <Icon name="group" className="text-base" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : iscrittiCount}</p>
+                  <p className="text-xs mt-2" style={{ color: "#89726c" }}>Ver listado →</p>
+                </button>
+
+                {/* Facturación Mes */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Facturación Mes</p>
+                    <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
+                      <Icon name="euro" className="text-base" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : `${facturacionMes}€`}</p>
+                  <p className="text-xs mt-2 flex items-center gap-1" style={{ color: "#89726c" }}>
+                    {!loading && facturacionMesAnterior > 0 ? (
+                      <>
+                        <span>{facturacionMesAnterior}€ mes ant.</span>
+                        <span className={`font-semibold ${facturacionMes >= facturacionMesAnterior ? "text-green-600" : "text-red-500"}`}>
+                          {facturacionMes >= facturacionMesAnterior ? "+" : ""}
+                          {Math.round(((facturacionMes - facturacionMesAnterior) / facturacionMesAnterior) * 100)}%
+                        </span>
+                      </>
+                    ) : <span>Inscripciones pagadas</span>}
+                  </p>
+                </div>
+
+                {/* Pagos Pendientes */}
+                <button
+                  onClick={() => { setKpiDrawer("pendientes"); fetchKpiStudents({ stato: "attesa" }); }}
+                  className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Pagos Pendientes</p>
+                    <div className="p-2 bg-error-container rounded-full text-on-error-container">
+                      <Icon name="payments" className="text-base" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold text-error">{loading ? "—" : pendingCount}</p>
+                  <p className="text-xs mt-2" style={{ color: "#89726c" }}>
+                    {loading ? "—" : `${pendingAmount}€ por cobrar →`}
+                  </p>
+                </button>
+
+                {/* Ocupación Media */}
+                <button
+                  onClick={() => { setKpiDrawer("ocupacion"); setKpiStudentProfile(null); setKpiOcupacionDisciplina(null); }}
+                  className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Ocupación Media</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
+                      <Icon name="monitoring" className="text-base" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : `${ocupacionMedia}%`}</p>
+                  <div className="mt-2 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${ocupacionMedia}%`, backgroundColor: ocupacionMedia > 75 ? "#2e7d32" : "#7d2b13" }} />
+                  </div>
+                </button>
+
+                {/* Resultado del Mes */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Resultado Mes</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
+                      <Icon name="account_balance" className="text-base" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: (loading || finanzasLoading) ? "#89726c" : finResultadoMes >= 0 ? "#2e7d32" : "#b71c1c" }}>
+                    {(loading || finanzasLoading) ? "—" : `${finResultadoMes >= 0 ? "+" : ""}${finResultadoMes.toLocaleString("es-ES")}€`}
+                  </p>
+                  <p className="text-xs mt-2" style={{ color: "#89726c" }}>
+                    {finanzasLoading ? "—" : `${finCosteMes.toLocaleString("es-ES")}€ costes fijos`}
+                  </p>
+                </div>
+
+                {/* Nuevas Inscripciones */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Nuevas Inscripciones</p>
+                    <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
+                      <Icon name="person_add" className="text-base" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : nuevasInscripcionesMes}</p>
+                  <p className="text-xs mt-2" style={{ color: "#89726c" }}>
+                    {new Date().toLocaleDateString("es-ES", { month: "long" })}
+                  </p>
+                </div>
+
+                {/* Objetivo Alumnos */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Objetivo Alumnos</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>Mes {schoolYearMes} del curso</p>
+                    </div>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
+                      <Icon name="group_add" className="text-base" />
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between gap-2">
+                    <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>
+                      {loading || objetivoAlumnos === 0 ? "—" : objetivoAlumnos}
+                    </p>
+                    {objetivoAlumnos > 0 && (
+                      <p className="text-xl font-bold shrink-0" style={{ color: objetivoAlumnosProgress >= 100 ? "#2e7d32" : objetivoAlumnosProgress >= 70 ? "#f57c00" : "#b71c1c" }}>
+                        {objetivoAlumnosProgress}%
+                      </p>
+                    )}
+                  </div>
+                  {objetivoAlumnos > 0 && (
+                    <>
+                      <div className="mt-2 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${objetivoAlumnosProgress}%`, backgroundColor: objetivoAlumnosProgress >= 100 ? "#2e7d32" : objetivoAlumnosProgress >= 70 ? "#f57c00" : "#7d2b13" }} />
+                      </div>
+                      <p className="text-xs mt-1.5" style={{ color: "#89726c" }}>{iscrittiCount} de {objetivoAlumnos} alumnas · ticket medio {Math.round(avgPricePerStudent)}€</p>
+                    </>
+                  )}
+                </div>
+
+                {/* Objetivo Facturación */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px] col-span-1 md:col-span-2">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Objetivo Facturación</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>+{Math.round(targetMargin * 100)}% sobre costes fijos</p>
+                    </div>
+                    <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
+                      <Icon name="flag" className="text-base" />
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between gap-4">
+                    <div>
+                      <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>
+                        {(loading || finanzasLoading || objetivoFacturacion === 0) ? "—" : `${objetivoFacturacion.toLocaleString("es-ES")}€`}
+                      </p>
+                      <p className="text-xs mt-1" style={{ color: "#89726c" }}>
+                        {objetivoFacturacion > 0 ? `${facturacionMes.toLocaleString("es-ES")}€ facturados de ${objetivoFacturacion.toLocaleString("es-ES")}€` : "Configura los costes fijos para calcular el objetivo"}
+                      </p>
+                    </div>
+                    {objetivoFacturacion > 0 && (
+                      <p className="text-2xl font-bold shrink-0" style={{ color: objetivoProgress >= 100 ? "#2e7d32" : objetivoProgress >= 70 ? "#f57c00" : "#b71c1c" }}>
+                        {objetivoProgress}%
+                      </p>
+                    )}
+                  </div>
+                  {objetivoFacturacion > 0 && (
+                    <div className="mt-3 h-2 rounded-full bg-surface-container-high overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${objetivoProgress}%`, backgroundColor: objetivoProgress >= 100 ? "#2e7d32" : objetivoProgress >= 70 ? "#f57c00" : "#7d2b13" }} />
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+            </section>
+          )}
+
+          {/* ── Sofía ── */}
+          {activeSection === "Sofía" && (
+            <section className="flex flex-col h-[calc(100vh-120px)]">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-full" style={{ backgroundColor: "#f5e6e0" }}>
+                  <span style={{ fontSize: "1.2rem" }}>💎</span>
+                </div>
+                <div>
+                  <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>Sofía</p>
+                  <p className="text-xs" style={{ color: "#89726c" }}>Tu asistente personal del estudio · con acceso a todos tus datos</p>
+                </div>
+              </div>
+
+              {/* Mensajes */}
+              <div className="flex-1 overflow-y-auto space-y-4 mb-4 min-h-0">
+                {sofiaMessages.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
+                    <span style={{ fontSize: "3rem" }}>💎</span>
+                    <div>
+                      <p className="font-semibold" style={{ color: "#7d2b13" }}>Hola Andrea, soy Sofía</p>
+                      <p className="text-sm mt-1" style={{ color: "#89726c" }}>Conozco todos los datos de tu estudio.<br />Pregúntame lo que necesites.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center mt-2">
+                      {["¿Cómo voy respecto al objetivo?", "¿Qué disciplina rinde peor?", "¿A quién debo contactar esta semana?"].map(s => (
+                        <button key={s} onClick={() => { setSofiaInput(s); }} className="text-xs px-3 py-1.5 rounded-full border transition-colors hover:bg-surface-container-high" style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}>{s}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {sofiaMessages.map((m, i) => (
+                  <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {m.role === "assistant" && (
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center mr-2 shrink-0 mt-0.5" style={{ backgroundColor: "#f5e6e0" }}>
+                        <span style={{ fontSize: "0.8rem" }}>💎</span>
+                      </div>
+                    )}
+                    <div
+                      className="max-w-[75%] rounded-2xl px-4 py-3 text-sm"
+                      style={{
+                        backgroundColor: m.role === "user" ? "#7d2b13" : "#fff8f5",
+                        color: m.role === "user" ? "#fff" : "#25190f",
+                        borderBottomRightRadius: m.role === "user" ? "4px" : undefined,
+                        borderBottomLeftRadius: m.role === "assistant" ? "4px" : undefined,
+                        border: m.role === "assistant" ? "1px solid #f0e0d8" : undefined,
+                      }}
+                    >
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+                {sofiaLoading && (
+                  <div className="flex justify-start">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center mr-2 shrink-0" style={{ backgroundColor: "#f5e6e0" }}>
+                      <span style={{ fontSize: "0.8rem" }}>💎</span>
+                    </div>
+                    <div className="rounded-2xl px-4 py-3 text-sm flex gap-1 items-center" style={{ backgroundColor: "#fff8f5", border: "1px solid #f0e0d8", borderBottomLeftRadius: "4px" }}>
+                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: "#7d2b13", animationDelay: "0ms" }} />
+                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: "#7d2b13", animationDelay: "150ms" }} />
+                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: "#7d2b13", animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Input */}
+              <div className="flex gap-2 items-end">
+                <textarea
+                  value={sofiaInput}
+                  onChange={e => setSofiaInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendSofiaMessage(); } }}
+                  placeholder="Escribe tu pregunta..."
+                  rows={1}
+                  className="flex-1 border rounded-2xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2"
+                  style={{ borderColor: "#dcc1b9", focusRingColor: "#7d2b13" } as React.CSSProperties}
+                />
+                <button
+                  onClick={sendSofiaMessage}
+                  disabled={sofiaLoading || !sofiaInput.trim()}
+                  className="p-3 rounded-full transition-all disabled:opacity-40"
+                  style={{ backgroundColor: "#7d2b13", color: "#fff" }}
+                >
+                  <Icon name="send" className="text-base" />
+                </button>
+              </div>
+            </section>
+          )}
 
           {/* ── Costes ── */}
           {activeSection === "Costes" && (
@@ -1350,82 +1683,6 @@ export default function AdminDashboard() {
 
           {/* ── Dashboard principal (Calendario, Reservas, Disciplinas, Usuarios) ── */}
           {(activeSection === "Calendario" || activeSection === "Reservas" || activeSection === "Disciplinas" || activeSection === "Usuarios") && <>
-
-          {/* ── KPI Cards ── */}
-          <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-
-            {/* Total Alumnos */}
-            <button
-              onClick={handleKpiAlumnos}
-              className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Total Alumnos</p>
-                <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
-                  <Icon name="group" className="text-base" />
-                </div>
-              </div>
-              <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : iscrittiCount}</p>
-              <p className="text-xs mt-2" style={{ color: "#89726c" }}>Ver listado →</p>
-            </button>
-
-            {/* Facturación Mensual */}
-            <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-3">
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Facturación Mes</p>
-                <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
-                  <Icon name="euro" className="text-base" />
-                </div>
-              </div>
-              <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : `${facturacionMes}€`}</p>
-              <p className="text-xs mt-2 flex items-center gap-1" style={{ color: "#89726c" }}>
-                {!loading && facturacionMesAnterior > 0 ? (
-                  <>
-                    <span>{facturacionMesAnterior}€ mes ant.</span>
-                    <span className={`font-semibold ${facturacionMes >= facturacionMesAnterior ? "text-green-600" : "text-red-500"}`}>
-                      {facturacionMes >= facturacionMesAnterior ? "+" : ""}
-                      {facturacionMesAnterior > 0 ? Math.round(((facturacionMes - facturacionMesAnterior) / facturacionMesAnterior) * 100) : 0}%
-                    </span>
-                  </>
-                ) : <span>Nuevas inscripciones pagadas</span>}
-              </p>
-            </div>
-
-            {/* Pagos Pendientes */}
-            <button
-              onClick={() => { setKpiDrawer("pendientes"); fetchKpiStudents({ stato: "attesa" }); }}
-              className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Pagos Pendientes</p>
-                <div className="p-2 bg-error-container rounded-full text-on-error-container">
-                  <Icon name="payments" className="text-base" />
-                </div>
-              </div>
-              <p className="text-3xl font-bold text-error">{loading ? "—" : pendingCount}</p>
-              <p className="text-xs mt-2" style={{ color: "#89726c" }}>
-                {loading ? "—" : `${pendingAmount}€ por cobrar →`}
-              </p>
-            </button>
-
-            {/* Ocupación Media */}
-            <button
-              onClick={() => { setKpiDrawer("ocupacion"); setKpiStudentProfile(null); setKpiOcupacionDisciplina(null); }}
-              className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Ocupación Media</p>
-                <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
-                  <Icon name="monitoring" className="text-base" />
-                </div>
-              </div>
-              <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : `${ocupacionMedia}%`}</p>
-              <div className="mt-2 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${ocupacionMedia}%`, backgroundColor: ocupacionMedia > 75 ? "#2e7d32" : "#7d2b13" }} />
-              </div>
-            </button>
-
-          </section>
 
           {/* ── Calendario ── */}
           <section>
