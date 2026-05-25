@@ -55,6 +55,10 @@ interface Props {
 }
 
 export default function StepIndicator({ pasoActual, onContinuar, continuarEnabled }: Props) {
+  // Map raw paso (1-6) to indicator step (1-4) and visibility
+  const displayPaso = pasoActual <= 3 ? pasoActual : pasoActual === 4 ? 3 : 4;
+  const showContinuar = pasoActual <= 3;
+
   return (
     <aside
       className="hidden md:flex flex-col w-64 shrink-0 border-r"
@@ -105,8 +109,8 @@ export default function StepIndicator({ pasoActual, onContinuar, continuarEnable
         {/* Steps */}
         <nav className="flex flex-col gap-5 flex-1">
           {pasos.map((paso) => {
-            const activo = paso.num === pasoActual;
-            const completado = paso.num < pasoActual;
+            const activo = paso.num === displayPaso;
+            const completado = paso.num < displayPaso;
             const color = activo ? "#7d2b13" : completado ? "#9c4228" : "#b0958e";
 
             return (
@@ -134,8 +138,7 @@ export default function StepIndicator({ pasoActual, onContinuar, continuarEnable
           })}
         </nav>
 
-        {/* Continuar button — oculto en paso 5 (thank you) */}
-        {pasoActual < 5 && (
+        {showContinuar && (
           <button
             onClick={onContinuar}
             disabled={!continuarEnabled}
@@ -150,7 +153,7 @@ export default function StepIndicator({ pasoActual, onContinuar, continuarEnable
           >
             Continuar
           </button>
-        )}
+        )
       </div>
     </aside>
   );

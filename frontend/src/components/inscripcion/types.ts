@@ -38,6 +38,16 @@ export interface HorarioSlot {
   total: number;
 }
 
+export interface BozzaIscrizione {
+  disciplinaId: DisciplinaId;
+  disciplinaNombre: string;
+  planId: PlanId;
+  planNombre: string;
+  planPrecio: number;
+  horarios: string[];
+  esNinas: boolean;
+}
+
 export interface InscripcionState {
   disciplina: DisciplinaId | null;
   plan: PlanId | null;

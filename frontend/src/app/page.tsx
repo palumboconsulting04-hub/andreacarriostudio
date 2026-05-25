@@ -6,9 +6,12 @@ import Paso1Disciplina from "@/components/inscripcion/Paso1Disciplina";
 import Paso2Plan from "@/components/inscripcion/Paso2Plan";
 import Paso3Horarios from "@/components/inscripcion/Paso3Horarios";
 import Paso4Pago from "@/components/inscripcion/Paso4Pago";
+import Paso4CrossSell from "@/components/inscripcion/Paso4CrossSell";
 import Paso5Gracias from "@/components/inscripcion/Paso5Gracias";
-import type { InscripcionState, Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId } from "@/components/inscripcion/types";
+import type { InscripcionState, BozzaIscrizione, Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId } from "@/components/inscripcion/types";
 import { fetchDiscipline, fetchPiani, fetchOrari } from "@/lib/queries";
+
+const DISCIPLINAS_NINAS = new Set<DisciplinaId>(["pre-ballet", "ballet-i", "ballet-ii"]);
 
 const estadoInicial: InscripcionState = {
   disciplina: null,
@@ -27,8 +30,7 @@ function continuarEnabled(paso: number, estado: InscripcionState): boolean {
   if (paso === 1) return estado.disciplina !== null;
   if (paso === 2) return estado.plan !== null;
   if (paso === 3) return estado.horarios.length > 0;
-  if (paso === 4) return !!(estado.nombre && estado.apellido && estado.email);
-  return false;
+  return false; // paso 4+ handled by component buttons
 }
 
 export default function Home() {
@@ -40,6 +42,7 @@ export default function Home() {
   const [cargando, setCargando] = useState(true);
   const [iscrizioneId, setIscrizioneId] = useState<string | null>(null);
   const [contattoId, setContattoId] = useState<string | null>(null);
+  const [bozze, setBozze] = useState<BozzaIscrizione[]>([]);
 
   useEffect(() => {
     fetchDiscipline()
@@ -49,6 +52,36 @@ export default function Home() {
 
   const update = (updates: Partial<InscripcionState>) =>
     setEstado((e) => ({ ...e, ...updates }));
+
+  const buildBozzaAttuale = (): BozzaIscrizione | null => {
+    if (!estado.disciplina || !estado.plan || !disciplinaObj || !planObj) return null;
+    return {
+      disciplinaId: estado.disciplina,
+      disciplinaNombre: disciplinaObj.nombre,
+      planId: estado.plan,
+      planNombre: planObj.nombre,
+      planPrecio: planObj.precio,
+      horarios: [...estado.horarios],
+      esNinas: DISCIPLINAS_NINAS.has(estado.disciplina),
+    };
+  };
+
+  const handleCrossSellContinuar = () => {
+    const bozza = buildBozzaAttuale();
+    if (!bozza) return;
+    setBozze(prev => [...prev, bozza]);
+    setPaso(5);
+  };
+
+  const handleCrossSellAgregar = () => {
+    const bozza = buildBozzaAttuale();
+    if (!bozza) return;
+    setBozze(prev => [...prev, bozza]);
+    setEstado(e => ({ ...e, disciplina: null, plan: null, horarios: [], nombreAlumna: "", apellidoAlumna: "" }));
+    setPlanes([]);
+    setSlots([]);
+    setPaso(1);
+  };
 
   const disciplinaObj = disciplinas.find((d) => d.id === estado.disciplina) ?? null;
   const planObj = planes.find((p) => p.id === estado.plan) ?? null;
@@ -98,6 +131,7 @@ export default function Home() {
           continuarEnabled={continuarEnabled(paso, estado)}
         />
 
+
         <main className="flex-1 min-w-0 py-8">
           {cargando && (
             <div className="flex items-center justify-center h-64">
@@ -141,26 +175,41 @@ export default function Home() {
             />
           )}
 
-          {paso === 4 && disciplinaObj && planObj && (
-            <Paso4Pago
-              estado={estado}
-              disc={disciplinaObj}
-              plan={planObj}
-              onChange={update}
-              onBack={() => setPaso(3)}
-              existingContattoId={contattoId}
-              onConfirmado={(cId, iId) => { setContattoId(cId); setIscrizioneId(iId); setPaso(5); }}
+          {/* paso 4: cross-sell */}
+          {paso === 4 && estado.disciplina && disciplinaObj && planObj && (
+            <Paso4CrossSell
+              disciplinaId={estado.disciplina}
+              disciplinaNombre={disciplinaObj.nombre}
+              planNombre={planObj.nombre}
+              planPrecio={planObj.precio}
+              bozzeExistentes={bozze}
+              onContinuar={handleCrossSellContinuar}
+              onAgregarOtra={handleCrossSellAgregar}
             />
           )}
 
-          {paso === 5 && disciplinaObj && iscrizioneId && (
+          {/* paso 5: datos personales + confirm */}
+          {paso === 5 && bozze.length > 0 && (
+            <Paso4Pago
+              estado={estado}
+              bozze={bozze}
+              onChange={update}
+              onBack={() => setPaso(4)}
+              existingContattoId={contattoId}
+              onConfirmado={(cId, iId) => { setContattoId(cId); setIscrizioneId(iId); setPaso(6); }}
+            />
+          )}
+
+          {/* paso 6: gracias */}
+          {paso === 6 && iscrizioneId && bozze.length > 0 && (
             <Paso5Gracias
               iscrizioneId={iscrizioneId}
-              disciplinaId={disciplinaObj.id}
+              disciplinaId={bozze[0].disciplinaId}
               nombre={estado.nombre}
               onAgregarOtra={() => {
                 setEstado(e => ({ ...estadoInicial, nombre: e.nombre, apellido: e.apellido, email: e.email, telefono: e.telefono }));
                 setIscrizioneId(null);
+                setBozze([]);
                 setPaso(1);
               }}
             />
