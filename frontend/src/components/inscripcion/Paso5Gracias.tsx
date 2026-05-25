@@ -284,6 +284,13 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Pro
       <p className="text-base mb-8" style={{ color: "#56423d" }}>
         Nos vemos pronto en el estudio.
       </p>
+      <a
+        href="https://andreacarriostudio.es/"
+        className="inline-block w-full py-3 rounded-2xl text-sm font-semibold tracking-widest uppercase transition-opacity hover:opacity-80 border text-center"
+        style={{ borderColor: "#7d2b13", color: "#7d2b13", backgroundColor: "transparent", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif", letterSpacing: "0.1em" }}
+      >
+        Volver a la página de inicio
+      </a>
     </div>
   );
 }
