@@ -47,11 +47,12 @@ interface Props {
   iscrizioneId: string;
   disciplinaId: DisciplinaId;
   nombre: string;
+  onAgregarOtra: () => void;
 }
 
 type Step = "gracias" | "form" | "done";
 
-export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Props) {
+export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre, onAgregarOtra }: Props) {
   const [step, setStep] = useState<Step>("gracias");
   const [enviando, setEnviando] = useState(false);
 
@@ -144,8 +145,15 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Pro
             Conociéndonos mejor
           </button>
           <button
+            onClick={onAgregarOtra}
+            className="w-full mt-3 py-3 rounded-2xl text-sm font-semibold tracking-widest uppercase transition-opacity hover:opacity-90 border"
+            style={{ borderColor: "#7d2b13", color: "#7d2b13", backgroundColor: "transparent", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif", letterSpacing: "0.1em" }}
+          >
+            Añadir otra inscripción
+          </button>
+          <button
             onClick={() => setStep("done")}
-            className="w-full mt-3 py-2 text-xs tracking-widest uppercase hover:opacity-70 transition-opacity"
+            className="w-full mt-2 py-2 text-xs tracking-widest uppercase hover:opacity-70 transition-opacity"
             style={{ color: "#89726c", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
           >
             Ahora no
@@ -281,9 +289,16 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Pro
       <h2 className="text-3xl mb-3" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>
         ¡Muchas gracias!
       </h2>
-      <p className="text-base" style={{ color: "#56423d" }}>
+      <p className="text-base mb-8" style={{ color: "#56423d" }}>
         Nos vemos pronto en el estudio.
       </p>
+      <button
+        onClick={onAgregarOtra}
+        className="w-full py-3 rounded-2xl text-sm font-semibold tracking-widest uppercase transition-opacity hover:opacity-90 border"
+        style={{ borderColor: "#7d2b13", color: "#7d2b13", backgroundColor: "transparent", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif", letterSpacing: "0.1em" }}
+      >
+        Añadir otra inscripción
+      </button>
     </div>
   );
 }

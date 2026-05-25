@@ -39,6 +39,7 @@ export default function Home() {
   const [slots, setSlots] = useState<HorarioSlot[]>([]);
   const [cargando, setCargando] = useState(true);
   const [iscrizioneId, setIscrizioneId] = useState<string | null>(null);
+  const [contattoId, setContattoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDiscipline()
@@ -147,7 +148,8 @@ export default function Home() {
               plan={planObj}
               onChange={update}
               onBack={() => setPaso(3)}
-              onConfirmado={(id) => { setIscrizioneId(id); setPaso(5); }}
+              existingContattoId={contattoId}
+              onConfirmado={(cId, iId) => { setContattoId(cId); setIscrizioneId(iId); setPaso(5); }}
             />
           )}
 
@@ -156,6 +158,11 @@ export default function Home() {
               iscrizioneId={iscrizioneId}
               disciplinaId={disciplinaObj.id}
               nombre={estado.nombre}
+              onAgregarOtra={() => {
+                setEstado(e => ({ ...estadoInicial, nombre: e.nombre, apellido: e.apellido, email: e.email, telefono: e.telefono }));
+                setIscrizioneId(null);
+                setPaso(1);
+              }}
             />
           )}
         </main>

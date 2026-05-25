@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { submitIscrizione } from "@/lib/queries";
+import { submitIscrizione, getOrCreateContatto } from "@/lib/queries";
 import type { InscripcionState, MetodoPago, Disciplina, Plan } from "./types";
 
 interface Props {
@@ -10,7 +10,8 @@ interface Props {
   plan: Plan;
   onChange: (updates: Partial<InscripcionState>) => void;
   onBack: () => void;
-  onConfirmado: (iscrizioneId: string) => void;
+  onConfirmado: (contattoId: string, iscrizioneId: string) => void;
+  existingContattoId?: string | null;
 }
 
 const metodosPago: { id: MetodoPago; label: string; proximamente?: boolean }[] = [
@@ -91,28 +92,34 @@ function ModalPrivacidad({ onClose, onAceptar }: { onClose: () => void; onAcepta
   );
 }
 
-export default function Paso4Pago({ estado, disc, plan, onChange, onBack, onConfirmado }: Props) {
+export default function Paso4Pago({ estado, disc, plan, onChange, onBack, onConfirmado, existingContattoId }: Props) {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rgpdAceptado, setRgpdAceptado] = useState(false);
   const [modalPrivacidad, setModalPrivacidad] = useState(false);
 
   const esNinas = ["ballet-i", "ballet-ii", "pre-ballet"].includes(disc.id);
+  const segundaInscripcion = !!existingContattoId;
 
-  const puedeConfirmar =
-    estado.nombre.trim() !== "" &&
-    estado.apellido.trim() !== "" &&
-    estado.email.trim() !== "" &&
-    rgpdAceptado &&
-    (!esNinas || (estado.nombreAlumna.trim() !== "" && estado.apellidoAlumna.trim() !== ""));
+  const contactoOk = segundaInscripcion
+    ? true
+    : estado.nombre.trim() !== "" && estado.apellido.trim() !== "" && estado.email.trim() !== "";
+
+  const alumnaOk = !esNinas || (estado.nombreAlumna.trim() !== "" && estado.apellidoAlumna.trim() !== "");
+
+  const puedeConfirmar = contactoOk && alumnaOk && rgpdAceptado;
 
   const handleConfirmar = async () => {
     if (!puedeConfirmar || enviando) return;
     setEnviando(true);
     setError(null);
     try {
-      const id = await submitIscrizione(estado);
-      onConfirmado(id);
+      let cId = existingContattoId ?? null;
+      if (!cId) {
+        cId = await getOrCreateContatto(estado.nombre, estado.apellido, estado.email, estado.telefono || null);
+      }
+      const id = await submitIscrizione(cId, estado);
+      onConfirmado(cId, id);
     } catch {
       setError("Ha ocurrido un error. Por favor, inténtalo de nuevo.");
     } finally {
@@ -143,28 +150,32 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack, onConf
             className="text-4xl"
             style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}
           >
-            Datos personales
+            {segundaInscripcion ? "Confirmar inscripción" : "Datos personales"}
           </h2>
 
-          {esNinas ? (
-            <>
-              <p className="text-sm" style={{ color: "#89726c" }}>
-                Al tratarse de una disciplina infantil, indica primero los datos del tutor y luego los de la alumna.
+          {/* Segunda inscripción adulta: resumen contacto bloqueado */}
+          {segundaInscripcion && !esNinas && (
+            <div className="rounded-2xl p-5 border space-y-1" style={{ backgroundColor: "#fff1e9", borderColor: "#dcc1b9" }}>
+              <p className="text-xs tracking-widest uppercase font-semibold mb-3" style={{ color: "#7d2b13", fontFamily: "var(--font-montserrat)" }}>
+                Tus datos
               </p>
+              <p className="text-sm font-medium" style={{ color: "#25190f" }}>{estado.nombre} {estado.apellido}</p>
+              <p className="text-sm" style={{ color: "#56423d" }}>{estado.email}</p>
+              {estado.telefono && <p className="text-sm" style={{ color: "#56423d" }}>{estado.telefono}</p>}
+            </div>
+          )}
 
-              <div>
+          {/* Segunda inscripción niñas: tutor bloqueado + alumna editable */}
+          {segundaInscripcion && esNinas && (
+            <>
+              <div className="rounded-2xl p-5 border space-y-1" style={{ backgroundColor: "#fff1e9", borderColor: "#dcc1b9" }}>
                 <p className="text-xs tracking-widest uppercase font-semibold mb-3" style={{ color: "#7d2b13", fontFamily: "var(--font-montserrat)" }}>
                   Tutor / Responsable
                 </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Nombre tutor" type="text" value={estado.nombre} onChange={(v) => onChange({ nombre: v })} placeholder="Ana" />
-                  <Field label="Apellido tutor" type="text" value={estado.apellido} onChange={(v) => onChange({ apellido: v })} placeholder="García" />
-                </div>
+                <p className="text-sm font-medium" style={{ color: "#25190f" }}>{estado.nombre} {estado.apellido}</p>
+                <p className="text-sm" style={{ color: "#56423d" }}>{estado.email}</p>
+                {estado.telefono && <p className="text-sm" style={{ color: "#56423d" }}>{estado.telefono}</p>}
               </div>
-
-              <Field label="Email" type="email" value={estado.email} onChange={(v) => onChange({ email: v })} placeholder="ana@email.com" />
-              <Field label="Teléfono" type="tel" value={estado.telefono} onChange={(v) => onChange({ telefono: v })} placeholder="+34 600 000 000" />
-
               <div>
                 <p className="text-xs tracking-widest uppercase font-semibold mb-3" style={{ color: "#7d2b13", fontFamily: "var(--font-montserrat)" }}>
                   Datos de la alumna
@@ -175,7 +186,38 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack, onConf
                 </div>
               </div>
             </>
-          ) : (
+          )}
+
+          {/* Primera inscripción: form completo */}
+          {!segundaInscripcion && esNinas && (
+            <>
+              <p className="text-sm" style={{ color: "#89726c" }}>
+                Al tratarse de una disciplina infantil, indica primero los datos del tutor y luego los de la alumna.
+              </p>
+              <div>
+                <p className="text-xs tracking-widest uppercase font-semibold mb-3" style={{ color: "#7d2b13", fontFamily: "var(--font-montserrat)" }}>
+                  Tutor / Responsable
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Nombre tutor" type="text" value={estado.nombre} onChange={(v) => onChange({ nombre: v })} placeholder="Ana" />
+                  <Field label="Apellido tutor" type="text" value={estado.apellido} onChange={(v) => onChange({ apellido: v })} placeholder="García" />
+                </div>
+              </div>
+              <Field label="Email" type="email" value={estado.email} onChange={(v) => onChange({ email: v })} placeholder="ana@email.com" />
+              <Field label="Teléfono" type="tel" value={estado.telefono} onChange={(v) => onChange({ telefono: v })} placeholder="+34 600 000 000" />
+              <div>
+                <p className="text-xs tracking-widest uppercase font-semibold mb-3" style={{ color: "#7d2b13", fontFamily: "var(--font-montserrat)" }}>
+                  Datos de la alumna
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Nombre alumna" type="text" value={estado.nombreAlumna} onChange={(v) => onChange({ nombreAlumna: v })} placeholder="María" />
+                  <Field label="Apellido alumna" type="text" value={estado.apellidoAlumna} onChange={(v) => onChange({ apellidoAlumna: v })} placeholder="García" />
+                </div>
+              </div>
+            </>
+          )}
+
+          {!segundaInscripcion && !esNinas && (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Nombre" type="text" value={estado.nombre} onChange={(v) => onChange({ nombre: v })} placeholder="Ana" />

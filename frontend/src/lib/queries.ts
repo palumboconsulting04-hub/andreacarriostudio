@@ -99,10 +99,33 @@ export async function fetchOrari(disciplinaId: string): Promise<HorarioSlot[]> {
   });
 }
 
-export async function submitIscrizione(estado: InscripcionState): Promise<string> {
+export async function getOrCreateContatto(
+  nome: string,
+  cognome: string,
+  email: string,
+  telefono: string | null
+): Promise<string> {
+  const emailNorm = email.toLowerCase().trim();
+  const { data: existing } = await supabase
+    .from("contatti")
+    .select("id")
+    .eq("email", emailNorm)
+    .maybeSingle();
+  if (existing) return existing.id;
+  const { data, error } = await supabase
+    .from("contatti")
+    .insert({ nome, cognome, email: emailNorm, telefono: telefono || null })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id;
+}
+
+export async function submitIscrizione(contattoId: string, estado: InscripcionState): Promise<string> {
   const { data: iscrizione, error } = await supabase
     .from("iscrizioni")
     .insert({
+      contatto_id: contattoId,
       nome: estado.nombre,
       cognome: estado.apellido,
       email: estado.email,
