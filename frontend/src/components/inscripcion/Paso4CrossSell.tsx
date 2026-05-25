@@ -27,7 +27,7 @@ export default function Paso4CrossSell({
 
   const sugerencia = esAdulta
     ? "¿Tienes una hija que quiera aprender ballet? Tenemos Pre Ballet (3-6 años), Ballet I (7-9 años) y Ballet II (10-12 años)."
-    : "¿Y tú? Nuestro Pilates Mat o Barre Fit puede ser perfecto para acompañar el ballet de tu hija.";
+    : "¿Te apuntas tú también? Mientras tu hija baila, tú también puedes tener tu momento. Prueba Pilates Mat o Barre Fit.";
 
   return (
     <div className="max-w-xl mx-auto px-8 py-12">
