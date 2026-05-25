@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,20 @@ type IscrizioneDetalle = {
   metodo_pagamento: string;
   discipline: { nome: string } | null;
   iscrizione_orari: { orari: { giorno: string; ora_inizio: string; ora_fine: string } | null }[];
+  prezzo?: number | null;
+};
+
+type VentaRow = {
+  id: string;
+  created_at: string;
+  stato: string;
+  disciplina_id: string;
+  piano_id: string;
+  nome: string;
+  cognome: string;
+  nome_alumna: string | null;
+  cognome_alumna: string | null;
+  discipline: { nome: string } | null;
   prezzo?: number | null;
 };
 
@@ -161,6 +176,49 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState<IscrzioneRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("Calendario");
+
+  // ── Finanzas state ──
+  const [finanzasLoading, setFinanzasLoading] = useState(false);
+  const [finanzasMensual, setFinanzasMensual] = useState<{ mes: string; label: string; ingresos: number; costes: number }[]>([]);
+  const [finanzasCosteMensual, setFinanzasCosteMensual] = useState(0);
+
+  // ── Eliminar alumno ──
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // ── Nueva inscripción ──
+  const [showNuevaInscripcion, setShowNuevaInscripcion] = useState(false);
+  const [nif, setNif] = useState({ nome: "", cognome: "", email: "", telefono: "", disciplina_id: "", piano_id: "", metodo_pagamento: "en-escuela", nome_alumna: "", cognome_alumna: "", horarios: [] as string[] });
+  const [nifPiani, setNifPiani] = useState<{ id: string; nome: string; prezzo: number }[]>([]);
+  const [nifLoading, setNifLoading] = useState(false);
+
+  // ── Nuevo horario ──
+  const [showNuevoHorario, setShowNuevoHorario] = useState(false);
+  const [nhf, setNhf] = useState({ disciplina_id: "", giorno: "Lunes", ora_inizio: "09:00", ora_fine: "10:00", posti_totali: 10 });
+  const [nhfLoading, setNhfLoading] = useState(false);
+
+  // ── Costes state ──
+  type CosteRow = { id: string; categoria: string; concepto: string; importe_mensual: number; importe_anual: number; notas: string | null };
+  const [costesData, setCostesData] = useState<CosteRow[]>([]);
+  const [costesLoading, setCostesLoading] = useState(false);
+  const [showCostesDrawer, setShowCostesDrawer] = useState(false);
+  const [costesEditId, setCostesEditId] = useState<string | null>(null);
+  const [costesEditVals, setCostesEditVals] = useState({ concepto: "", importe_mensual: 0, importe_anual: 0, notas: "" });
+  const [costesDeleteId, setCostesDeleteId] = useState<string | null>(null);
+  const [showNuevoCosto, setShowNuevoCosto] = useState(false);
+  const [nuevoCosto, setNuevoCosto] = useState({ categoria: "Otros", concepto: "", importe_mensual: 0, importe_anual: 0, notas: "" });
+  const [addingToCategoria, setAddingToCategoria] = useState<string | null>(null);
+  const [inlineNuevo, setInlineNuevo] = useState({ concepto: "", importe_mensual: 0, importe_anual: 0, notas: "" });
+
+  // ── Ventas state ──
+  const [ventasData, setVentasData] = useState<VentaRow[]>([]);
+  const [ventasMes, setVentasMes] = useState(() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [ventasGranularity, setVentasGranularity] = useState<"diario" | "semanal">("semanal");
+  const [ventasLoading, setVentasLoading] = useState(false);
 
   // KPI metrics
   const [facturacionMes, setFacturacionMes] = useState(0);
@@ -237,6 +295,7 @@ export default function AdminDashboard() {
   const handleAlumnoClick = async (iscrizioneId: string) => {
     setDrawerView("student");
     setDrawerLoading(true);
+    setDeleteConfirm(false);
     const { data } = await supabase
       .from("iscrizioni")
       .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
@@ -252,6 +311,167 @@ export default function AdminDashboard() {
       setDrawerDetalle({ ...(data as unknown as IscrizioneDetalle), prezzo: pianoData?.prezzo ?? null });
     }
     setDrawerLoading(false);
+  };
+
+  useEffect(() => {
+    if (activeSection !== "Finanzas") return;
+    setFinanzasLoading(true);
+    Promise.all([
+      supabase.from("iscrizioni").select("created_at, disciplina_id, piano_id").eq("stato", "pagato"),
+      supabase.from("piani").select("id, disciplina_id, prezzo"),
+      supabase.from("costes").select("importe_mensual").eq("activo", true),
+    ]).then(([{ data: isc }, { data: piani }, { data: costes }]) => {
+      const pm: Record<string, number> = {};
+      for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
+        pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
+      const costeMensual = ((costes ?? []) as { importe_mensual: number }[]).reduce((s, c) => s + Number(c.importe_mensual), 0);
+      setFinanzasCosteMensual(costeMensual);
+      const now = new Date();
+      const monthly = Array.from({ length: 12 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+        const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" });
+        const ingresos = ((isc ?? []) as { created_at: string; disciplina_id: string; piano_id: string }[])
+          .filter(v => v.created_at.startsWith(mes))
+          .reduce((s, v) => s + (pm[`${v.piano_id}:${v.disciplina_id}`] ?? 0), 0);
+        return { mes, label, ingresos, costes: costeMensual };
+      });
+      setFinanzasMensual(monthly);
+      setFinanzasLoading(false);
+    });
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeSection !== "Costes") return;
+    setCostesLoading(true);
+    supabase.from("costes").select("id, categoria, concepto, importe_mensual, importe_anual, notas").eq("activo", true).order("categoria").then(({ data }) => {
+      setCostesData((data ?? []) as typeof costesData);
+      setCostesLoading(false);
+    });
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeSection !== "Ventas") return;
+    fetchVentas();
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchVentas() {
+    setVentasLoading(true);
+    const [{ data: isc }, { data: piani }] = await Promise.all([
+      supabase
+        .from("iscrizioni")
+        .select("id, created_at, stato, disciplina_id, piano_id, nome, cognome, nome_alumna, cognome_alumna, discipline(nome)")
+        .order("created_at", { ascending: false }),
+      supabase.from("piani").select("id, disciplina_id, prezzo"),
+    ]);
+    const pm: Record<string, number> = {};
+    for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
+      pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
+    setVentasData(((isc ?? []) as unknown as VentaRow[]).map(i => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+    setVentasLoading(false);
+  }
+
+  // ── Costes CRUD ──
+  const handleCosteEdit = (c: { id: string; concepto: string; importe_mensual: number; importe_anual: number; notas: string | null }) => {
+    setCostesEditId(c.id);
+    setCostesEditVals({ concepto: c.concepto, importe_mensual: c.importe_mensual, importe_anual: c.importe_anual, notas: c.notas ?? "" });
+    setCostesDeleteId(null);
+  };
+
+  const handleCosteSave = async (id: string) => {
+    await supabase.from("costes").update({ concepto: costesEditVals.concepto, importe_mensual: costesEditVals.importe_mensual, importe_anual: costesEditVals.importe_anual, notas: costesEditVals.notas || null }).eq("id", id);
+    setCostesData(prev => prev.map(c => c.id === id ? { ...c, ...costesEditVals, notas: costesEditVals.notas || null } : c));
+    setCostesEditId(null);
+  };
+
+  const handleCosteDelete = async (id: string) => {
+    await supabase.from("costes").update({ activo: false }).eq("id", id);
+    setCostesData(prev => prev.filter(c => c.id !== id));
+    setCostesDeleteId(null);
+  };
+
+  const handleInlineNuevoSave = async (categoria: string) => {
+    if (!inlineNuevo.concepto.trim()) return;
+    const { data } = await supabase
+      .from("costes")
+      .insert({ categoria, concepto: inlineNuevo.concepto, importe_mensual: inlineNuevo.importe_mensual, importe_anual: inlineNuevo.importe_anual, notas: inlineNuevo.notas || null, activo: true })
+      .select("id, categoria, concepto, importe_mensual, importe_anual, notas")
+      .single();
+    if (data) setCostesData(prev => [...prev, data as CosteRow]);
+    setAddingToCategoria(null);
+    setInlineNuevo({ concepto: "", importe_mensual: 0, importe_anual: 0, notas: "" });
+  };
+
+  const handleNuevoCostoSubmit = async () => {
+    if (!nuevoCosto.concepto) return;
+    const { data } = await supabase.from("costes").insert({ categoria: nuevoCosto.categoria, concepto: nuevoCosto.concepto, importe_mensual: nuevoCosto.importe_mensual, importe_anual: nuevoCosto.importe_anual, notas: nuevoCosto.notas || null, activo: true }).select("id, categoria, concepto, importe_mensual, importe_anual, notas").single();
+    if (data) setCostesData(prev => [...prev, data as { id: string; categoria: string; concepto: string; importe_mensual: number; importe_anual: number; notas: string | null }]);
+    setShowNuevoCosto(false);
+    setNuevoCosto({ categoria: "Otros", concepto: "", importe_mensual: 0, importe_anual: 0, notas: "" });
+  };
+
+  // ── Eliminar alumno ──
+  const handleEliminarAlumno = async () => {
+    if (!drawerDetalle) return;
+    setDeleteLoading(true);
+    await supabase.from("iscrizione_orari").delete().eq("iscrizione_id", drawerDetalle.id);
+    await supabase.from("iscrizioni").delete().eq("id", drawerDetalle.id);
+    setIscrittiCount(p => Math.max(0, p - 1));
+    if (drawerDetalle.stato === "attesa") setPendingCount(p => Math.max(0, p - 1));
+    setDrawerOrario(null);
+    setDeleteConfirm(false);
+    setDeleteLoading(false);
+    setBookings(prev => prev.filter(b => b.id !== drawerDetalle.id));
+  };
+
+  // ── Nueva inscripción ──
+  const handleNifDisciplinaChange = async (disciplina_id: string) => {
+    setNif(p => ({ ...p, disciplina_id, piano_id: "", horarios: [] }));
+    if (!disciplina_id) return;
+    const { data } = await supabase.from("piani").select("id, nome, prezzo").eq("disciplina_id", disciplina_id);
+    setNifPiani((data ?? []) as { id: string; nome: string; prezzo: number }[]);
+  };
+
+  const handleNuevaInscripcionSubmit = async () => {
+    if (!nif.nome || !nif.cognome || !nif.email || !nif.disciplina_id || !nif.piano_id) return;
+    setNifLoading(true);
+    const emailNorm = nif.email.toLowerCase().trim();
+    let contattoId: string;
+    const { data: existing } = await supabase.from("contatti").select("id").eq("email", emailNorm).maybeSingle();
+    if (existing) {
+      contattoId = existing.id;
+    } else {
+      const { data: newC } = await supabase.from("contatti").insert({ nome: nif.nome, cognome: nif.cognome, email: emailNorm, telefono: nif.telefono || null }).select("id").single();
+      contattoId = newC!.id;
+    }
+    const { data: isc } = await supabase.from("iscrizioni").insert({
+      contatto_id: contattoId, nome: nif.nome, cognome: nif.cognome, email: emailNorm,
+      telefono: nif.telefono || null, disciplina_id: nif.disciplina_id, piano_id: nif.piano_id,
+      metodo_pagamento: nif.metodo_pagamento, stato: "attesa",
+      nome_alumna: nif.nome_alumna || null, cognome_alumna: nif.cognome_alumna || null,
+    }).select("id").single();
+    if (isc && nif.horarios.length > 0) {
+      await supabase.from("iscrizione_orari").insert(nif.horarios.map(orario_id => ({ iscrizione_id: isc.id, orario_id })));
+    }
+    setIscrittiCount(p => p + 1);
+    setPendingCount(p => p + 1);
+    setNif({ nome: "", cognome: "", email: "", telefono: "", disciplina_id: "", piano_id: "", metodo_pagamento: "en-escuela", nome_alumna: "", cognome_alumna: "", horarios: [] });
+    setNifPiani([]);
+    setShowNuevaInscripcion(false);
+    setNifLoading(false);
+  };
+
+  // ── Nuevo horario ──
+  const handleNuevoHorarioSubmit = async () => {
+    if (!nhf.disciplina_id || !nhf.giorno || !nhf.ora_inizio || !nhf.ora_fine) return;
+    setNhfLoading(true);
+    await supabase.from("orari").insert({ disciplina_id: nhf.disciplina_id, giorno: nhf.giorno, ora_inizio: nhf.ora_inizio, ora_fine: nhf.ora_fine, posti_totali: nhf.posti_totali, attivo: true });
+    setShowNuevoHorario(false);
+    setNhf({ disciplina_id: "", giorno: "Lunes", ora_inizio: "09:00", ora_fine: "10:00", posti_totali: 10 });
+    setNhfLoading(false);
+    // Reload orari
+    const { data } = await supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true);
+    if (data) setOrari(data as unknown as AdminOrario[]);
   };
 
   const ajustarMetrics = (iscrizione: { created_at: string; prezzo?: number | null }, fromStato: string, toStato: string) => {
@@ -429,11 +649,101 @@ export default function AdminDashboard() {
   const times = [...new Set(orari.map((o) => o.ora_inizio.substring(0, 5)))].sort();
   const grid = buildGrid(orari);
 
+  // ── Finanzas computations ──
+  const meseActual = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  const finActual = finanzasMensual.find(m => m.mes === meseActual);
+  const finPrev = finanzasMensual[finanzasMensual.length - 2];
+  const finIngresosMes = finActual?.ingresos ?? 0;
+  const finCosteMes = finanzasCosteMensual;
+  const finResultadoMes = finIngresosMes - finCosteMes;
+  const finMargen = finIngresosMes > 0 ? (finResultadoMes / finIngresosMes) * 100 : 0;
+  const finResultadoPrev = (finPrev?.ingresos ?? 0) - (finPrev?.costes ?? 0);
+  const finResultadoDiff = finResultadoPrev !== 0 ? ((finResultadoMes - finResultadoPrev) / Math.abs(finResultadoPrev)) * 100 : null;
+  const ytdMeses = finanzasMensual.filter(m => m.mes.startsWith(String(new Date().getFullYear())));
+  const finIngresosYTD = ytdMeses.reduce((s, m) => s + m.ingresos, 0);
+  const finCostesYTD = ytdMeses.reduce((s, m) => s + m.costes, 0);
+  const finResultadoYTD = finIngresosYTD - finCostesYTD;
+  const finChart6 = finanzasMensual.slice(-6);
+
+  // ── Discipline disponibili (da orari) ──
+  const disciplinasDisponibles = [...new Map(orari.map(o => [o.disciplina_id, { id: o.disciplina_id, nome: o.discipline?.nome ?? o.disciplina_id }])).values()];
+  const orariosForNif = orari.filter(o => o.disciplina_id === nif.disciplina_id);
+  const esNinaNif = NINAS_IDS.has(nif.disciplina_id);
+
+  // ── Costes computations ──
+  const costesTotalMensual = costesData.reduce((s, c) => s + c.importe_mensual, 0);
+  const costesTotalAnual = costesData.reduce((s, c) => s + c.importe_anual, 0);
+  const costesCategorias = Object.entries(
+    costesData.reduce<Record<string, number>>((acc, c) => {
+      acc[c.categoria] = (acc[c.categoria] ?? 0) + c.importe_mensual;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1]);
+  const maxCategoriaCost = Math.max(...costesCategorias.map(c => c[1]), 1);
+  const CATEGORIA_ICON: Record<string, string> = {
+    "Andrea": "person",
+    "Local": "home",
+    "Seguros": "shield",
+    "Software & Marketing": "campaign",
+    "Otros": "more_horiz",
+  };
+
+  // ── Ventas computations ──
+  const mesesOptions = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(new Date().getFullYear(), new Date().getMonth() - i, 1);
+    return {
+      val: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      label: d.toLocaleDateString("es-ES", { month: "long", year: "numeric" }),
+    };
+  });
+  const [vYear, vMonth] = ventasMes.split("-").map(Number);
+  const ventasMesFiltradas = ventasData.filter(v => v.created_at.startsWith(ventasMes));
+  const prevMesStr = vMonth === 1 ? `${vYear - 1}-12` : `${vYear}-${String(vMonth - 1).padStart(2, "0")}`;
+  const ventasPrevMes = ventasData.filter(v => v.created_at.startsWith(prevMesStr));
+  const pagadasMes = ventasMesFiltradas.filter(v => v.stato === "pagato");
+  const ingresosMesV = pagadasMes.reduce((s, v) => s + (v.prezzo ?? 0), 0);
+  const ingresosMesAntV = ventasPrevMes.filter(v => v.stato === "pagato").reduce((s, v) => s + (v.prezzo ?? 0), 0);
+  const ingresosDiff = ingresosMesAntV > 0 ? ((ingresosMesV - ingresosMesAntV) / ingresosMesAntV) * 100 : null;
+  const ticketMedioV = pagadasMes.length > 0 ? ingresosMesV / pagadasMes.length : 0;
+  const pendientesCountV = ventasMesFiltradas.filter(v => v.stato === "attesa").length;
+  const daysInMonth = new Date(vYear, vMonth, 0).getDate();
+  const ventasChartData = ventasGranularity === "diario"
+    ? Array.from({ length: daysInMonth }, (_, i) => {
+        const dayStr = `${ventasMes}-${String(i + 1).padStart(2, "0")}`;
+        const rows = ventasMesFiltradas.filter(v => v.created_at.startsWith(dayStr));
+        return { label: String(i + 1), ingresos: rows.filter(v => v.stato === "pagato").reduce((s, v) => s + (v.prezzo ?? 0), 0), inscripciones: rows.length };
+      })
+    : [1, 2, 3, 4].map(w => {
+        const start = (w - 1) * 7 + 1;
+        const end = w === 4 ? daysInMonth : w * 7;
+        const rows = ventasMesFiltradas.filter(v => { const d = new Date(v.created_at).getDate(); return d >= start && d <= end; });
+        return { label: `Sem ${w}`, ingresos: rows.filter(v => v.stato === "pagato").reduce((s, v) => s + (v.prezzo ?? 0), 0), inscripciones: rows.length };
+      });
+  const discMap: Record<string, { nombre: string; ingresos: number; count: number }> = {};
+  pagadasMes.forEach(v => {
+    if (!discMap[v.disciplina_id]) discMap[v.disciplina_id] = { nombre: v.discipline?.nome ?? v.disciplina_id, ingresos: 0, count: 0 };
+    discMap[v.disciplina_id].ingresos += v.prezzo ?? 0;
+    discMap[v.disciplina_id].count++;
+  });
+  const discBreakdown = Object.values(discMap).sort((a, b) => b.ingresos - a.ingresos);
+  const maxDisc = Math.max(...discBreakdown.map(d => d.ingresos), 1);
+  const planMapV: Record<string, { nombre: string; ingresos: number; count: number }> = {};
+  pagadasMes.forEach(v => {
+    if (!planMapV[v.piano_id]) planMapV[v.piano_id] = { nombre: PLAN_LABEL[v.piano_id] ?? v.piano_id, ingresos: 0, count: 0 };
+    planMapV[v.piano_id].ingresos += v.prezzo ?? 0;
+    planMapV[v.piano_id].count++;
+  });
+  const planBreakdownV = Object.values(planMapV).sort((a, b) => b.ingresos - a.ingresos);
+  const maxPlan = Math.max(...planBreakdownV.map(p => p.ingresos), 1);
+
   const navItems = [
-    { icon: "calendar_month", label: "Calendario", active: true },
-    { icon: "event_seat", label: "Reservas", active: false },
-    { icon: "fitness_center", label: "Disciplinas", active: false },
-    { icon: "group", label: "Usuarios", active: false },
+    { icon: "calendar_month", label: "Calendario" },
+    { icon: "event_seat", label: "Reservas" },
+    { icon: "fitness_center", label: "Disciplinas" },
+    { icon: "group", label: "Usuarios" },
+    { icon: "receipt_long", label: "Costes" },
+    { icon: "trending_up", label: "Ventas" },
+    { icon: "account_balance", label: "Finanzas" },
   ];
 
   return (
@@ -475,8 +785,11 @@ export default function AdminDashboard() {
           <p className="font-label-md text-label-md text-on-surface-variant">Gestión del Estudio</p>
         </div>
 
-        <button className="bg-primary text-on-primary rounded-full py-3 px-6 mb-stack-md font-label-md text-label-md hover:bg-secondary transition-colors">
-          Nueva Clase
+        <button onClick={() => setShowNuevoHorario(true)} className="bg-primary text-on-primary rounded-full py-3 px-6 mb-2 font-label-md text-label-md hover:bg-secondary transition-colors flex items-center justify-center gap-2">
+          <Icon name="add" className="text-base" /> Nueva Clase
+        </button>
+        <button onClick={() => setShowNuevaInscripcion(true)} className="rounded-full py-3 px-6 mb-stack-md font-label-md text-label-md border transition-colors flex items-center justify-center gap-2 hover:bg-surface-container-high" style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}>
+          <Icon name="person_add" className="text-base" /> Añadir alumna
         </button>
 
         <ul className="flex-1 space-y-2">
@@ -484,9 +797,9 @@ export default function AdminDashboard() {
             <li key={item.label}>
               <a
                 href="#"
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => { setActiveSection(item.label); setSidebarOpen(false); }}
                 className={`flex items-center px-4 py-3 rounded-lg transition-all font-label-md text-label-md ${
-                  item.active
+                  activeSection === item.label
                     ? "text-primary border-r-4 border-primary bg-surface-container-highest font-bold scale-95"
                     : "text-on-surface-variant hover:text-primary hover:bg-surface-container-high duration-200"
                 }`}
@@ -531,7 +844,7 @@ export default function AdminDashboard() {
           </button>
 
           <h2 className="font-title-lg text-title-lg text-secondary hidden md:block">
-            Panel de Administración
+            {activeSection}
           </h2>
           <p className="font-title-lg text-title-lg text-secondary md:hidden text-sm">
             Studio Admin
@@ -544,6 +857,499 @@ export default function AdminDashboard() {
 
         {/* Content */}
         <main className="pt-[80px] p-4 md:p-margin-desktop flex-1 overflow-y-auto space-y-section-gap">
+
+          {/* ── Costes ── */}
+          {activeSection === "Costes" && (
+            <section className="space-y-6">
+
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <button onClick={() => setShowCostesDrawer(true)} className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3 text-left hover:shadow-md transition-shadow cursor-pointer">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Coste Total / Mes</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="receipt_long" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{costesLoading ? "—" : `${costesTotalMensual.toLocaleString("es-ES")}€`}</p>
+                  <p className="text-xs flex items-center gap-1" style={{ color: "#89726c" }}>{costesData.length} partidas · <span style={{ color: "#7d2b13" }}>Gestionar →</span></p>
+                </button>
+
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Coste Total / Año</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="calendar_month" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{costesLoading ? "—" : `${costesTotalAnual.toLocaleString("es-ES")}€`}</p>
+                  <p className="text-xs" style={{ color: "#89726c" }}>Proyección anual</p>
+                </div>
+
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Mayor Gasto</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="trending_up" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{costesLoading ? "—" : costesCategorias[0] ? `${costesCategorias[0][1]}€` : "—"}</p>
+                  <p className="text-xs" style={{ color: "#89726c" }}>{costesCategorias[0]?.[0] ?? "—"}</p>
+                </div>
+              </div>
+
+              {/* Breakdown por categoría */}
+              <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
+                <p className="text-sm font-semibold mb-5" style={{ color: "#7d2b13" }}>Distribución por Categoría</p>
+                {costesLoading
+                  ? <p className="text-sm" style={{ color: "#89726c" }}>Cargando...</p>
+                  : <div className="space-y-4">
+                      {costesCategorias.map(([cat, total]) => (
+                        <div key={cat}>
+                          <div className="flex justify-between items-center text-xs mb-1.5">
+                            <span className="flex items-center gap-2" style={{ color: "#25190f" }}>
+                              <Icon name={CATEGORIA_ICON[cat] ?? "label"} className="text-base" style={{ color: "#89726c" }} />
+                              {cat}
+                            </span>
+                            <span className="font-semibold" style={{ color: "#7d2b13" }}>
+                              {total}€/mes · {((total / costesTotalMensual) * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#f3e6e0" }}>
+                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(total / maxCategoriaCost) * 100}%`, backgroundColor: "#7d2b13" }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                }
+              </div>
+
+              {/* Tabla por categoría — con acciones */}
+              {costesCategorias.map(([cat]) => {
+                const items = costesData.filter(c => c.categoria === cat);
+                const catTotal = items.reduce((s, c) => s + c.importe_mensual, 0);
+                const isAddingHere = addingToCategoria === cat;
+                return (
+                  <div key={cat} className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden">
+
+                    {/* Header categoría */}
+                    <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                      <div className="flex items-center gap-2">
+                        <Icon name={CATEGORIA_ICON[cat] ?? "label"} className="text-base" style={{ color: "#7d2b13" }} />
+                        <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>{cat}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <p className="text-sm font-bold" style={{ color: "#7d2b13" }}>{catTotal}€/mes</p>
+                        <button
+                          onClick={() => { setAddingToCategoria(isAddingHere ? null : cat); setInlineNuevo({ concepto: "", importe_mensual: 0, importe_anual: 0, notas: "" }); setCostesEditId(null); setCostesDeleteId(null); }}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors hover:bg-[#fff1e9]"
+                          style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}
+                        >
+                          <Icon name={isAddingHere ? "remove" : "add"} className="text-sm" />
+                          {isAddingHere ? "Cancelar" : "Añadir"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Tabla */}
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b" style={{ borderColor: "#f0e0d8" }}>
+                          {["Concepto", "Mensual", "Anual", "Notas", ""].map((h, i) => (
+                            <th key={i} className="text-left py-2.5 px-4 text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map(c => {
+                          const isEditing = costesEditId === c.id;
+                          const isDeleting = costesDeleteId === c.id;
+
+                          if (isDeleting) return (
+                            <tr key={c.id} className="border-b" style={{ borderColor: "#f0e0d8", backgroundColor: "#fff5f5" }}>
+                              <td colSpan={5} className="py-3 px-4">
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="text-sm font-semibold" style={{ color: "#b71c1c" }}>¿Eliminar «{c.concepto}»?</p>
+                                  <div className="flex gap-2 shrink-0">
+                                    <button onClick={() => setCostesDeleteId(null)} className="px-3 py-1.5 rounded-lg text-xs border" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>Cancelar</button>
+                                    <button onClick={() => handleCosteDelete(c.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ backgroundColor: "#b71c1c" }}>Sí, eliminar</button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+
+                          if (isEditing) return (
+                            <tr key={c.id} className="border-b" style={{ borderColor: "#f0e0d8", backgroundColor: "#fff8f5" }}>
+                              <td className="py-2 px-4"><input value={costesEditVals.concepto} onChange={e => setCostesEditVals(p => ({ ...p, concepto: e.target.value }))} className="w-full border rounded-lg px-2 py-1.5 text-sm" style={{ borderColor: "#dcc1b9" }} /></td>
+                              <td className="py-2 px-4"><input type="number" min={0} value={costesEditVals.importe_mensual} onChange={e => setCostesEditVals(p => ({ ...p, importe_mensual: Number(e.target.value), importe_anual: Number(e.target.value) * 12 }))} className="w-20 border rounded-lg px-2 py-1.5 text-sm" style={{ borderColor: "#dcc1b9" }} /></td>
+                              <td className="py-2 px-4"><span className="text-sm font-semibold" style={{ color: "#89726c" }}>{(costesEditVals.importe_mensual * 12).toLocaleString("es-ES")}€</span></td>
+                              <td className="py-2 px-4"><input value={costesEditVals.notas} onChange={e => setCostesEditVals(p => ({ ...p, notas: e.target.value }))} className="w-full border rounded-lg px-2 py-1.5 text-sm" style={{ borderColor: "#dcc1b9" }} /></td>
+                              <td className="py-2 px-4">
+                                <div className="flex gap-1">
+                                  <button onClick={() => handleCosteSave(c.id)} className="p-1.5 rounded-lg text-white" style={{ backgroundColor: "#7d2b13" }}><Icon name="check" className="text-sm" /></button>
+                                  <button onClick={() => setCostesEditId(null)} className="p-1.5 rounded-lg border" style={{ borderColor: "#dcc1b9", color: "#89726c" }}><Icon name="close" className="text-sm" /></button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+
+                          return (
+                            <tr key={c.id} className="border-b hover:bg-[#fff8f5] transition-colors group" style={{ borderColor: "#f0e0d8" }}>
+                              <td className="py-3 px-4 font-medium" style={{ color: "#25190f" }}>{c.concepto}</td>
+                              <td className="py-3 px-4 font-semibold whitespace-nowrap" style={{ color: "#7d2b13" }}>{c.importe_mensual}€</td>
+                              <td className="py-3 px-4 whitespace-nowrap" style={{ color: "#89726c" }}>{c.importe_anual > 0 ? `${c.importe_anual.toLocaleString("es-ES")}€` : "—"}</td>
+                              <td className="py-3 px-4 text-xs max-w-[160px] truncate" style={{ color: "#89726c" }}>{c.notas ?? "—"}</td>
+                              <td className="py-3 px-4">
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => handleCosteEdit(c)} className="p-1.5 rounded-lg hover:bg-surface-container-high" style={{ color: "#7d2b13" }}><Icon name="edit" className="text-sm" /></button>
+                                  <button onClick={() => { setCostesDeleteId(c.id); setCostesEditId(null); setAddingToCategoria(null); }} className="p-1.5 rounded-lg hover:bg-red-50" style={{ color: "#b71c1c" }}><Icon name="delete" className="text-sm" /></button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+
+                    {/* Form inline aggiunta */}
+                    {isAddingHere && (
+                      <div className="border-t px-6 py-5 space-y-3" style={{ borderColor: "#dcc1b9", backgroundColor: "#f9f4f1" }}>
+                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Nueva partida en {cat}</p>
+                        <input
+                          autoFocus
+                          placeholder="Concepto *"
+                          value={inlineNuevo.concepto}
+                          onChange={e => setInlineNuevo(p => ({ ...p, concepto: e.target.value }))}
+                          className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white"
+                          style={{ borderColor: "#dcc1b9" }}
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs block mb-1" style={{ color: "#89726c" }}>Mensual (€)</label>
+                            <input type="number" min={0} value={inlineNuevo.importe_mensual}
+                              onChange={e => setInlineNuevo(p => ({ ...p, importe_mensual: Number(e.target.value), importe_anual: Number(e.target.value) * 12 }))}
+                              className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white" style={{ borderColor: "#dcc1b9" }} />
+                          </div>
+                          <div>
+                            <label className="text-xs block mb-1" style={{ color: "#89726c" }}>Anual (€)</label>
+                            <div className="w-full border rounded-xl px-3 py-2.5 text-sm bg-surface-container-high font-semibold" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>{(inlineNuevo.importe_mensual * 12).toLocaleString("es-ES")}€</div>
+                          </div>
+                        </div>
+                        <input placeholder="Notas (opcional)" value={inlineNuevo.notas}
+                          onChange={e => setInlineNuevo(p => ({ ...p, notas: e.target.value }))}
+                          className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white" style={{ borderColor: "#dcc1b9" }} />
+                        <div className="flex gap-3">
+                          <button onClick={() => setAddingToCategoria(null)} className="flex-1 py-2.5 rounded-full text-sm border" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>Cancelar</button>
+                          <button onClick={() => handleInlineNuevoSave(cat)} disabled={!inlineNuevo.concepto.trim()} className="flex-1 py-2.5 rounded-full text-sm font-semibold text-white disabled:opacity-40" style={{ backgroundColor: "#7d2b13" }}>Guardar</button>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                );
+              })}
+
+            </section>
+          )}
+
+          {/* ── Ventas ── */}
+          {activeSection === "Ventas" && (
+            <section className="space-y-6">
+
+              {/* Selector de mes */}
+              <div className="flex items-center gap-3">
+                <select
+                  value={ventasMes}
+                  onChange={e => setVentasMes(e.target.value)}
+                  className="text-sm rounded-xl border px-3 py-2 bg-white"
+                  style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}
+                >
+                  {mesesOptions.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
+                </select>
+              </div>
+
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Ingresos Mes</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="euro" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{ventasLoading ? "—" : `${ingresosMesV}€`}</p>
+                  {ingresosDiff !== null && (
+                    <p className="text-xs flex items-center gap-1" style={{ color: ingresosDiff >= 0 ? "#2e7d32" : "#c62828" }}>
+                      <Icon name={ingresosDiff >= 0 ? "trending_up" : "trending_down"} className="text-sm" />
+                      {ingresosDiff >= 0 ? "+" : ""}{ingresosDiff.toFixed(1)}% vs anterior
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Mes Anterior</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="history" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{ventasLoading ? "—" : `${ingresosMesAntV}€`}</p>
+                  <p className="text-xs" style={{ color: "#89726c" }}>Referencia</p>
+                </div>
+
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Inscripciones</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="person_add" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{ventasLoading ? "—" : ventasMesFiltradas.length}</p>
+                  <p className="text-xs" style={{ color: pendientesCountV > 0 ? "#c62828" : "#89726c" }}>
+                    {pendientesCountV > 0 ? `${pendientesCountV} pendiente${pendientesCountV > 1 ? "s" : ""}` : "Todas cobradas"}
+                  </p>
+                </div>
+
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Ticket Medio</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="receipt" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{ventasLoading ? "—" : `${ticketMedioV.toFixed(0)}€`}</p>
+                  <p className="text-xs" style={{ color: "#89726c" }}>Por alumna cobrada</p>
+                </div>
+              </div>
+
+              {/* Gráfico ingresos */}
+              <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
+                <div className="flex items-center justify-between mb-6">
+                  <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Evolución de Ingresos</p>
+                  <div className="flex rounded-full overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                    {(["diario", "semanal"] as const).map(g => (
+                      <button key={g} onClick={() => setVentasGranularity(g)}
+                        className="px-4 py-1.5 text-xs font-semibold transition-colors"
+                        style={{ backgroundColor: ventasGranularity === g ? "#7d2b13" : "transparent", color: ventasGranularity === g ? "#fff" : "#89726c" }}>
+                        {g === "diario" ? "Diario" : "Semanal"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={ventasChartData} barCategoryGap="35%">
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#89726c" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "#89726c" }} axisLine={false} tickLine={false} width={45} tickFormatter={v => `${v}€`} />
+                    <Tooltip formatter={(v) => [`${v}€`, "Ingresos"]} contentStyle={{ borderRadius: 12, border: "1px solid #dcc1b9", fontSize: 12 }} />
+                    <Bar dataKey="ingresos" fill="#7d2b13" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Breakdowns */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
+                  <p className="text-sm font-semibold mb-4" style={{ color: "#7d2b13" }}>Por Disciplina</p>
+                  {discBreakdown.length === 0
+                    ? <p className="text-sm" style={{ color: "#89726c" }}>Sin datos cobrados este mes</p>
+                    : <div className="space-y-3">
+                        {discBreakdown.map(d => (
+                          <div key={d.nombre}>
+                            <div className="flex justify-between text-xs mb-1">
+                              <span style={{ color: "#25190f" }}>{d.nombre}</span>
+                              <span className="font-semibold" style={{ color: "#7d2b13" }}>{d.ingresos}€ · {d.count} alumna{d.count !== 1 ? "s" : ""}</span>
+                            </div>
+                            <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#f3e6e0" }}>
+                              <div className="h-full rounded-full transition-all" style={{ width: `${(d.ingresos / maxDisc) * 100}%`, backgroundColor: "#7d2b13" }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                  }
+                </div>
+
+                <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
+                  <p className="text-sm font-semibold mb-4" style={{ color: "#7d2b13" }}>Por Plan</p>
+                  {planBreakdownV.length === 0
+                    ? <p className="text-sm" style={{ color: "#89726c" }}>Sin datos cobrados este mes</p>
+                    : <div className="space-y-3">
+                        {planBreakdownV.map(p => (
+                          <div key={p.nombre}>
+                            <div className="flex justify-between text-xs mb-1">
+                              <span style={{ color: "#25190f" }}>{p.nombre}</span>
+                              <span className="font-semibold" style={{ color: "#7d2b13" }}>{p.ingresos}€ · {p.count} alumna{p.count !== 1 ? "s" : ""}</span>
+                            </div>
+                            <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#f3e6e0" }}>
+                              <div className="h-full rounded-full transition-all" style={{ width: `${(p.ingresos / maxPlan) * 100}%`, backgroundColor: "#9c4228" }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                  }
+                </div>
+              </div>
+
+              {/* Tabla detalle */}
+              <div className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden">
+                <div className="p-6 border-b" style={{ borderColor: "#dcc1b9" }}>
+                  <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Detalle de Inscripciones</p>
+                  <p className="text-xs mt-1" style={{ color: "#89726c" }}>{ventasMesFiltradas.length} inscripción{ventasMesFiltradas.length !== 1 ? "es" : ""} en el período</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                        {["Alumna", "Disciplina", "Plan", "Precio", "Fecha", "Estado"].map(h => (
+                          <th key={h} className="text-left py-3 px-4 text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ventasMesFiltradas.length === 0
+                        ? <tr><td colSpan={6} className="py-10 text-center text-sm" style={{ color: "#89726c" }}>Sin inscripciones en este período</td></tr>
+                        : ventasMesFiltradas.map(v => {
+                            const alumna = v.nome_alumna ? `${v.nome_alumna} ${v.cognome_alumna ?? ""}`.trim() : `${v.nome} ${v.cognome}`.trim();
+                            return (
+                              <tr key={v.id} className="border-b hover:bg-[#fff8f5] transition-colors" style={{ borderColor: "#f0e0d8" }}>
+                                <td className="py-3 px-4 font-medium" style={{ color: "#25190f" }}>{alumna}</td>
+                                <td className="py-3 px-4" style={{ color: "#25190f" }}>{v.discipline?.nome ?? "—"}</td>
+                                <td className="py-3 px-4" style={{ color: "#25190f" }}>{PLAN_LABEL[v.piano_id] ?? v.piano_id}</td>
+                                <td className="py-3 px-4 font-semibold" style={{ color: "#7d2b13" }}>{v.prezzo != null ? `${v.prezzo}€` : "—"}</td>
+                                <td className="py-3 px-4 whitespace-nowrap" style={{ color: "#89726c" }}>{new Date(v.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</td>
+                                <td className="py-3 px-4">
+                                  {v.stato === "pagato"
+                                    ? <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e8f5e9] text-[#2e7d32] text-xs font-semibold">Cobrado</span>
+                                    : <span className="inline-flex items-center px-3 py-1 rounded-full bg-error-container text-on-error-container text-xs font-semibold">Pendiente</span>}
+                                </td>
+                              </tr>
+                            );
+                          })
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </section>
+          )}
+
+          {/* ── Finanzas ── */}
+          {activeSection === "Finanzas" && (
+            <section className="space-y-6">
+
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Resultado neto mes */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Resultado Mes</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="account_balance_wallet" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: finResultadoMes >= 0 ? "#2e7d32" : "#b71c1c" }}>
+                    {finanzasLoading ? "—" : `${finResultadoMes >= 0 ? "+" : ""}${finResultadoMes.toLocaleString("es-ES")}€`}
+                  </p>
+                  {finResultadoDiff !== null && (
+                    <p className="text-xs flex items-center gap-1" style={{ color: finResultadoDiff >= 0 ? "#2e7d32" : "#c62828" }}>
+                      <Icon name={finResultadoDiff >= 0 ? "trending_up" : "trending_down"} className="text-sm" />
+                      {finResultadoDiff >= 0 ? "+" : ""}{finResultadoDiff.toFixed(1)}% vs mes anterior
+                    </p>
+                  )}
+                </div>
+
+                {/* Margen */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Margen</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="percent" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: finMargen >= 0 ? "#7d2b13" : "#b71c1c" }}>
+                    {finanzasLoading ? "—" : `${finMargen.toFixed(1)}%`}
+                  </p>
+                  <p className="text-xs" style={{ color: "#89726c" }}>Sobre ingresos cobrados</p>
+                </div>
+
+                {/* Resultado YTD */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Resultado YTD</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="calendar_today" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: finResultadoYTD >= 0 ? "#2e7d32" : "#b71c1c" }}>
+                    {finanzasLoading ? "—" : `${finResultadoYTD >= 0 ? "+" : ""}${finResultadoYTD.toLocaleString("es-ES")}€`}
+                  </p>
+                  <p className="text-xs" style={{ color: "#89726c" }}>Acumulado {new Date().getFullYear()}</p>
+                </div>
+
+                {/* Costes fijos */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Costes Fijos</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="receipt_long" className="text-base" /></div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>
+                    {finanzasLoading ? "—" : `${finCosteMes.toLocaleString("es-ES")}€`}
+                  </p>
+                  <p className="text-xs" style={{ color: "#89726c" }}>Estructura mensual</p>
+                </div>
+              </div>
+
+              {/* Gráfico Ingresos vs Costes — últimos 6 meses */}
+              <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
+                <p className="text-sm font-semibold mb-6" style={{ color: "#7d2b13" }}>Ingresos vs Costes — últimos 6 meses</p>
+                {finanzasLoading
+                  ? <div className="h-52 flex items-center justify-center"><p className="text-sm" style={{ color: "#89726c" }}>Cargando...</p></div>
+                  : <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={finChart6} barCategoryGap="30%" barGap={4}>
+                        <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#89726c" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11, fill: "#89726c" }} axisLine={false} tickLine={false} width={50} tickFormatter={v => `${v}€`} />
+                        <Tooltip formatter={(v, name) => [`${Number(v).toLocaleString("es-ES")}€`, name === "ingresos" ? "Ingresos" : "Costes"]} contentStyle={{ borderRadius: 12, border: "1px solid #dcc1b9", fontSize: 12 }} />
+                        <Legend formatter={v => v === "ingresos" ? "Ingresos" : "Costes"} wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
+                        <ReferenceLine y={0} stroke="#dcc1b9" />
+                        <Bar dataKey="ingresos" fill="#7d2b13" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="costes" fill="#dcc1b9" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                }
+              </div>
+
+              {/* Tabla P&L mensual */}
+              <div className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden">
+                <div className="px-6 py-4 border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                  <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>P&L Mensual — {new Date().getFullYear()}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>Ingresos cobrados vs estructura de costes</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                        {["Mes", "Ingresos", "Costes", "Resultado", "Margen"].map(h => (
+                          <th key={h} className="text-left py-3 px-5 text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {finanzasMensual.filter(m => m.mes.startsWith(String(new Date().getFullYear()))).map(m => {
+                        const resultado = m.ingresos - m.costes;
+                        const margen = m.ingresos > 0 ? (resultado / m.ingresos) * 100 : null;
+                        const esMesActual = m.mes === meseActual;
+                        return (
+                          <tr key={m.mes} className="border-b transition-colors" style={{ borderColor: "#f0e0d8", backgroundColor: esMesActual ? "#fff8f5" : "transparent" }}>
+                            <td className="py-3 px-5 font-medium capitalize" style={{ color: esMesActual ? "#7d2b13" : "#25190f" }}>
+                              {new Date(m.mes + "-01").toLocaleDateString("es-ES", { month: "long" })}
+                              {esMesActual && <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#7d2b13", color: "#fff" }}>Actual</span>}
+                            </td>
+                            <td className="py-3 px-5 font-semibold" style={{ color: "#25190f" }}>{m.ingresos > 0 ? `${m.ingresos.toLocaleString("es-ES")}€` : "—"}</td>
+                            <td className="py-3 px-5" style={{ color: "#89726c" }}>{m.costes.toLocaleString("es-ES")}€</td>
+                            <td className="py-3 px-5 font-bold" style={{ color: resultado >= 0 ? "#2e7d32" : "#b71c1c" }}>
+                              {m.ingresos > 0 ? `${resultado >= 0 ? "+" : ""}${resultado.toLocaleString("es-ES")}€` : "—"}
+                            </td>
+                            <td className="py-3 px-5">
+                              {margen !== null
+                                ? <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: margen >= 0 ? "#e8f5e9" : "#ffebee", color: margen >= 0 ? "#2e7d32" : "#b71c1c" }}>
+                                    {margen.toFixed(1)}%
+                                  </span>
+                                : <span style={{ color: "#89726c" }}>—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </section>
+          )}
+
+          {/* ── Dashboard principal (Calendario, Reservas, Disciplinas, Usuarios) ── */}
+          {(activeSection === "Calendario" || activeSection === "Reservas" || activeSection === "Disciplinas" || activeSection === "Usuarios") && <>
 
           {/* ── KPI Cards ── */}
           <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -826,6 +1632,8 @@ export default function AdminDashboard() {
               </div>
             </div>
           </section>
+
+          </>}
 
         </main>
       </div>
@@ -1272,6 +2080,27 @@ export default function AdminDashboard() {
                     )}
                   </div>
 
+                  {/* Eliminar inscripción */}
+                  <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
+                    {!deleteConfirm ? (
+                      <button onClick={() => setDeleteConfirm(true)} className="w-full py-3 text-sm font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-red-50" style={{ color: "#b71c1c" }}>
+                        <Icon name="delete" className="text-base" />
+                        Eliminar inscripción
+                      </button>
+                    ) : (
+                      <div className="p-4 space-y-3">
+                        <p className="text-sm font-semibold text-center" style={{ color: "#b71c1c" }}>¿Eliminar esta inscripción?</p>
+                        <p className="text-xs text-center" style={{ color: "#89726c" }}>Esta acción no se puede deshacer.</p>
+                        <div className="flex gap-2">
+                          <button onClick={() => setDeleteConfirm(false)} className="flex-1 py-2 rounded-lg text-sm border" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>Cancelar</button>
+                          <button onClick={handleEliminarAlumno} disabled={deleteLoading} className="flex-1 py-2 rounded-lg text-sm font-semibold text-white" style={{ backgroundColor: "#b71c1c" }}>
+                            {deleteLoading ? "Eliminando..." : "Sí, eliminar"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Horarios */}
                   {drawerDetalle.iscrizione_orari.length > 0 && (
                     <div className="space-y-2">
@@ -1293,6 +2122,348 @@ export default function AdminDashboard() {
 
                 </div>
               ) : null}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Drawer: Gestión de Costes ── */}
+      {showCostesDrawer && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[60]" onClick={() => { setShowCostesDrawer(false); setCostesEditId(null); setCostesDeleteId(null); }} />
+          <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white z-[70] flex flex-col shadow-2xl">
+
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+              <div>
+                <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>Gestión de Costes</p>
+                <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>Total: {costesTotalMensual.toLocaleString("es-ES")}€/mes</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setShowNuevoCosto(true); }} className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold border transition-colors hover:bg-[#fff1e9]" style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}>
+                  <Icon name="add" className="text-sm" /> Añadir
+                </button>
+                <button onClick={() => { setShowCostesDrawer(false); setCostesEditId(null); setCostesDeleteId(null); }} className="p-2 rounded-full hover:bg-surface-container-high" style={{ color: "#89726c" }}>
+                  <Icon name="close" />
+                </button>
+              </div>
+            </div>
+
+            {/* Lista */}
+            <div className="flex-1 overflow-y-auto">
+              {costesCategorias.map(([cat]) => {
+                const items = costesData.filter(c => c.categoria === cat);
+                const isAddingHere = addingToCategoria === cat;
+                return (
+                  <div key={cat}>
+                    {/* Separatore categoria */}
+                    <div className="px-5 py-2 flex items-center gap-2 sticky top-0" style={{ backgroundColor: "#fff8f5", borderBottom: "1px solid #f0e0d8" }}>
+                      <Icon name={CATEGORIA_ICON[cat] ?? "label"} className="text-sm" style={{ color: "#89726c" }} />
+                      <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{cat}</p>
+                      <p className="ml-auto text-xs font-bold" style={{ color: "#7d2b13" }}>{items.reduce((s, c) => s + c.importe_mensual, 0)}€</p>
+                      <button
+                        onClick={() => { setAddingToCategoria(isAddingHere ? null : cat); setInlineNuevo({ concepto: "", importe_mensual: 0, importe_anual: 0, notas: "" }); setCostesEditId(null); setCostesDeleteId(null); }}
+                        className="ml-1 p-1 rounded-full hover:bg-[#f3e6e0] transition-colors"
+                        style={{ color: "#7d2b13" }}
+                        title={`Añadir en ${cat}`}
+                      >
+                        <Icon name={isAddingHere ? "remove" : "add"} className="text-sm" />
+                      </button>
+                    </div>
+
+                    {items.map(c => {
+                      const isEditing = costesEditId === c.id;
+                      const isDeleting = costesDeleteId === c.id;
+
+                      if (isDeleting) return (
+                        <div key={c.id} className="px-5 py-4 border-b" style={{ borderColor: "#f0e0d8", backgroundColor: "#fff5f5" }}>
+                          <p className="text-sm font-semibold mb-3" style={{ color: "#b71c1c" }}>¿Eliminar «{c.concepto}»?</p>
+                          <div className="flex gap-2">
+                            <button onClick={() => setCostesDeleteId(null)} className="flex-1 py-2 rounded-xl text-xs border" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>Cancelar</button>
+                            <button onClick={() => handleCosteDelete(c.id)} className="flex-1 py-2 rounded-xl text-xs font-semibold text-white" style={{ backgroundColor: "#b71c1c" }}>Sí, eliminar</button>
+                          </div>
+                        </div>
+                      );
+
+                      if (isEditing) return (
+                        <div key={c.id} className="px-5 py-4 border-b space-y-3" style={{ borderColor: "#f0e0d8", backgroundColor: "#fff8f5" }}>
+                          <input value={costesEditVals.concepto} onChange={e => setCostesEditVals(p => ({ ...p, concepto: e.target.value }))} placeholder="Concepto" className="w-full border rounded-xl px-3 py-2 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs" style={{ color: "#89726c" }}>Mensual (€)</label>
+                              <input type="number" min={0} value={costesEditVals.importe_mensual} onChange={e => setCostesEditVals(p => ({ ...p, importe_mensual: Number(e.target.value) }))} className="w-full border rounded-xl px-3 py-2 text-sm mt-1" style={{ borderColor: "#dcc1b9" }} />
+                            </div>
+                            <div>
+                              <label className="text-xs" style={{ color: "#89726c" }}>Anual (€)</label>
+                              <input type="number" min={0} value={costesEditVals.importe_anual} onChange={e => setCostesEditVals(p => ({ ...p, importe_anual: Number(e.target.value) }))} className="w-full border rounded-xl px-3 py-2 text-sm mt-1" style={{ borderColor: "#dcc1b9" }} />
+                            </div>
+                          </div>
+                          <input value={costesEditVals.notas} onChange={e => setCostesEditVals(p => ({ ...p, notas: e.target.value }))} placeholder="Notas (opcional)" className="w-full border rounded-xl px-3 py-2 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                          <div className="flex gap-2">
+                            <button onClick={() => setCostesEditId(null)} className="flex-1 py-2 rounded-xl text-xs border" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>Cancelar</button>
+                            <button onClick={() => handleCosteSave(c.id)} className="flex-1 py-2 rounded-xl text-xs font-semibold text-white" style={{ backgroundColor: "#7d2b13" }}>Guardar</button>
+                          </div>
+                        </div>
+                      );
+
+                      return (
+                        <div key={c.id} className="flex items-center justify-between px-5 py-4 border-b group hover:bg-[#fff8f5] transition-colors" style={{ borderColor: "#f0e0d8" }}>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium" style={{ color: "#25190f" }}>{c.concepto}</p>
+                            {c.notas && <p className="text-xs mt-0.5 truncate" style={{ color: "#89726c" }}>{c.notas}</p>}
+                          </div>
+                          <div className="flex items-center gap-3 ml-3 shrink-0">
+                            <p className="text-sm font-bold" style={{ color: "#7d2b13" }}>{c.importe_mensual}€</p>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => handleCosteEdit(c)} className="p-1.5 rounded-lg hover:bg-surface-container-high" style={{ color: "#7d2b13" }}><Icon name="edit" className="text-sm" /></button>
+                              <button onClick={() => { setCostesDeleteId(c.id); setCostesEditId(null); }} className="p-1.5 rounded-lg hover:bg-red-50" style={{ color: "#b71c1c" }}><Icon name="delete" className="text-sm" /></button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Form inline aggiunta per questa categoria */}
+                    {isAddingHere && (
+                      <div className="px-5 py-4 border-b space-y-3" style={{ borderColor: "#f0e0d8", backgroundColor: "#f9f4f1" }}>
+                        <input
+                          autoFocus
+                          placeholder="Concepto *"
+                          value={inlineNuevo.concepto}
+                          onChange={e => setInlineNuevo(p => ({ ...p, concepto: e.target.value }))}
+                          className="w-full border rounded-xl px-3 py-2 text-sm"
+                          style={{ borderColor: "#dcc1b9" }}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs mb-1 block" style={{ color: "#89726c" }}>Mensual (€)</label>
+                            <input
+                              type="number" min={0}
+                              value={inlineNuevo.importe_mensual}
+                              onChange={e => setInlineNuevo(p => ({ ...p, importe_mensual: Number(e.target.value), importe_anual: Number(e.target.value) * 12 }))}
+                              className="w-full border rounded-xl px-3 py-2 text-sm"
+                              style={{ borderColor: "#dcc1b9" }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs mb-1 block" style={{ color: "#89726c" }}>Anual (€)</label>
+                            <input
+                              type="number" min={0}
+                              value={inlineNuevo.importe_anual}
+                              onChange={e => setInlineNuevo(p => ({ ...p, importe_anual: Number(e.target.value) }))}
+                              className="w-full border rounded-xl px-3 py-2 text-sm"
+                              style={{ borderColor: "#dcc1b9" }}
+                            />
+                          </div>
+                        </div>
+                        <input
+                          placeholder="Notas (opcional)"
+                          value={inlineNuevo.notas}
+                          onChange={e => setInlineNuevo(p => ({ ...p, notas: e.target.value }))}
+                          className="w-full border rounded-xl px-3 py-2 text-sm"
+                          style={{ borderColor: "#dcc1b9" }}
+                        />
+                        <div className="flex gap-2">
+                          <button onClick={() => setAddingToCategoria(null)} className="flex-1 py-2 rounded-xl text-xs border" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>Cancelar</button>
+                          <button onClick={() => handleInlineNuevoSave(cat)} disabled={!inlineNuevo.concepto.trim()} className="flex-1 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-40" style={{ backgroundColor: "#7d2b13" }}>Guardar</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer totale */}
+            <div className="p-5 border-t flex justify-between items-center" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+              <p className="text-sm font-semibold" style={{ color: "#89726c" }}>Total mensual</p>
+              <p className="text-xl font-bold" style={{ color: "#7d2b13" }}>{costesTotalMensual.toLocaleString("es-ES")}€</p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Modal: Nuevo Costo ── */}
+      {showNuevoCosto && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[80]" onClick={() => setShowNuevoCosto(false)} />
+          <div className="fixed inset-y-0 right-0 w-full max-w-sm bg-white z-[90] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+              <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>Nueva Partida de Coste</p>
+              <button onClick={() => setShowNuevoCosto(false)} className="p-2 rounded-full hover:bg-surface-container-high" style={{ color: "#89726c" }}><Icon name="close" /></button>
+            </div>
+            <div className="flex-1 p-5 space-y-4 overflow-y-auto">
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Categoría</label>
+                <select value={nuevoCosto.categoria} onChange={e => setNuevoCosto(p => ({ ...p, categoria: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                  {Object.keys(CATEGORIA_ICON).map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="Otros">Otros</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Concepto *</label>
+                <input value={nuevoCosto.concepto} onChange={e => setNuevoCosto(p => ({ ...p, concepto: e.target.value }))} placeholder="Ej: Limpieza local" className="w-full border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Mensual (€)</label>
+                  <input type="number" min={0} value={nuevoCosto.importe_mensual} onChange={e => setNuevoCosto(p => ({ ...p, importe_mensual: Number(e.target.value), importe_anual: Number(e.target.value) * 12 }))} className="w-full border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Anual (€)</label>
+                  <div className="w-full border rounded-xl px-3 py-2.5 text-sm bg-surface-container-high font-semibold" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>{(nuevoCosto.importe_mensual * 12).toLocaleString("es-ES")}€</div>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Notas</label>
+                <input value={nuevoCosto.notas} onChange={e => setNuevoCosto(p => ({ ...p, notas: e.target.value }))} placeholder="Opcional" className="w-full border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+              </div>
+            </div>
+            <div className="p-5 border-t" style={{ borderColor: "#dcc1b9" }}>
+              <button onClick={handleNuevoCostoSubmit} disabled={!nuevoCosto.concepto} className="w-full py-3 rounded-full text-sm font-semibold text-white disabled:opacity-40" style={{ backgroundColor: "#7d2b13" }}>
+                Guardar partida
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Modal: Nueva Inscripción ── */}
+      {showNuevaInscripcion && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[80]" onClick={() => setShowNuevaInscripcion(false)} />
+          <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white z-[90] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+              <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>Nueva Inscripción</p>
+              <button onClick={() => setShowNuevaInscripcion(false)} className="p-2 rounded-full hover:bg-surface-container-high" style={{ color: "#89726c" }}><Icon name="close" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+              {/* Disciplina */}
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Disciplina *</label>
+                <select value={nif.disciplina_id} onChange={e => handleNifDisciplinaChange(e.target.value)} className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                  <option value="">Selecciona disciplina</option>
+                  {disciplinasDisponibles.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                </select>
+              </div>
+
+              {/* Plan */}
+              {nifPiani.length > 0 && (
+                <div>
+                  <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Plan *</label>
+                  <select value={nif.piano_id} onChange={e => setNif(p => ({ ...p, piano_id: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                    <option value="">Selecciona plan</option>
+                    {nifPiani.map(p => <option key={p.id} value={p.id}>{PLAN_LABEL[p.id] ?? p.nome} — {p.prezzo}€/mes</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Horarios */}
+              {orariosForNif.length > 0 && (
+                <div>
+                  <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Horarios</label>
+                  <div className="space-y-2">
+                    {orariosForNif.map(o => {
+                      const checked = nif.horarios.includes(o.id);
+                      return (
+                        <label key={o.id} className="flex items-center gap-3 p-3 rounded-xl border cursor-pointer hover:bg-[#fff8f5]" style={{ borderColor: checked ? "#7d2b13" : "#dcc1b9" }}>
+                          <input type="checkbox" checked={checked} onChange={() => setNif(p => ({ ...p, horarios: checked ? p.horarios.filter(id => id !== o.id) : [...p.horarios, o.id] }))} className="accent-[#7d2b13]" />
+                          <span className="text-sm" style={{ color: "#25190f" }}>{o.giorno} · {o.ora_inizio.substring(0, 5)} – {o.ora_fine.substring(0, 5)}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Datos tutora / alumna */}
+              {esNinaNif && (
+                <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                  <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Alumna (niña)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input placeholder="Nombre alumna *" value={nif.nome_alumna} onChange={e => setNif(p => ({ ...p, nome_alumna: e.target.value }))} className="border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                    <input placeholder="Apellido alumna *" value={nif.cognome_alumna} onChange={e => setNif(p => ({ ...p, cognome_alumna: e.target.value }))} className="border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Datos tutora / adulta */}
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>{esNinaNif ? "Tutora" : "Alumna"}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <input placeholder="Nombre *" value={nif.nome} onChange={e => setNif(p => ({ ...p, nome: e.target.value }))} className="border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                  <input placeholder="Apellido *" value={nif.cognome} onChange={e => setNif(p => ({ ...p, cognome: e.target.value }))} className="border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                </div>
+                <input placeholder="Email *" type="email" value={nif.email} onChange={e => setNif(p => ({ ...p, email: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                <input placeholder="Teléfono" value={nif.telefono} onChange={e => setNif(p => ({ ...p, telefono: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+              </div>
+
+              {/* Método de pago */}
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Método de pago</label>
+                <select value={nif.metodo_pagamento} onChange={e => setNif(p => ({ ...p, metodo_pagamento: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                  {Object.entries(METODO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+
+            </div>
+            <div className="p-5 border-t" style={{ borderColor: "#dcc1b9" }}>
+              <button onClick={handleNuevaInscripcionSubmit} disabled={nifLoading || !nif.nome || !nif.email || !nif.disciplina_id || !nif.piano_id} className="w-full py-3 rounded-full text-sm font-semibold text-white transition-opacity disabled:opacity-40" style={{ backgroundColor: "#7d2b13" }}>
+                {nifLoading ? "Guardando..." : "Crear inscripción"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Modal: Nuevo Horario ── */}
+      {showNuevoHorario && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[80]" onClick={() => setShowNuevoHorario(false)} />
+          <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white z-[90] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+              <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>Nueva Clase</p>
+              <button onClick={() => setShowNuevoHorario(false)} className="p-2 rounded-full hover:bg-surface-container-high" style={{ color: "#89726c" }}><Icon name="close" /></button>
+            </div>
+            <div className="flex-1 p-5 space-y-4">
+
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Disciplina *</label>
+                <select value={nhf.disciplina_id} onChange={e => setNhf(p => ({ ...p, disciplina_id: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                  <option value="">Selecciona disciplina</option>
+                  {disciplinasDisponibles.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Día *</label>
+                <select value={nhf.giorno} onChange={e => setNhf(p => ({ ...p, giorno: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                  {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"].map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Hora inicio *</label>
+                  <input type="time" value={nhf.ora_inizio} onChange={e => setNhf(p => ({ ...p, ora_inizio: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Hora fin *</label>
+                  <input type="time" value={nhf.ora_fine} onChange={e => setNhf(p => ({ ...p, ora_fine: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Plazas máx.</label>
+                <input type="number" min={1} max={30} value={nhf.posti_totali} onChange={e => setNhf(p => ({ ...p, posti_totali: Number(e.target.value) }))} className="w-full border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+              </div>
+
+            </div>
+            <div className="p-5 border-t" style={{ borderColor: "#dcc1b9" }}>
+              <button onClick={handleNuevoHorarioSubmit} disabled={nhfLoading || !nhf.disciplina_id} className="w-full py-3 rounded-full text-sm font-semibold text-white transition-opacity disabled:opacity-40" style={{ backgroundColor: "#7d2b13" }}>
+                {nhfLoading ? "Guardando..." : "Crear clase"}
+              </button>
             </div>
           </div>
         </>

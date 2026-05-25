@@ -50,14 +50,10 @@ const pasos = [
 
 interface Props {
   pasoActual: number;
-  onContinuar: () => void;
-  continuarEnabled: boolean;
 }
 
-export default function StepIndicator({ pasoActual, onContinuar, continuarEnabled }: Props) {
-  // Map raw paso (1-6) to indicator step (1-4) and visibility
+export default function StepIndicator({ pasoActual }: Props) {
   const displayPaso = pasoActual <= 3 ? pasoActual : (pasoActual === 4 ? 3 : 4);
-  const showContinuar = pasoActual <= 3;
 
   return (
     <aside
@@ -138,22 +134,6 @@ export default function StepIndicator({ pasoActual, onContinuar, continuarEnable
           })}
         </nav>
 
-        {showContinuar && (
-          <button
-            onClick={onContinuar}
-            disabled={!continuarEnabled}
-            className="mt-8 w-full py-3 rounded-full text-sm font-semibold tracking-widest uppercase transition-all duration-200"
-            style={{
-              fontFamily: "var(--font-body)",
-              backgroundColor: continuarEnabled ? "#7d2b13" : "#dcc1b9",
-              color: continuarEnabled ? "#ffffff" : "#89726c",
-              cursor: continuarEnabled ? "pointer" : "not-allowed",
-              letterSpacing: "0.12em",
-            }}
-          >
-            Continuar
-          </button>
-        )}
       </div>
     </aside>
   );

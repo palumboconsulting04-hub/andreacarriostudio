@@ -125,11 +125,7 @@ export default function Home() {
 
       {/* Sidebar + content */}
       <div className="flex flex-1">
-        <StepIndicator
-          pasoActual={paso}
-          onContinuar={handleContinuar}
-          continuarEnabled={continuarEnabled(paso, estado)}
-        />
+        <StepIndicator pasoActual={paso} />
 
 
         <main className="flex-1 min-w-0 py-8">
