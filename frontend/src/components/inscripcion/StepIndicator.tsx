@@ -153,7 +153,7 @@ export default function StepIndicator({ pasoActual, onContinuar, continuarEnable
           >
             Continuar
           </button>
-        )
+        )}
       </div>
     </aside>
   );
