@@ -10,6 +10,7 @@ interface Props {
   plan: Plan;
   onChange: (updates: Partial<InscripcionState>) => void;
   onBack: () => void;
+  onConfirmado: (iscrizioneId: string) => void;
 }
 
 const metodosPago: { id: MetodoPago; label: string; proximamente?: boolean }[] = [
@@ -90,8 +91,7 @@ function ModalPrivacidad({ onClose, onAceptar }: { onClose: () => void; onAcepta
   );
 }
 
-export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Props) {
-  const [confirmado, setConfirmado] = useState(false);
+export default function Paso4Pago({ estado, disc, plan, onChange, onBack, onConfirmado }: Props) {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rgpdAceptado, setRgpdAceptado] = useState(false);
@@ -111,44 +111,14 @@ export default function Paso4Pago({ estado, disc, plan, onChange, onBack }: Prop
     setEnviando(true);
     setError(null);
     try {
-      await submitIscrizione(estado);
-      setConfirmado(true);
+      const id = await submitIscrizione(estado);
+      onConfirmado(id);
     } catch {
       setError("Ha ocurrido un error. Por favor, inténtalo de nuevo.");
     } finally {
       setEnviando(false);
     }
   };
-
-  if (confirmado) {
-    return (
-      <div className="max-w-md mx-auto px-6 pb-16 text-center pt-12">
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
-          style={{ backgroundColor: "#ffdbd1" }}
-        >
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-            <path d="M8 18l7 7 13-13" stroke="#7d2b13" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <h2
-          className="text-4xl mb-3"
-          style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}
-        >
-          ¡Inscripción confirmada!
-        </h2>
-        <p className="text-base mb-2" style={{ color: "#56423d" }}>
-          Tu inscripción a <strong style={{ color: "#7d2b13" }}>{disc.nombre}</strong> ha sido confirmada.
-        </p>
-        <p className="text-sm" style={{ color: "#56423d" }}>
-          Te hemos enviado un email con todos los detalles
-          {estado.email ? (
-            <> a <strong>{estado.email}</strong></>
-          ) : null}.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto px-6 pb-16">

@@ -122,21 +122,23 @@ export default function StepIndicator({ pasoActual, onContinuar, continuarEnable
           })}
         </nav>
 
-        {/* Continuar button */}
-        <button
-          onClick={onContinuar}
-          disabled={!continuarEnabled}
-          className="mt-8 w-full py-3 rounded-full text-sm font-semibold tracking-widest uppercase transition-all duration-200"
-          style={{
-            fontFamily: "var(--font-body)",
-            backgroundColor: continuarEnabled ? "#7d2b13" : "#dcc1b9",
-            color: continuarEnabled ? "#ffffff" : "#89726c",
-            cursor: continuarEnabled ? "pointer" : "not-allowed",
-            letterSpacing: "0.12em",
-          }}
-        >
-          Continuar
-        </button>
+        {/* Continuar button — oculto en paso 5 (thank you) */}
+        {pasoActual < 5 && (
+          <button
+            onClick={onContinuar}
+            disabled={!continuarEnabled}
+            className="mt-8 w-full py-3 rounded-full text-sm font-semibold tracking-widest uppercase transition-all duration-200"
+            style={{
+              fontFamily: "var(--font-body)",
+              backgroundColor: continuarEnabled ? "#7d2b13" : "#dcc1b9",
+              color: continuarEnabled ? "#ffffff" : "#89726c",
+              cursor: continuarEnabled ? "pointer" : "not-allowed",
+              letterSpacing: "0.12em",
+            }}
+          >
+            Continuar
+          </button>
+        )}
       </div>
     </aside>
   );

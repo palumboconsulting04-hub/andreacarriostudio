@@ -6,6 +6,7 @@ import Paso1Disciplina from "@/components/inscripcion/Paso1Disciplina";
 import Paso2Plan from "@/components/inscripcion/Paso2Plan";
 import Paso3Horarios from "@/components/inscripcion/Paso3Horarios";
 import Paso4Pago from "@/components/inscripcion/Paso4Pago";
+import Paso5Gracias from "@/components/inscripcion/Paso5Gracias";
 import type { InscripcionState, Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId } from "@/components/inscripcion/types";
 import { fetchDiscipline, fetchPiani, fetchOrari } from "@/lib/queries";
 
@@ -37,6 +38,7 @@ export default function Home() {
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [slots, setSlots] = useState<HorarioSlot[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [iscrizioneId, setIscrizioneId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDiscipline()
@@ -131,6 +133,15 @@ export default function Home() {
               plan={planObj}
               onChange={update}
               onBack={() => setPaso(3)}
+              onConfirmado={(id) => { setIscrizioneId(id); setPaso(5); }}
+            />
+          )}
+
+          {paso === 5 && disciplinaObj && iscrizioneId && (
+            <Paso5Gracias
+              iscrizioneId={iscrizioneId}
+              disciplinaId={disciplinaObj.id}
+              nombre={estado.nombre}
             />
           )}
         </main>

@@ -99,7 +99,7 @@ export async function fetchOrari(disciplinaId: string): Promise<HorarioSlot[]> {
   });
 }
 
-export async function submitIscrizione(estado: InscripcionState): Promise<void> {
+export async function submitIscrizione(estado: InscripcionState): Promise<string> {
   const { data: iscrizione, error } = await supabase
     .from("iscrizioni")
     .insert({
@@ -130,4 +130,24 @@ export async function submitIscrizione(estado: InscripcionState): Promise<void> 
       );
     if (orariError) throw orariError;
   }
+
+  return iscrizione.id;
+}
+
+export interface ProfiloMarketing {
+  iscrizione_id: string;
+  come_ci_hai_conosciuto: string;
+  // Adulti
+  motivazione?: string;
+  fascia_eta?: string;
+  esperienza_previa?: boolean;
+  // Bambine
+  eta_figlia?: string;
+  esperienza_previa_figlia?: boolean;
+  obiettivo_figlia?: string;
+}
+
+export async function submitProfiloMarketing(profilo: ProfiloMarketing): Promise<void> {
+  const { error } = await supabase.from("profilo_marketing").insert(profilo);
+  if (error) throw error;
 }
