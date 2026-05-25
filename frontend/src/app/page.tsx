@@ -206,12 +206,6 @@ export default function Home() {
               iscrizioneId={iscrizioneId}
               disciplinaId={bozze[0].disciplinaId}
               nombre={estado.nombre}
-              onAgregarOtra={() => {
-                setEstado(e => ({ ...estadoInicial, nombre: e.nombre, apellido: e.apellido, email: e.email, telefono: e.telefono }));
-                setIscrizioneId(null);
-                setBozze([]);
-                setPaso(1);
-              }}
             />
           )}
         </main>

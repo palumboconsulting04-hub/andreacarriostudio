@@ -47,12 +47,11 @@ interface Props {
   iscrizioneId: string;
   disciplinaId: DisciplinaId;
   nombre: string;
-  onAgregarOtra: () => void;
 }
 
 type Step = "gracias" | "form" | "done";
 
-export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre, onAgregarOtra }: Props) {
+export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Props) {
   const [step, setStep] = useState<Step>("gracias");
   const [enviando, setEnviando] = useState(false);
 
@@ -143,13 +142,6 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre, onAgr
             style={{ backgroundColor: "#7d2b13", color: "#fff8f5", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif", letterSpacing: "0.1em" }}
           >
             Conociéndonos mejor
-          </button>
-          <button
-            onClick={onAgregarOtra}
-            className="w-full mt-3 py-3 rounded-2xl text-sm font-semibold tracking-widest uppercase transition-opacity hover:opacity-90 border"
-            style={{ borderColor: "#7d2b13", color: "#7d2b13", backgroundColor: "transparent", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif", letterSpacing: "0.1em" }}
-          >
-            Añadir otra inscripción
           </button>
           <button
             onClick={() => setStep("done")}
@@ -292,13 +284,6 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre, onAgr
       <p className="text-base mb-8" style={{ color: "#56423d" }}>
         Nos vemos pronto en el estudio.
       </p>
-      <button
-        onClick={onAgregarOtra}
-        className="w-full py-3 rounded-2xl text-sm font-semibold tracking-widest uppercase transition-opacity hover:opacity-90 border"
-        style={{ borderColor: "#7d2b13", color: "#7d2b13", backgroundColor: "transparent", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif", letterSpacing: "0.1em" }}
-      >
-        Añadir otra inscripción
-      </button>
     </div>
   );
 }
