@@ -62,7 +62,7 @@ export default function StepIndicator({ pasoActual, onContinuar, continuarEnable
     >
       <div className="flex flex-col h-full px-7 py-8">
         {/* Logo */}
-        <div className="mb-7">
+        <div className="mb-5">
           <Image
             src="/logo.png"
             alt="Andrea Carrió Studio"
@@ -71,6 +71,18 @@ export default function StepIndicator({ pasoActual, onContinuar, continuarEnable
             priority
           />
         </div>
+
+        {/* Volver a la web */}
+        <a
+          href="https://andreacarriostudio.es/"
+          className="flex items-center gap-1.5 text-xs mb-5 transition-opacity hover:opacity-70"
+          style={{ color: "#89726c", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif", letterSpacing: "0.05em" }}
+        >
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M11 6.5H2M5.5 3L2 6.5l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Volver a la web
+        </a>
 
         {/* Summary header */}
         <div className="mb-1">

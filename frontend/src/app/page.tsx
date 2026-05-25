@@ -75,6 +75,20 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#fff8f5", color: "#25190f" }}>
 
+      {/* Mobile top bar */}
+      <div className="md:hidden flex items-center px-5 py-3 border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9" }}>
+        <a
+          href="https://andreacarriostudio.es/"
+          className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+          style={{ color: "#89726c", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+        >
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M11 6.5H2M5.5 3L2 6.5l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Volver a la web
+        </a>
+      </div>
+
       {/* Sidebar + content */}
       <div className="flex flex-1">
         <StepIndicator
