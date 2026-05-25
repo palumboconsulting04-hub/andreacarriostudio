@@ -56,7 +56,7 @@ interface Props {
 
 export default function StepIndicator({ pasoActual, onContinuar, continuarEnabled }: Props) {
   // Map raw paso (1-6) to indicator step (1-4) and visibility
-  const displayPaso = pasoActual <= 3 ? pasoActual : pasoActual === 4 ? 3 : 4;
+  const displayPaso = pasoActual <= 3 ? pasoActual : (pasoActual === 4 ? 3 : 4);
   const showContinuar = pasoActual <= 3;
 
   return (
