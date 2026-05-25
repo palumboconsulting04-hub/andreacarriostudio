@@ -2,16 +2,22 @@ import type { Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId } from "./type
 
 export const disciplinas: Disciplina[] = [
   {
+    id: "barre-fit",
+    nombre: "Barre Fit",
+    descripcion: "Ballet y fuerza en una sola clase. Piernas, glúteos y técnica.",
+    imagen: "/barre-fit.png",
+  },
+  {
     id: "pilates-mat",
     nombre: "Pilates Mat",
     descripcion: "Core, postura y flexibilidad. Bajo impacto, resultados reales.",
     imagen: "https://lh3.googleusercontent.com/aida/ADBb0ugojefKfdgnG23qLdP5o5CTxaWkVEUqVO21OhjCuYJCHIH5loDmvuuyiwBxRuL4Jv0hHsO8hy3hevSQalHJXvQg_dval1uqZfHvdTiEGZUS4OD4BradwaMzC8mbv4TPVsreSOAf9lGslGrXxJrA5Wr3_TFhiM1vNM92nZGMV_tah1nAGlE9AI9YzMnf9fX5m8wtxz2Qfvu4bTbNTziZ_qR6Xhi9gLxbC9Yfdf5S2iS4ifKuYkz4JVp11Qs6",
   },
   {
-    id: "barre-fit",
-    nombre: "Barre Fit",
-    descripcion: "Ballet y fuerza en una sola clase. Piernas, glúteos y técnica.",
-    imagen: "/barre-fit.png",
+    id: "ballet-adultos",
+    nombre: "Ballet Adultos",
+    descripcion: "Para quien empieza o retoma el ballet.",
+    imagen: "/ballet-adultos.png",
   },
   {
     id: "pre-ballet",
@@ -31,12 +37,6 @@ export const disciplinas: Disciplina[] = [
     descripcion: "Mayor exigencia técnica con metodología RAD.",
     imagen: "/ballet-ii.png",
     soloIntensivo: true,
-  },
-  {
-    id: "ballet-adultos",
-    nombre: "Ballet Adultos",
-    descripcion: "Para quien empieza o retoma el ballet.",
-    imagen: "/ballet-adultos.png",
   },
 ];
 
