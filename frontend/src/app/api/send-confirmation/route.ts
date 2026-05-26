@@ -26,6 +26,10 @@ const METODO_LABEL: Record<string, string> = {
   "paypal": "PayPal",
 };
 
+export function buildEmailHtml(data: InscripcionEmailData): string {
+  return buildHtml(data);
+}
+
 function buildHtml(data: InscripcionEmailData): string {
   const { nombre, apellido, inscripciones, totalMensual, metodoPago } = data;
   const esNinas = inscripciones.some(i => i.alumna);
