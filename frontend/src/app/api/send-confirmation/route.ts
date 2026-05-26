@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { error } = await resend.emails.send({
-      from: process.env.FROM_EMAIL ?? "Andrea Carrió Studio <hola@andrecarriostudio.com>",
+      from: process.env.FROM_EMAIL ?? "onboarding@resend.dev",
       to: data.email,
       subject: "Tu inscripción en Andrea Carrió Studio — confirmada ✓",
       html: buildHtml(data),
