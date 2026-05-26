@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { submitIscrizione, getOrCreateContatto } from "@/lib/queries";
 import type { InscripcionState, MetodoPago, BozzaIscrizione } from "./types";
+import { horariosPorDisciplina } from "./data";
+import type { InscripcionEmailData } from "@/app/api/send-confirmation/route";
 
 interface Props {
   estado: InscripcionState;
@@ -105,6 +107,39 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
         const id = await submitIscrizione(cId, bEstado);
         if (i === 0) firstId = id;
       }
+
+      // Send confirmation email (non-blocking)
+      const emailPayload: InscripcionEmailData = {
+        email: estado.email,
+        nombre: estado.nombre,
+        apellido: estado.apellido,
+        totalMensual,
+        metodoPago: estado.metodoPago,
+        inscripciones: bozze.map((b, i) => {
+          const slots = horariosPorDisciplina[b.disciplinaId] ?? [];
+          const horariosLabel = b.horarios
+            .map(id => {
+              const s = slots.find(sl => sl.id === id);
+              return s ? `${s.dia} ${s.hora}–${s.horaFin}` : id;
+            })
+            .filter(Boolean);
+          return {
+            disciplina: b.disciplinaNombre,
+            plan: b.planNombre,
+            precio: b.planPrecio,
+            horarios: horariosLabel,
+            alumna: b.esNinas && alumnas[i]?.nombre
+              ? { nombre: alumnas[i].nombre, apellido: alumnas[i].apellido }
+              : undefined,
+          };
+        }),
+      };
+      fetch("/api/send-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(emailPayload),
+      }).catch(() => {}); // fire-and-forget
+
       onConfirmado(cId, firstId);
     } catch {
       setError("Ha ocurrido un error. Por favor, inténtalo de nuevo.");
