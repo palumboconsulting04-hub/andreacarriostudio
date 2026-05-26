@@ -243,6 +243,13 @@ export default function AdminDashboard() {
   const [sofiaInput, setSofiaInput] = useState("");
   const [sofiaLoading, setSofiaLoading] = useState(false);
 
+  // ── Usuarios state ──
+  const [usuariosData, setUsuariosData] = useState<KpiStudentRow[]>([]);
+  const [usuariosLoading, setUsuariosLoading] = useState(false);
+  const [usuariosSearch, setUsuariosSearch] = useState("");
+  const [usuariosProfile, setUsuariosProfile] = useState<IscrizioneDetalle | null>(null);
+  const [usuariosProfileLoading, setUsuariosProfileLoading] = useState(false);
+
   // KPI drawer
   const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
@@ -262,7 +269,7 @@ export default function AdminDashboard() {
   const loadStats = async () => {
     const todayEs = DOW_ES[new Date().getDay()];
     const [r1, r3, r5] = await Promise.all([
-      supabase.from("iscrizioni").select("*", { count: "exact", head: true }),
+      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "pagato"),
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
       supabase
         .from("iscrizioni")
@@ -348,7 +355,7 @@ export default function AdminDashboard() {
         const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" });
         const ingresos = ((isc ?? []) as { created_at: string; disciplina_id: string; piano_id: string }[])
-          .filter(v => v.created_at.startsWith(mes))
+          .filter(v => v.created_at.substring(0, 7) <= mes)
           .reduce((s, v) => s + (pm[`${v.piano_id}:${v.disciplina_id}`] ?? 0), 0);
         return { mes, label, ingresos, costes: costeMensual };
       });
@@ -369,6 +376,21 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeSection !== "Ventas") return;
     fetchVentas();
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeSection !== "Usuarios") return;
+    setUsuariosLoading(true);
+    Promise.all([
+      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").order("created_at", { ascending: false }),
+      supabase.from("piani").select("id, disciplina_id, prezzo"),
+    ]).then(([{ data: isc }, { data: piani }]) => {
+      const pm: Record<string, number> = {};
+      for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
+        pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
+      setUsuariosData(((isc ?? []) as unknown as KpiStudentRow[]).map(i => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+      setUsuariosLoading(false);
+    });
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchVentas() {
@@ -461,8 +483,13 @@ export default function AdminDashboard() {
     setDeleteLoading(true);
     await supabase.from("iscrizione_orari").delete().eq("iscrizione_id", drawerDetalle.id);
     await supabase.from("iscrizioni").delete().eq("id", drawerDetalle.id);
-    setIscrittiCount(p => Math.max(0, p - 1));
-    if (drawerDetalle.stato === "attesa") setPendingCount(p => Math.max(0, p - 1));
+    if (drawerDetalle.stato === "attesa") {
+      setPendingCount(p => Math.max(0, p - 1));
+      setPendingAmount(p => Math.max(0, p - (drawerDetalle.prezzo ?? 0)));
+    } else if (drawerDetalle.stato === "pagato") {
+      setIscrittiCount(p => Math.max(0, p - 1));
+      setFacturacionMes(p => Math.max(0, p - (drawerDetalle.prezzo ?? 0)));
+    }
     setDrawerOrario(null);
     setDeleteConfirm(false);
     setDeleteLoading(false);
@@ -498,8 +525,9 @@ export default function AdminDashboard() {
     if (isc && nif.horarios.length > 0) {
       await supabase.from("iscrizione_orari").insert(nif.horarios.map(orario_id => ({ iscrizione_id: isc.id, orario_id })));
     }
-    setIscrittiCount(p => p + 1);
+    const newPrezzo = nifPiani.find(p => p.id === nif.piano_id)?.prezzo ?? 0;
     setPendingCount(p => p + 1);
+    setPendingAmount(p => p + newPrezzo);
     setNif({ nome: "", cognome: "", email: "", telefono: "", disciplina_id: "", piano_id: "", metodo_pagamento: "en-escuela", nome_alumna: "", cognome_alumna: "", horarios: [] });
     setNifPiani([]);
     setShowNuevaInscripcion(false);
@@ -519,19 +547,18 @@ export default function AdminDashboard() {
     if (data) setOrari(data as unknown as AdminOrario[]);
   };
 
-  const ajustarMetrics = (iscrizione: { created_at: string; prezzo?: number | null }, fromStato: string, toStato: string) => {
+  const ajustarMetrics = (iscrizione: { prezzo?: number | null }, fromStato: string, toStato: string) => {
     const prezzo = iscrizione.prezzo ?? 0;
-    const now = new Date();
-    const d = new Date(iscrizione.created_at);
-    const isThisMonth = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     if (fromStato === "attesa" && toStato === "pagato") {
       setPendingAmount((p) => p - prezzo);
       setPendingCount((p) => p - 1);
-      if (isThisMonth) setFacturacionMes((p) => p + prezzo);
-    } else if (fromStato !== "attesa" && toStato === "attesa") {
+      setFacturacionMes((p) => p + prezzo);
+      setIscrittiCount((p) => p + 1);
+    } else if (fromStato === "pagato" && toStato === "attesa") {
       setPendingAmount((p) => p + prezzo);
       setPendingCount((p) => p + 1);
-      if (isThisMonth) setFacturacionMes((p) => p - prezzo);
+      setFacturacionMes((p) => p - prezzo);
+      setIscrittiCount((p) => Math.max(0, p - 1));
     }
   };
 
@@ -571,13 +598,54 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUsuarioClick = async (id: string) => {
+    setUsuariosProfileLoading(true);
+    setUsuariosProfile(null);
+    const { data } = await supabase
+      .from("iscrizioni")
+      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
+      .eq("id", id)
+      .single();
+    if (data) {
+      const { data: pd } = await supabase.from("piani").select("prezzo").eq("id", (data as unknown as IscrizioneDetalle).piano_id).eq("disciplina_id", (data as unknown as IscrizioneDetalle).disciplina_id).single();
+      setUsuariosProfile({ ...(data as unknown as IscrizioneDetalle), prezzo: pd?.prezzo ?? null });
+    }
+    setUsuariosProfileLoading(false);
+  };
+
+  const handleCambiarStatoUsuario = async (nuevoStato: string) => {
+    if (!usuariosProfile) return;
+    const { error } = await supabase.from("iscrizioni").update({ stato: nuevoStato }).eq("id", usuariosProfile.id);
+    if (!error) {
+      ajustarMetrics(usuariosProfile, usuariosProfile.stato, nuevoStato);
+      setUsuariosProfile(p => p ? { ...p, stato: nuevoStato } : p);
+      setUsuariosData(prev => prev.map(u => u.id === usuariosProfile.id ? { ...u, stato: nuevoStato } : u));
+    }
+  };
+
+  const handleEliminarUsuario = async () => {
+    if (!usuariosProfile) return;
+    await supabase.from("iscrizione_orari").delete().eq("iscrizione_id", usuariosProfile.id);
+    await supabase.from("iscrizioni").delete().eq("id", usuariosProfile.id);
+    if (usuariosProfile.stato === "attesa") {
+      setPendingCount(p => Math.max(0, p - 1));
+      setPendingAmount(p => Math.max(0, p - (usuariosProfile.prezzo ?? 0)));
+    } else if (usuariosProfile.stato === "pagato") {
+      setIscrittiCount(p => Math.max(0, p - 1));
+      setFacturacionMes(p => Math.max(0, p - (usuariosProfile.prezzo ?? 0)));
+    }
+    setBookings(prev => prev.filter(b => b.id !== usuariosProfile.id));
+    setUsuariosData(prev => prev.filter(u => u.id !== usuariosProfile.id));
+    setUsuariosProfile(null);
+  };
+
   const handleKpiAlumnos = async () => {
     setKpiDrawer("alumnos");
     setKpiStudentProfile(null);
     setKpiAlumnosDisciplina(null);
     setKpiStudents([]);
     setKpiLoading(true);
-    const { data: isc } = await supabase.from("iscrizioni").select("disciplina_id, discipline(nome)");
+    const { data: isc } = await supabase.from("iscrizioni").select("disciplina_id, discipline(nome)").eq("stato", "pagato");
     const countMap: Record<string, { nombre: string; count: number }> = {};
     for (const i of (isc ?? []) as unknown as { disciplina_id: string; discipline: { nome: string } | null }[]) {
       const did = i.disciplina_id;
@@ -599,7 +667,7 @@ export default function AdminDashboard() {
     setKpiAlumnosDisciplina(disc);
     setKpiLoading(true);
     const [{ data: isc }, { data: piani }] = await Promise.all([
-      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").eq("disciplina_id", disc.disciplina_id).order("created_at", { ascending: false }),
+      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").eq("disciplina_id", disc.disciplina_id).eq("stato", "pagato").order("created_at", { ascending: false }),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
     ]);
     const pm: Record<string, number> = {};
@@ -611,7 +679,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const todayEs = DOW_ES[new Date().getDay()];
     Promise.all([
-      supabase.from("iscrizioni").select("*", { count: "exact", head: true }),
+      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "pagato"),
       supabase.from("orari").select("*", { count: "exact", head: true }).eq("giorno", todayEs).eq("attivo", true),
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true),
@@ -633,15 +701,14 @@ export default function AdminDashboard() {
 
       const now2 = new Date();
       const tm = now2.getMonth(), ty = now2.getFullYear();
-      const pm2 = tm === 0 ? 11 : tm - 1, py = tm === 0 ? ty - 1 : ty;
+      const curMonthStr = `${ty}-${String(tm + 1).padStart(2, "0")}`;
       let factMes = 0, factAnt = 0, pendAmt = 0;
       for (const isc of (r6.data ?? []) as { disciplina_id: string; piano_id: string; stato: string; created_at: string }[]) {
         const prezzo = pm[`${isc.piano_id}:${isc.disciplina_id}`] ?? 0;
         if (isc.stato === "attesa") { pendAmt += prezzo; }
         if (isc.stato === "pagato") {
-          const d = new Date(isc.created_at);
-          if (d.getMonth() === tm && d.getFullYear() === ty) factMes += prezzo;
-          if (d.getMonth() === pm2 && d.getFullYear() === py) factAnt += prezzo;
+          factMes += prezzo;
+          if (isc.created_at.substring(0, 7) < curMonthStr) factAnt += prezzo;
         }
       }
       setFacturacionMes(factMes);
@@ -802,8 +869,6 @@ export default function AdminDashboard() {
   const navItems = [
     { icon: "dashboard", label: "Resumen" },
     { icon: "calendar_month", label: "Calendario" },
-    { icon: "event_seat", label: "Reservas" },
-    { icon: "fitness_center", label: "Disciplinas" },
     { icon: "group", label: "Usuarios" },
     { icon: "receipt_long", label: "Costes" },
     { icon: "trending_up", label: "Ventas" },
@@ -946,7 +1011,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : iscrittiCount}</p>
-                  <p className="text-xs mt-2" style={{ color: "#89726c" }}>Ver listado →</p>
+                  <p className="text-xs mt-2" style={{ color: "#89726c" }}>Alumnas con pago activo →</p>
                 </button>
 
                 {/* Facturación Mes */}
@@ -971,20 +1036,20 @@ export default function AdminDashboard() {
                   </p>
                 </div>
 
-                {/* Pagos Pendientes */}
+                {/* Interesadas */}
                 <button
                   onClick={() => { setKpiDrawer("pendientes"); fetchKpiStudents({ stato: "attesa" }); }}
                   className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Pagos Pendientes</p>
-                    <div className="p-2 bg-error-container rounded-full text-on-error-container">
-                      <Icon name="payments" className="text-base" />
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Interesadas</p>
+                    <div className="p-2 rounded-full" style={{ backgroundColor: "#fff3e0", color: "#e65100" }}>
+                      <Icon name="person_search" className="text-base" />
                     </div>
                   </div>
-                  <p className="text-3xl font-bold text-error">{loading ? "—" : pendingCount}</p>
+                  <p className="text-3xl font-bold" style={{ color: "#e65100" }}>{loading ? "—" : pendingCount}</p>
                   <p className="text-xs mt-2" style={{ color: "#89726c" }}>
-                    {loading ? "—" : `${pendingAmount}€ por cobrar →`}
+                    {loading ? "—" : pendingCount > 0 ? `${pendingAmount}€ potencial → convertir` : "Sin contactos pendientes"}
                   </p>
                 </button>
 
@@ -1681,8 +1746,93 @@ export default function AdminDashboard() {
             </section>
           )}
 
-          {/* ── Dashboard principal (Calendario, Reservas, Disciplinas, Usuarios) ── */}
-          {(activeSection === "Calendario" || activeSection === "Reservas" || activeSection === "Disciplinas" || activeSection === "Usuarios") && <>
+          {/* ── Usuarios ── */}
+          {activeSection === "Usuarios" && (() => {
+            const q = usuariosSearch.toLowerCase();
+            const filtered = usuariosData.filter(u => {
+              if (!q) return true;
+              const name = NINAS_IDS.has(u.disciplina_id) && u.nome_alumna
+                ? `${u.nome_alumna} ${u.cognome_alumna ?? ""}`.toLowerCase()
+                : `${u.nome} ${u.cognome}`.toLowerCase();
+              return name.includes(q) || (u.discipline?.nome ?? "").toLowerCase().includes(q);
+            });
+            return (
+              <section className="space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-headline-md text-headline-md text-primary">Usuarios</h3>
+                    <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{usuariosLoading ? "Cargando..." : `${usuariosData.length} alumna${usuariosData.length !== 1 ? "s" : ""} registradas`}</p>
+                  </div>
+                  <div className="relative w-full md:w-72">
+                    <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none" style={{ color: "#89726c" }} />
+                    <input
+                      value={usuariosSearch}
+                      onChange={e => setUsuariosSearch(e.target.value)}
+                      placeholder="Buscar por nombre o disciplina..."
+                      className="w-full border rounded-full pl-9 pr-4 py-2.5 text-sm focus:outline-none"
+                      style={{ borderColor: "#dcc1b9", color: "#25190f" }}
+                    />
+                  </div>
+                </div>
+
+                {usuariosLoading ? (
+                  <div className="flex items-center justify-center h-40">
+                    <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#7d2b13", borderTopColor: "transparent" }} />
+                  </div>
+                ) : (
+                  <div className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm min-w-[640px]">
+                        <thead>
+                          <tr className="border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                            {["Alumna", "Tutor", "Disciplina", "Plan", "Cuota", "Estado", "Inscrita"].map(h => (
+                              <th key={h} className="text-left py-3 px-4 text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.length === 0 ? (
+                            <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: "#89726c" }}>No hay resultados</td></tr>
+                          ) : filtered.map(u => {
+                            const esNina = NINAS_IDS.has(u.disciplina_id);
+                            const alumnaName = esNina && u.nome_alumna
+                              ? `${u.nome_alumna} ${u.cognome_alumna ?? ""}`.trim()
+                              : `${u.nome} ${u.cognome}`;
+                            const tutorName = esNina && u.nome_alumna ? `${u.nome} ${u.cognome}` : null;
+                            return (
+                              <tr
+                                key={u.id}
+                                onClick={() => handleUsuarioClick(u.id)}
+                                className="border-b hover:bg-[#fff8f5] transition-colors cursor-pointer"
+                                style={{ borderColor: "#f0e0d8" }}
+                              >
+                                <td className="py-3 px-4 font-medium" style={{ color: "#25190f" }}>{alumnaName}</td>
+                                <td className="py-3 px-4 text-xs" style={{ color: "#89726c" }}>{tutorName ?? "—"}</td>
+                                <td className="py-3 px-4" style={{ color: "#25190f" }}>{u.discipline?.nome ?? "—"}</td>
+                                <td className="py-3 px-4" style={{ color: "#25190f" }}>{PLAN_LABEL[u.piano_id] ?? u.piano_id}</td>
+                                <td className="py-3 px-4 font-semibold whitespace-nowrap" style={{ color: "#7d2b13" }}>{u.prezzo != null ? `${u.prezzo}€/mes` : "—"}</td>
+                                <td className="py-3 px-4">
+                                  {u.stato === "attesa"
+                                    ? <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-error-container text-on-error-container text-xs font-semibold">Pendiente</span>
+                                    : <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>}
+                                </td>
+                                <td className="py-3 px-4 whitespace-nowrap text-xs" style={{ color: "#89726c" }}>
+                                  {new Date(u.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </section>
+            );
+          })()}
+
+          {/* ── Calendario ── */}
+          {activeSection === "Calendario" && <>
 
           {/* ── Calendario ── */}
           <section>
@@ -1924,16 +2074,16 @@ export default function AdminDashboard() {
                       : `${kpiStudentProfile.nome} ${kpiStudentProfile.cognome}`)
                     : kpiOcupacionDisciplina ? kpiOcupacionDisciplina.nombre
                     : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? kpiAlumnosDisciplina.nombre
-                    : kpiDrawer === "pendientes" ? "Pagos Pendientes"
-                    : kpiDrawer === "alumnos" ? "Todos los Alumnos"
+                    : kpiDrawer === "pendientes" ? "Interesadas sin pagar"
+                    : kpiDrawer === "alumnos" ? "Alumnas Activas"
                     : "Ocupación por Disciplina"}
                 </p>
                 <p className="text-xs" style={{ color: "#89726c" }}>
                   {kpiStudentProfile ? "Perfil"
                     : kpiOcupacionDisciplina ? "Clases"
-                    : kpiDrawer === "pendientes" ? `${pendingCount} alumnos · ${pendingAmount}€`
-                    : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? `${kpiStudents.length} alumno${kpiStudents.length !== 1 ? "s" : ""}`
-                    : kpiDrawer === "alumnos" ? `${iscrittiCount} alumnos`
+                    : kpiDrawer === "pendientes" ? `${pendingCount} contacto${pendingCount !== 1 ? "s" : ""} · ${pendingAmount}€ potencial`
+                    : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? `${kpiStudents.length} alumna${kpiStudents.length !== 1 ? "s" : ""}`
+                    : kpiDrawer === "alumnos" ? `${iscrittiCount} alumna${iscrittiCount !== 1 ? "s" : ""} activas`
                     : `${ocupacionMedia}% media`}
                 </p>
               </div>
@@ -2722,6 +2872,152 @@ export default function AdminDashboard() {
                 {nhfLoading ? "Guardando..." : "Crear clase"}
               </button>
             </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Drawer: perfil usuario ── */}
+      {(usuariosProfile || usuariosProfileLoading) && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[60]" onClick={() => { setUsuariosProfile(null); setUsuariosProfileLoading(false); }} />
+          <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white z-[70] flex flex-col shadow-2xl">
+
+            {/* Header */}
+            <div className="flex items-center gap-3 p-4 border-b border-outline-variant" style={{ backgroundColor: "#fff8f5" }}>
+              <div className="flex-1 min-w-0">
+                {usuariosProfileLoading ? (
+                  <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Cargando...</p>
+                ) : usuariosProfile ? (
+                  <>
+                    <p className="font-semibold text-sm truncate" style={{ color: "#7d2b13" }}>
+                      {NINAS_IDS.has(usuariosProfile.disciplina_id) && usuariosProfile.nome_alumna
+                        ? `${usuariosProfile.nome_alumna} ${usuariosProfile.cognome_alumna}`
+                        : `${usuariosProfile.nome} ${usuariosProfile.cognome}`}
+                    </p>
+                    <p className="text-xs" style={{ color: "#89726c" }}>Perfil completo</p>
+                  </>
+                ) : null}
+              </div>
+              <button onClick={() => { setUsuariosProfile(null); setUsuariosProfileLoading(false); }} className="p-2 rounded-full hover:bg-surface-container-high" style={{ color: "#89726c" }}>
+                <Icon name="close" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {usuariosProfileLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#7d2b13", borderTopColor: "transparent" }} />
+                </div>
+              ) : usuariosProfile ? (
+                <div className="space-y-5">
+
+                  {/* Nombre */}
+                  <div className="rounded-2xl p-4 border" style={{ backgroundColor: "#fff1e9", borderColor: "#dcc1b9" }}>
+                    {NINAS_IDS.has(usuariosProfile.disciplina_id) && usuariosProfile.nome_alumna ? (
+                      <>
+                        <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#89726c" }}>Alumna</p>
+                        <p className="text-lg font-semibold" style={{ color: "#7d2b13" }}>{usuariosProfile.nome_alumna} {usuariosProfile.cognome_alumna}</p>
+                        <div className="mt-3 pt-3 border-t" style={{ borderColor: "#dcc1b9" }}>
+                          <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#89726c" }}>Tutor</p>
+                          <p className="text-sm font-medium" style={{ color: "#25190f" }}>{usuariosProfile.nome} {usuariosProfile.cognome}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "#89726c" }}>Alumna</p>
+                        <p className="text-lg font-semibold" style={{ color: "#7d2b13" }}>{usuariosProfile.nome} {usuariosProfile.cognome}</p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Contacto */}
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Contacto</p>
+                    <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                      <Icon name="mail" className="text-base" style={{ color: "#7d2b13" }} />
+                      <p className="text-sm break-all" style={{ color: "#25190f" }}>{usuariosProfile.email}</p>
+                    </div>
+                    {usuariosProfile.telefono && (
+                      <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                        <Icon name="phone" className="text-base" style={{ color: "#7d2b13" }} />
+                        <p className="text-sm" style={{ color: "#25190f" }}>{usuariosProfile.telefono}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Inscripción */}
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Inscripción</p>
+                    <div className="rounded-xl border divide-y" style={{ borderColor: "#dcc1b9" }}>
+                      {[
+                        { icon: "school", label: "Disciplina", value: usuariosProfile.discipline?.nome ?? usuariosProfile.disciplina_id },
+                        { icon: "card_membership", label: "Plan", value: PLAN_LABEL[usuariosProfile.piano_id] ?? usuariosProfile.piano_id },
+                        { icon: "euro", label: "Cuota mensual", value: usuariosProfile.prezzo != null ? `${usuariosProfile.prezzo} €/mes` : "—" },
+                        { icon: "payments", label: "Método de pago", value: METODO_LABEL[usuariosProfile.metodo_pagamento] ?? usuariosProfile.metodo_pagamento },
+                        { icon: "calendar_today", label: "Inscrita desde", value: formatData(usuariosProfile.created_at) },
+                        { icon: "history", label: "Antigüedad", value: calcAntigüedad(usuariosProfile.created_at) },
+                      ].map(({ icon, label, value }) => (
+                        <div key={label} className="flex items-center justify-between px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Icon name={icon} className="text-sm" style={{ color: "#7d2b13" }} />
+                            <p className="text-xs" style={{ color: "#89726c" }}>{label}</p>
+                          </div>
+                          <p className="text-sm font-medium" style={{ color: "#25190f" }}>{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Horarios */}
+                  {usuariosProfile.iscrizione_orari && usuariosProfile.iscrizione_orari.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Horarios</p>
+                      <div className="rounded-xl border divide-y" style={{ borderColor: "#dcc1b9" }}>
+                        {usuariosProfile.iscrizione_orari.map((io, i) => io.orari && (
+                          <div key={i} className="flex items-center gap-3 px-4 py-3">
+                            <Icon name="schedule" className="text-sm" style={{ color: "#7d2b13" }} />
+                            <p className="text-sm" style={{ color: "#25190f" }}>
+                              {io.orari.giorno} · {io.orari.ora_inizio.substring(0, 5)} – {io.orari.ora_fine.substring(0, 5)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Estado de pago */}
+                  <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
+                    <div className="flex items-center justify-between p-4">
+                      <p className="text-sm font-medium" style={{ color: "#25190f" }}>Estado de pago</p>
+                      {usuariosProfile.stato === "attesa"
+                        ? <span className="px-3 py-1 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>
+                        : <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>}
+                    </div>
+                    {usuariosProfile.stato === "attesa" ? (
+                      <button onClick={() => handleCambiarStatoUsuario("pagato")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#7d2b13", color: "#fff" }}>
+                        Marcar como pagado
+                      </button>
+                    ) : (
+                      <button onClick={() => handleCambiarStatoUsuario("attesa")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#89726c" }}>
+                        Deshacer pago
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Eliminar */}
+                  <button
+                    onClick={handleEliminarUsuario}
+                    className="w-full py-3 rounded-xl text-sm font-semibold border transition-colors hover:bg-red-50"
+                    style={{ borderColor: "#ffcdd2", color: "#b71c1c" }}
+                  >
+                    Eliminar alumna
+                  </button>
+
+                </div>
+              ) : null}
+            </div>
+
           </div>
         </>
       )}
