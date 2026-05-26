@@ -29,38 +29,36 @@ const METODO_LABEL: Record<string, string> = {
 function buildHtml(data: InscripcionEmailData): string {
   const { nombre, apellido, inscripciones, totalMensual, metodoPago } = data;
   const esNinas = inscripciones.some(i => i.alumna);
+  const saludo = esNinas ? `${nombre} ${apellido}` : nombre;
 
   const inscripcionesHtml = inscripciones.map(ins => `
-    <div style="background:#fff8f5;border:1px solid #dcc1b9;border-radius:16px;padding:20px;margin-bottom:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-        <div>
-          <p style="margin:0;font-size:16px;font-weight:600;color:#25190f;">${ins.disciplina}</p>
-          <p style="margin:4px 0 0;font-size:13px;color:#89726c;">Plan ${ins.plan}</p>
-        </div>
-        <p style="margin:0;font-size:18px;font-weight:700;color:#7d2b13;">${ins.precio}€/mes</p>
-      </div>
-      ${ins.alumna ? `
-        <div style="background:#fff1e9;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
-          <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#89726c;font-weight:600;">Alumna</p>
-          <p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#7d2b13;">${ins.alumna.nombre} ${ins.alumna.apellido}</p>
-        </div>
-      ` : ""}
-      ${ins.horarios.length > 0 ? `
-        <div>
-          <p style="margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#89726c;font-weight:600;">Horarios</p>
-          ${ins.horarios.map(h => `
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-              <span style="width:6px;height:6px;border-radius:50%;background:#7d2b13;display:inline-block;flex-shrink:0;"></span>
-              <span style="font-size:13px;color:#25190f;">${h}</span>
-            </div>
-          `).join("")}
-        </div>
-      ` : ""}
-    </div>
+    <tr>
+      <td style="padding:0 32px 16px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <!-- Disciplina -->
+            <td width="48%" valign="top" style="background:#fff1e9;border-radius:16px;padding:18px 16px;">
+              <p style="margin:0 0 8px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#89726c;font-weight:700;">&#127939; Disciplina</p>
+              <p style="margin:0;font-size:17px;font-weight:700;color:#25190f;line-height:1.3;">${ins.disciplina}</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#89726c;">${ins.plan}</p>
+              ${ins.alumna ? `<p style="margin:10px 0 0;font-size:12px;color:#7d2b13;font-weight:600;">Alumna: ${ins.alumna.nombre} ${ins.alumna.apellido}</p>` : ""}
+            </td>
+            <td width="4%"></td>
+            <!-- Horarios -->
+            <td width="48%" valign="top" style="background:#fff1e9;border-radius:16px;padding:18px 16px;">
+              <p style="margin:0 0 8px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#89726c;font-weight:700;">&#128337; Horarios</p>
+              ${ins.horarios.length > 0
+                ? ins.horarios.map(h => `<p style="margin:0 0 4px;font-size:13px;color:#25190f;font-weight:500;">${h}</p>`).join("")
+                : `<p style="margin:0;font-size:13px;color:#89726c;font-style:italic;">Por confirmar</p>`
+              }
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
   `).join("");
 
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -68,62 +66,105 @@ function buildHtml(data: InscripcionEmailData): string {
   <title>Confirmación de inscripción</title>
 </head>
 <body style="margin:0;padding:0;background:#f5ede8;font-family:'Helvetica Neue',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5ede8;padding:32px 16px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5ede8;padding:40px 16px;">
     <tr>
       <td align="center">
-        <table width="100%" style="max-width:560px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 4px 24px rgba(37,25,15,0.10);">
+        <table width="100%" style="max-width:520px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 8px 40px rgba(37,25,15,0.10);">
 
-          <!-- Header -->
+          <!-- Logo -->
           <tr>
-            <td style="background:#7d2b13;padding:36px 32px;text-align:center;">
-              <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:3px;color:#f5c9b8;font-weight:600;">Andrea Carrió Studio</p>
-              <h1 style="margin:10px 0 0;font-size:28px;color:#ffffff;font-weight:300;letter-spacing:1px;">¡Inscripción confirmada!</h1>
+            <td style="padding:40px 32px 8px;text-align:center;">
+              <div style="width:68px;height:68px;border-radius:50%;background:#7d2b13;margin:0 auto 14px;line-height:68px;text-align:center;">
+                <span style="font-size:24px;color:#ffffff;font-style:italic;font-family:Georgia,'Times New Roman',serif;letter-spacing:1px;">ac</span>
+              </div>
+              <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:3px;color:#89726c;font-weight:600;">Andrea Carrió Studio</p>
+              <p style="margin:3px 0 0;font-size:10px;color:#bcb0ab;letter-spacing:1px;">Alfauir &middot; Valencia</p>
             </td>
           </tr>
 
-          <!-- Body -->
+          <!-- Heading -->
           <tr>
-            <td style="padding:32px;">
-
-              <!-- Saludo -->
-              <p style="font-size:16px;color:#25190f;margin:0 0 8px;">Hola, <strong>${esNinas ? `${nombre} ${apellido}` : `${nombre}`}</strong></p>
-              <p style="font-size:14px;color:#56423d;margin:0 0 28px;line-height:1.6;">
-                Tu inscripción ha sido recibida correctamente. En breve nos ponemos en contacto contigo para confirmar los detalles y resolver cualquier duda.
+            <td style="padding:28px 40px 32px;text-align:center;">
+              <h1 style="margin:0 0 14px;font-size:28px;font-weight:600;color:#25190f;font-family:Georgia,'Times New Roman',serif;line-height:1.35;">¡Gracias por unirte a<br>Andrea Carrió Studio!</h1>
+              <p style="margin:0;font-size:14px;color:#56423d;line-height:1.75;">
+                Hola <strong>${saludo}</strong>, estamos encantadas de recibirte en nuestra comunidad. Tu camino hacia el movimiento consciente, la gracia y el bienestar comienza aquí.
               </p>
+            </td>
+          </tr>
 
-              <!-- Inscripciones -->
-              <p style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#89726c;font-weight:600;margin:0 0 14px;">Detalle de tu inscripción</p>
-              ${inscripcionesHtml}
+          <!-- Inscripciones -->
+          ${inscripcionesHtml}
 
-              <!-- Total + pago -->
-              <div style="background:#fff8f5;border:1px solid #dcc1b9;border-radius:16px;padding:20px;margin-top:8px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                  <span style="font-size:14px;color:#56423d;">Total mensual</span>
-                  <span style="font-size:24px;font-weight:700;color:#7d2b13;">${totalMensual}€</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #dcc1b9;padding-top:12px;">
-                  <span style="font-size:12px;color:#89726c;">Método de pago</span>
-                  <span style="font-size:13px;font-weight:600;color:#25190f;">${METODO_LABEL[metodoPago] ?? metodoPago}</span>
-                </div>
-              </div>
+          <!-- Resumen de pago -->
+          <tr>
+            <td style="padding:0 32px 28px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f5;border:1px solid #f0ddd5;border-radius:16px;overflow:hidden;">
+                <tr>
+                  <td style="padding:16px 20px 12px;">
+                    <p style="margin:0 0 14px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#89726c;font-weight:700;">&#128179; Resumen de pago</p>
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;padding-bottom:10px;">Método de pago</td>
+                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:10px;">${METODO_LABEL[metodoPago] ?? metodoPago}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;border-top:1px solid #f0ddd5;padding-top:10px;">Estado</td>
+                        <td style="text-align:right;border-top:1px solid #f0ddd5;padding-top:10px;">
+                          ${metodoPago === "tarjeta" || metodoPago === "google-pay" || metodoPago === "apple-pay" || metodoPago === "paypal"
+                            ? `<span style="background:#e8f5e9;color:#2e7d32;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;">Pagado &middot; ${totalMensual}€</span>`
+                            : `<span style="background:#fff3e0;color:#e65100;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;">Pendiente &middot; ${totalMensual}€/mes</span>`
+                          }
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-              <!-- Aviso -->
-              <div style="background:#fff3e0;border-radius:12px;padding:16px;margin-top:20px;border-left:3px solid #e65100;">
-                <p style="margin:0;font-size:13px;color:#56423d;line-height:1.5;">
-                  <strong style="color:#e65100;">Recuerda:</strong> la plaza queda reservada pero la inscripción se confirma definitivamente con el pago de la primera cuota.
-                </p>
-              </div>
+          <!-- Aviso -->
+          <tr>
+            <td style="padding:0 32px 28px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f5;border-left:3px solid #7d2b13;border-radius:0 12px 12px 0;">
+                <tr>
+                  <td style="padding:14px 18px;">
+                    ${metodoPago === "tarjeta" || metodoPago === "google-pay" || metodoPago === "apple-pay" || metodoPago === "paypal" ? `
+                    <p style="margin:0;font-size:13px;color:#56423d;line-height:1.6;">
+                      <strong style="color:#7d2b13;">¡Todo listo!</strong> Hemos recibido tu pago correctamente. En breve nos ponemos en contacto contigo para confirmar los horarios y darte la bienvenida en persona.
+                    </p>
+                    ` : `
+                    <p style="margin:0;font-size:13px;color:#56423d;line-height:1.6;">
+                      <strong style="color:#7d2b13;">Recuerda:</strong> has elegido pagar en la escuela. Tu plaza queda reservada, pero la inscripción se confirma definitivamente cuando abones la primera cuota de <strong>${totalMensual}€</strong> directamente en el estudio.
+                    </p>
+                    `}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
+          <!-- CTA -->
+          <tr>
+            <td style="padding:0 32px 40px;text-align:center;">
+              <a href="https://andrecarriostudio.es" style="display:inline-block;background:#7d2b13;color:#ffffff;text-decoration:none;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:15px 36px;border-radius:9999px;">
+                Visita nuestro estudio &rarr;
+              </a>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="background:#fff8f5;border-top:1px solid #dcc1b9;padding:24px 32px;text-align:center;">
-              <p style="margin:0;font-size:13px;color:#7d2b13;font-weight:600;">Andrea Carrió Studio</p>
-              <p style="margin:6px 0 0;font-size:12px;color:#89726c;">C/ Motilla del Palancar 34, Alfauir (Valencia)</p>
-              <p style="margin:4px 0 0;font-size:12px;color:#89726c;">andreacarriostudio@gmail.com</p>
-              <p style="margin:16px 0 0;font-size:11px;color:#bcb0ab;">Has recibido este email porque completaste un formulario de inscripción en andrecarriostudio.com</p>
+            <td style="background:#fff8f5;border-top:1px solid #f0ddd5;padding:28px 32px;text-align:center;">
+              <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#25190f;">Andrea Carrió Studio</p>
+              <p style="margin:5px 0 0;font-size:11px;color:#89726c;">C/ Motilla del Palancar 34, Alfauir (Valencia)</p>
+              <p style="margin:3px 0 0;font-size:11px;color:#89726c;">andreacarriostudio@gmail.com</p>
+              <p style="margin:16px 0 6px;">
+                <a href="https://andrecarriostudio.es" style="color:#89726c;text-decoration:none;font-size:10px;margin:0 8px;">Privacidad</a>
+                <a href="https://andrecarriostudio.es" style="color:#89726c;text-decoration:none;font-size:10px;margin:0 8px;">Términos</a>
+                <a href="mailto:andreacarriostudio@gmail.com" style="color:#89726c;text-decoration:none;font-size:10px;margin:0 8px;">Contacto</a>
+              </p>
+              <p style="margin:6px 0 0;font-size:10px;color:#bcb0ab;letter-spacing:1px;">© 2025 ANDREA CARRIÓ STUDIO · ALFAUIR, VALENCIA</p>
             </td>
           </tr>
 
@@ -132,8 +173,7 @@ function buildHtml(data: InscripcionEmailData): string {
     </tr>
   </table>
 </body>
-</html>
-  `.trim();
+</html>`.trim();
 }
 
 export async function POST(req: NextRequest) {
@@ -147,7 +187,7 @@ export async function POST(req: NextRequest) {
     const { error } = await resend.emails.send({
       from: process.env.FROM_EMAIL ?? "onboarding@resend.dev",
       to: data.email,
-      subject: "Tu inscripción en Andrea Carrió Studio — confirmada ✓",
+      subject: "¡Bienvenida a Andrea Carrió Studio! Tu inscripción está confirmada",
       html: buildHtml(data),
     });
 
