@@ -528,6 +528,31 @@ export default function AdminDashboard() {
     const newPrezzo = nifPiani.find(p => p.id === nif.piano_id)?.prezzo ?? 0;
     setPendingCount(p => p + 1);
     setPendingAmount(p => p + newPrezzo);
+    // Fire-and-forget confirmation email
+    const disciplinaNombre = orari.find(o => o.disciplina_id === nif.disciplina_id)?.discipline?.nome ?? nif.disciplina_id;
+    const planNombre = nifPiani.find(p => p.id === nif.piano_id)?.nome ?? nif.piano_id;
+    const horariosStr = nif.horarios.map(id => {
+      const o = orari.find(or => or.id === id);
+      return o ? `${o.giorno} ${o.ora_inizio}–${o.ora_fine}` : id;
+    });
+    fetch("/api/send-confirmation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: nif.email.toLowerCase().trim(),
+        nombre: nif.nome,
+        apellido: nif.cognome,
+        inscripciones: [{
+          disciplina: disciplinaNombre,
+          plan: planNombre,
+          precio: newPrezzo,
+          horarios: horariosStr,
+          ...(nif.nome_alumna ? { alumna: { nombre: nif.nome_alumna, apellido: nif.cognome_alumna ?? "" } } : {}),
+        }],
+        totalMensual: newPrezzo,
+        metodoPago: nif.metodo_pagamento,
+      }),
+    }).catch(() => {});
     setNif({ nome: "", cognome: "", email: "", telefono: "", disciplina_id: "", piano_id: "", metodo_pagamento: "en-escuela", nome_alumna: "", cognome_alumna: "", horarios: [] });
     setNifPiani([]);
     setShowNuevaInscripcion(false);
