@@ -15,6 +15,7 @@ export interface InscripcionEmailData {
     alumna?: { nombre: string; apellido: string };
   }[];
   totalMensual: number;
+  matricula: number;
   metodoPago: string;
 }
 
@@ -31,7 +32,7 @@ export function buildEmailHtml(data: InscripcionEmailData): string {
 }
 
 function buildHtml(data: InscripcionEmailData): string {
-  const { nombre, apellido, inscripciones, totalMensual, metodoPago } = data;
+  const { nombre, apellido, inscripciones, totalMensual, matricula, metodoPago } = data;
   const esNinas = inscripciones.some(i => i.alumna);
   const saludo = esNinas ? `${nombre} ${apellido}` : nombre;
 
@@ -107,6 +108,18 @@ function buildHtml(data: InscripcionEmailData): string {
                   <td style="padding:16px 20px 12px;">
                     <p style="margin:0 0 14px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#89726c;font-weight:700;">&#128179; Resumen de pago</p>
                     <table width="100%" cellpadding="0" cellspacing="0">
+                      ${matricula > 0 ? `
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;padding-bottom:6px;">Cuota mensual</td>
+                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:6px;">${totalMensual}€/mes</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;padding-bottom:10px;">
+                          Matrícula <span style="font-size:11px;color:#89726c;">(pago único)</span>
+                        </td>
+                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:10px;">${matricula}€</td>
+                      </tr>
+                      ` : ""}
                       <tr>
                         <td style="font-size:13px;color:#56423d;padding-bottom:10px;">Método de pago</td>
                         <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:10px;">${METODO_LABEL[metodoPago] ?? metodoPago}</td>
@@ -115,8 +128,8 @@ function buildHtml(data: InscripcionEmailData): string {
                         <td style="font-size:13px;color:#56423d;border-top:1px solid #f0ddd5;padding-top:10px;">Estado</td>
                         <td style="text-align:right;border-top:1px solid #f0ddd5;padding-top:10px;">
                           ${metodoPago === "tarjeta" || metodoPago === "google-pay" || metodoPago === "apple-pay" || metodoPago === "paypal"
-                            ? `<span style="background:#e8f5e9;color:#2e7d32;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;">Pagado &middot; ${totalMensual}€</span>`
-                            : `<span style="background:#fff3e0;color:#e65100;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;">Pendiente &middot; ${totalMensual}€/mes</span>`
+                            ? `<span style="background:#e8f5e9;color:#2e7d32;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;">Pagado &middot; ${totalMensual + matricula}€</span>`
+                            : `<span style="background:#fff3e0;color:#e65100;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;">Pendiente &middot; ${totalMensual}€/mes${matricula > 0 ? ` + ${matricula}€ matrícula` : ""}</span>`
                           }
                         </td>
                       </tr>
@@ -139,7 +152,7 @@ function buildHtml(data: InscripcionEmailData): string {
                     </p>
                     ` : `
                     <p style="margin:0;font-size:13px;color:#56423d;line-height:1.6;">
-                      <strong style="color:#7d2b13;">Recuerda:</strong> has elegido pagar en la escuela. Tu plaza queda reservada, pero la inscripción se confirma definitivamente cuando abones la primera cuota de <strong>${totalMensual}€</strong> directamente en el estudio.
+                      <strong style="color:#7d2b13;">Recuerda:</strong> has elegido pagar en la escuela. Tu plaza queda reservada, pero la inscripción se confirma definitivamente cuando abones ${matricula > 0 ? `la matrícula de <strong>${matricula}€</strong> + ` : ""}la primera cuota de <strong>${totalMensual}€</strong> directamente en el estudio.
                     </p>
                     `}
                   </td>

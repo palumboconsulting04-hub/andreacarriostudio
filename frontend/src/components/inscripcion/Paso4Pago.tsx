@@ -70,6 +70,10 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
   const bozzeNinas = bozze.map((b, i) => ({ bozza: b, idx: i })).filter(({ bozza }) => bozza.esNinas);
   const totalMensual = bozze.reduce((s, b) => s + b.planPrecio, 0);
 
+  const MATRICULA_OFERTA_HASTA = new Date("2026-07-31T23:59:59");
+  const matriculaPrecio = new Date() <= MATRICULA_OFERTA_HASTA ? 35 : 50;
+  const matriculaOferta = new Date() <= MATRICULA_OFERTA_HASTA;
+
   const contactoOk = segundaInscripcion
     ? true
     : estado.nombre.trim() !== "" && estado.apellido.trim() !== "" && estado.email.trim() !== "";
@@ -104,7 +108,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
           nombreAlumna: b.esNinas ? (alumnas[i]?.nombre ?? "") : "",
           apellidoAlumna: b.esNinas ? (alumnas[i]?.apellido ?? "") : "",
         };
-        const id = await submitIscrizione(cId, bEstado);
+        const id = await submitIscrizione(cId, bEstado, i === 0 ? matriculaPrecio : 0);
         if (i === 0) firstId = id;
       }
 
@@ -114,6 +118,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
         nombre: estado.nombre,
         apellido: estado.apellido,
         totalMensual,
+        matricula: matriculaPrecio,
         metodoPago: estado.metodoPago,
         inscripciones: bozze.map((b, i) => {
           const slots = horariosPorDisciplina[b.disciplinaId] ?? [];
@@ -238,19 +243,48 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
 
             <div className="space-y-3 mb-5">
               {bozze.map((b, i) => (
-                <div key={i} className="pb-3 border-b last:border-0" style={{ borderColor: "#dcc1b9" }}>
+                <div key={i} className="pb-3 border-b" style={{ borderColor: "#dcc1b9" }}>
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-sm font-medium" style={{ color: "#25190f" }}>{b.disciplinaNombre}</p>
                       <p className="text-xs" style={{ color: "#89726c" }}>{b.planNombre} · {b.horarios.length} horario{b.horarios.length !== 1 ? "s" : ""}</p>
                     </div>
-                    <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>{b.planPrecio}€</p>
+                    <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>{b.planPrecio}€/mes</p>
                   </div>
                 </div>
               ))}
 
-              <div className="flex justify-between items-end pt-1">
-                <span className="text-sm" style={{ color: "#56423d" }}>Total mensual</span>
+              {/* Matrícula */}
+              <div className="rounded-2xl p-4 border" style={{ backgroundColor: "#fff8f5", borderColor: "#dcc1b9" }}>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "#25190f" }}>Matrícula</p>
+                    <p className="text-xs leading-snug mt-0.5" style={{ color: "#56423d" }}>
+                      Incluye evaluación inicial, plaza reservada y material de bienvenida
+                    </p>
+                    <p className="text-xs mt-1 italic" style={{ color: "#89726c" }}>
+                      Pago único — no se repite mientras sigas con nosotros
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    {matriculaOferta && (
+                      <p className="text-xs line-through mb-0.5" style={{ color: "#bcb0ab" }}>50€</p>
+                    )}
+                    <p className="text-sm font-bold" style={{ color: "#7d2b13" }}>{matriculaPrecio}€</p>
+                    {matriculaOferta && (
+                      <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full" style={{ backgroundColor: "#7d2b13", color: "#fff" }}>
+                        Hasta 31 jul
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-end pt-1 border-t" style={{ borderColor: "#dcc1b9" }}>
+                <div>
+                  <span className="text-sm" style={{ color: "#56423d" }}>Total mensual</span>
+                  <p className="text-xs" style={{ color: "#89726c" }}>+ {matriculaPrecio}€ matrícula (1ª vez)</p>
+                </div>
                 <span className="text-3xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>{totalMensual}€</span>
               </div>
             </div>

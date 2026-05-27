@@ -15,6 +15,7 @@ export async function GET() {
       },
     ],
     totalMensual: 90,
+    matricula: 35,
     metodoPago: "en-escuela",
   });
 

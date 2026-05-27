@@ -121,7 +121,7 @@ export async function getOrCreateContatto(
   return data.id;
 }
 
-export async function submitIscrizione(contattoId: string, estado: InscripcionState): Promise<string> {
+export async function submitIscrizione(contattoId: string, estado: InscripcionState, matricula = 0): Promise<string> {
   const { data: iscrizione, error } = await supabase
     .from("iscrizioni")
     .insert({
@@ -136,6 +136,7 @@ export async function submitIscrizione(contattoId: string, estado: InscripcionSt
       stato: "attesa",
       nome_alumna: estado.nombreAlumna || null,
       cognome_alumna: estado.apellidoAlumna || null,
+      matricula,
     })
     .select("id")
     .single();
