@@ -122,40 +122,37 @@ export async function getOrCreateContatto(
 }
 
 export async function submitIscrizione(contattoId: string, estado: InscripcionState, matricula = 0): Promise<string> {
-  const { data: iscrizione, error } = await supabase
-    .from("iscrizioni")
-    .insert({
-      contatto_id: contattoId,
-      nome: estado.nombre,
-      cognome: estado.apellido,
-      email: estado.email,
-      telefono: estado.telefono || null,
-      disciplina_id: estado.disciplina,
-      piano_id: estado.plan,
-      metodo_pagamento: estado.metodoPago,
-      stato: "attesa",
-      nome_alumna: estado.nombreAlumna || null,
-      cognome_alumna: estado.apellidoAlumna || null,
-      matricula,
-    })
-    .select("id")
-    .single();
+  const payload = {
+    contatto_id: contattoId,
+    nome: estado.nombre,
+    cognome: estado.apellido,
+    email: estado.email,
+    telefono: estado.telefono || null,
+    disciplina_id: estado.disciplina,
+    piano_id: estado.plan,
+    metodo_pagamento: estado.metodoPago,
+    stato: "attesa",
+    nome_alumna: estado.nombreAlumna || null,
+    cognome_alumna: estado.apellidoAlumna || null,
+  };
 
+  // Try with matricula; if column doesn't exist yet fall back without it
+  let result = await supabase.from("iscrizioni").insert({ ...payload, matricula }).select("id").single();
+  if (result.error?.message?.includes("matricula")) {
+    result = await supabase.from("iscrizioni").insert(payload).select("id").single();
+  }
+
+  const { data: iscrizione, error } = result;
   if (error) throw error;
 
   if (estado.horarios.length > 0) {
     const { error: orariError } = await supabase
       .from("iscrizione_orari")
-      .insert(
-        estado.horarios.map((orario_id) => ({
-          iscrizione_id: iscrizione.id,
-          orario_id,
-        }))
-      );
+      .insert(estado.horarios.map((orario_id) => ({ iscrizione_id: iscrizione!.id, orario_id })));
     if (orariError) throw orariError;
   }
 
-  return iscrizione.id;
+  return iscrizione!.id;
 }
 
 export interface ProfiloMarketing {
