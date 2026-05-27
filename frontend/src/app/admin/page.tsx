@@ -236,6 +236,7 @@ export default function AdminDashboard() {
   const [ocupacionDisciplinas, setOcupacionDisciplinas] = useState<OcupacionDisciplina[]>([]);
   const [nuevasInscripcionesMes, setNuevasInscripcionesMes] = useState(0);
   const [avgPricePerStudent, setAvgPricePerStudent] = useState(0);
+  const [matriculasMes, setMatriculasMes] = useState(0);
 
   // Sofia chat
   type SofiaMessage = { role: "user" | "assistant"; content: string };
@@ -340,7 +341,7 @@ export default function AdminDashboard() {
     if (activeSection !== "Finanzas" && activeSection !== "Resumen") return;
     setFinanzasLoading(true);
     Promise.all([
-      supabase.from("iscrizioni").select("created_at, disciplina_id, piano_id").eq("stato", "pagato"),
+      supabase.from("iscrizioni").select("created_at, disciplina_id, piano_id, matricula").eq("stato", "pagato"),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
       supabase.from("costes").select("importe_mensual").eq("activo", true),
     ]).then(([{ data: isc }, { data: piani }, { data: costes }]) => {
@@ -354,9 +355,13 @@ export default function AdminDashboard() {
         const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
         const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" });
-        const ingresos = ((isc ?? []) as { created_at: string; disciplina_id: string; piano_id: string }[])
+        const mrr = ((isc ?? []) as { created_at: string; disciplina_id: string; piano_id: string; matricula: number }[])
           .filter(v => v.created_at.substring(0, 7) <= mes)
           .reduce((s, v) => s + (pm[`${v.piano_id}:${v.disciplina_id}`] ?? 0), 0);
+        const matMes = ((isc ?? []) as { created_at: string; matricula: number }[])
+          .filter(v => v.created_at.substring(0, 7) === mes)
+          .reduce((s, v) => s + (v.matricula ?? 0), 0);
+        const ingresos = mrr + matMes;
         return { mes, label, ingresos, costes: costeMensual };
       });
       setFinanzasMensual(monthly);
@@ -709,7 +714,7 @@ export default function AdminDashboard() {
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true),
       supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))").order("created_at", { ascending: false }).limit(5),
-      supabase.from("iscrizioni").select("disciplina_id, piano_id, stato, created_at"),
+      supabase.from("iscrizioni").select("disciplina_id, piano_id, stato, created_at, matricula"),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
     ]).then(([r1, r2, r3, r4, r5, r6, r7]) => {
       setIscrittiCount(r1.count ?? 0);
@@ -739,6 +744,10 @@ export default function AdminDashboard() {
       setFacturacionMes(factMes);
       setFacturacionMesAnterior(factAnt);
       setPendingAmount(pendAmt);
+      const matriculasEsteMes = ((r6.data ?? []) as { created_at: string; matricula: number }[])
+        .filter(i => i.created_at.substring(0, 7) === curMonthStr)
+        .reduce((s, i) => s + (i.matricula ?? 0), 0);
+      setMatriculasMes(matriculasEsteMes);
       const nuevasEstesMes = ((r6.data ?? []) as { created_at: string }[]).filter(i => {
         const d = new Date(i.created_at);
         return d.getMonth() === tm && d.getFullYear() === ty;
@@ -1122,6 +1131,20 @@ export default function AdminDashboard() {
                   <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : nuevasInscripcionesMes}</p>
                   <p className="text-xs mt-2" style={{ color: "#89726c" }}>
                     {new Date().toLocaleDateString("es-ES", { month: "long" })}
+                  </p>
+                </div>
+
+                {/* Matrículas */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Matrículas</p>
+                    <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
+                      <Icon name="school" className="text-base" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : `${matriculasMes}€`}</p>
+                  <p className="text-xs mt-2" style={{ color: "#89726c" }}>
+                    {nuevasInscripcionesMes > 0 ? `${nuevasInscripcionesMes} nueva${nuevasInscripcionesMes !== 1 ? "s" : ""} · pago único` : "Sin nuevas altas"}
                   </p>
                 </div>
 
