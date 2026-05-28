@@ -924,7 +924,7 @@ export default function AdminDashboard() {
       {/* ── Sidebar ── */}
       <nav
         className={`bg-surface-container-low text-primary h-screen w-64 fixed left-0 top-0 border-r border-outline-variant flex flex-col py-gutter px-4 z-50 transition-transform duration-300
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:w-56`}
       >
         {/* Close button (mobile only) */}
         <button
@@ -935,47 +935,49 @@ export default function AdminDashboard() {
           <Icon name="close" />
         </button>
 
-        <div className="mb-stack-lg flex flex-col items-center">
+        {/* Logo — full on mobile, compact on desktop */}
+        <div className="mb-stack-lg flex flex-col items-center md:mb-4 md:pt-2">
           <Image
             src="/logo.png"
             alt="Logo Andrea Carrió Studio"
             width={96}
             height={96}
-            className="rounded-full object-cover mb-4"
+            className="rounded-full object-cover mb-4 md:w-12 md:h-12 md:mb-2"
           />
-          <h1 className="font-display-lg text-2xl font-semibold text-primary text-center tracking-tight">
+          <h1 className="font-display-lg text-2xl font-semibold text-primary text-center tracking-tight md:text-sm md:font-bold">
             Studio Admin
           </h1>
-          <p className="font-label-md text-label-md text-on-surface-variant">Gestión del Estudio</p>
+          <p className="font-label-md text-label-md text-on-surface-variant md:hidden">Gestión del Estudio</p>
         </div>
 
-        <button onClick={() => setShowNuevoHorario(true)} className="bg-primary text-on-primary rounded-full py-3 px-6 mb-2 font-label-md text-label-md hover:bg-secondary transition-colors flex items-center justify-center gap-2">
+        {/* Action buttons — visible on mobile, hidden on desktop (moved to top bar) */}
+        <button onClick={() => setShowNuevoHorario(true)} className="bg-primary text-on-primary rounded-full py-3 px-6 mb-2 font-label-md text-label-md hover:bg-secondary transition-colors flex items-center justify-center gap-2 md:hidden">
           <Icon name="add" className="text-base" /> Nueva Clase
         </button>
-        <button onClick={() => setShowNuevaInscripcion(true)} className="rounded-full py-3 px-6 mb-stack-md font-label-md text-label-md border transition-colors flex items-center justify-center gap-2 hover:bg-surface-container-high" style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}>
+        <button onClick={() => setShowNuevaInscripcion(true)} className="rounded-full py-3 px-6 mb-stack-md font-label-md text-label-md border transition-colors flex items-center justify-center gap-2 hover:bg-surface-container-high md:hidden" style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}>
           <Icon name="person_add" className="text-base" /> Añadir alumna
         </button>
 
-        <ul className="flex-1 space-y-2 overflow-y-auto min-h-0">
+        <ul className="flex-1 space-y-1 overflow-y-auto min-h-0 md:space-y-0.5">
           {navItems.map((item) => (
             <li key={item.label}>
               <a
                 href="#"
                 onClick={() => { setActiveSection(item.label); setSidebarOpen(false); }}
-                className={`flex items-center px-4 py-3 rounded-lg transition-all font-label-md text-label-md ${
+                className={`flex items-center px-4 py-3 rounded-xl transition-all font-label-md text-label-md md:py-3 md:px-3 md:rounded-lg ${
                   activeSection === item.label
-                    ? "text-primary border-r-4 border-primary bg-surface-container-highest font-bold scale-95"
+                    ? "text-primary bg-surface-container-highest font-bold border-l-4 border-primary md:border-l-[3px]"
                     : "text-on-surface-variant hover:text-primary hover:bg-surface-container-high duration-200"
                 }`}
               >
-                <Icon name={item.icon} className="mr-3" />
+                <Icon name={item.icon} className="mr-3 md:mr-2.5 md:text-[18px]" />
                 {item.label}
               </a>
             </li>
           ))}
         </ul>
 
-        <ul className="mt-auto space-y-2 border-t border-outline-variant pt-4">
+        <ul className="mt-auto space-y-1 border-t border-outline-variant pt-4 md:space-y-0.5">
           {[
             { icon: "settings", label: "Configuración" },
             { icon: "help_outline", label: "Soporte" },
@@ -983,9 +985,9 @@ export default function AdminDashboard() {
             <li key={item.label}>
               <a
                 href="#"
-                className="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 font-label-md text-label-md"
+                className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 font-label-md text-label-md md:py-2.5 md:px-3 md:rounded-lg md:text-sm"
               >
-                <Icon name={item.icon} className="mr-3" />
+                <Icon name={item.icon} className="mr-3 md:mr-2.5 md:text-[18px]" />
                 {item.label}
               </a>
             </li>
@@ -994,10 +996,10 @@ export default function AdminDashboard() {
       </nav>
 
       {/* ── Main ── */}
-      <div className="flex-1 flex flex-col min-h-screen md:ml-64">
+      <div className="flex-1 flex flex-col min-h-screen md:ml-56">
 
         {/* Top bar */}
-        <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant fixed top-0 left-0 right-0 md:left-64 h-16 shadow-sm flex justify-between items-center px-4 md:px-margin-desktop z-40">
+        <header className="bg-surface/80 backdrop-blur-md border-b border-outline-variant fixed top-0 left-0 right-0 md:left-56 h-16 shadow-sm flex justify-between items-center px-4 md:px-margin-desktop z-40">
           {/* Hamburger (mobile only) */}
           <button
             className="md:hidden p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors"
@@ -1014,7 +1016,28 @@ export default function AdminDashboard() {
             Studio Admin
           </p>
 
-          <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-semibold text-sm border-2 border-surface-container-high">
+          {/* Action buttons — desktop only */}
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={() => setShowNuevoHorario(true)}
+              className="flex items-center gap-1.5 bg-primary text-on-primary rounded-full py-2 px-4 text-sm font-semibold hover:bg-secondary transition-colors"
+            >
+              <Icon name="add" className="text-base" /> Nueva Clase
+            </button>
+            <button
+              onClick={() => setShowNuevaInscripcion(true)}
+              className="flex items-center gap-1.5 rounded-full py-2 px-4 text-sm font-semibold border hover:bg-surface-container-high transition-colors"
+              style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}
+            >
+              <Icon name="person_add" className="text-base" /> Añadir alumna
+            </button>
+            <div className="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-semibold text-sm border-2 border-surface-container-high ml-2">
+              AC
+            </div>
+          </div>
+
+          {/* Avatar — mobile only */}
+          <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-semibold text-sm border-2 border-surface-container-high md:hidden">
             AC
           </div>
         </header>

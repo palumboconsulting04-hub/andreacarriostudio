@@ -120,6 +120,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
         totalMensual,
         matricula: matriculaPrecio,
         metodoPago: estado.metodoPago,
+        notifyAdmin: true,
         inscripciones: bozze.map((b, i) => {
           const slots = horariosPorDisciplina[b.disciplinaId] ?? [];
           const horariosLabel = b.horarios

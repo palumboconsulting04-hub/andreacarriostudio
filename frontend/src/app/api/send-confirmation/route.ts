@@ -17,6 +17,7 @@ export interface InscripcionEmailData {
   totalMensual: number;
   matricula: number;
   metodoPago: string;
+  notifyAdmin?: boolean;
 }
 
 const METODO_LABEL: Record<string, string> = {
@@ -69,6 +70,7 @@ function buildHtml(data: InscripcionEmailData): string {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Confirmación de inscripción</title>
+  <link rel="icon" href="https://andreacarriostudio.vercel.app/logo-icon.png" />
 </head>
 <body style="margin:0;padding:0;background:#f5ede8;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5ede8;padding:40px 16px;">
@@ -79,11 +81,7 @@ function buildHtml(data: InscripcionEmailData): string {
           <!-- Logo -->
           <tr>
             <td style="padding:40px 32px 8px;text-align:center;">
-              <div style="width:68px;height:68px;border-radius:50%;background:#7d2b13;margin:0 auto 14px;line-height:68px;text-align:center;">
-                <span style="font-size:24px;color:#ffffff;font-style:italic;font-family:Georgia,'Times New Roman',serif;letter-spacing:1px;">ac</span>
-              </div>
-              <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:3px;color:#89726c;font-weight:600;">Andrea Carrió Studio</p>
-              <p style="margin:3px 0 0;font-size:10px;color:#bcb0ab;letter-spacing:1px;">Alfauir &middot; Valencia</p>
+              <img src="https://andreacarriostudio.vercel.app/logo-email.png" alt="Andrea Carrió Studio" width="160" style="display:block;margin:0 auto;width:160px;max-width:160px;" />
             </td>
           </tr>
 
@@ -193,6 +191,30 @@ function buildHtml(data: InscripcionEmailData): string {
 </html>`.trim();
 }
 
+function buildAdminNotificationHtml(data: InscripcionEmailData): string {
+  const metodo = METODO_LABEL[data.metodoPago] ?? data.metodoPago;
+  const total = data.totalMensual + (data.matricula ?? 0);
+  const rows = data.inscripciones.map(ins => {
+    const alumna = ins.alumna ? ` · Alumna: ${ins.alumna.nombre} ${ins.alumna.apellido}` : "";
+    const horarios = ins.horarios.length > 0 ? ins.horarios.join(", ") : "Sin horario";
+    return `<tr><td style="padding:6px 0;border-bottom:1px solid #eee;">${ins.disciplina} — ${ins.plan}${alumna}</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right;">${horarios}</td></tr>`;
+  }).join("");
+
+  return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#333;max-width:520px;margin:0 auto;padding:24px;">
+<h2 style="margin:0 0 4px;color:#7d2b13;">Nueva inscripción</h2>
+<p style="margin:0 0 20px;font-size:13px;color:#888;">${new Date().toLocaleString("es-ES")}</p>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+  <tr><td style="font-size:13px;color:#666;padding-bottom:4px;">Nombre</td><td style="font-size:13px;font-weight:600;text-align:right;">${data.nombre} ${data.apellido}</td></tr>
+  <tr><td style="font-size:13px;color:#666;padding-bottom:4px;">Email</td><td style="font-size:13px;text-align:right;"><a href="mailto:${data.email}">${data.email}</a></td></tr>
+  <tr><td style="font-size:13px;color:#666;padding-bottom:4px;">Pago</td><td style="font-size:13px;font-weight:600;text-align:right;">${metodo} · ${total}€${data.matricula > 0 ? ` (incl. ${data.matricula}€ matrícula)` : ""}</td></tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #7d2b13;">
+  <tr><th style="text-align:left;font-size:11px;color:#888;padding:8px 0 4px;">Disciplina / Plan</th><th style="text-align:right;font-size:11px;color:#888;padding:8px 0 4px;">Horarios</th></tr>
+  ${rows}
+</table>
+</body></html>`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const data: InscripcionEmailData = await req.json();
@@ -201,8 +223,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
     }
 
+    const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
+
     const { error } = await resend.emails.send({
-      from: process.env.FROM_EMAIL ?? "onboarding@resend.dev",
+      from,
       to: data.email,
       subject: "¡Bienvenida a Andrea Carrió Studio! Tu inscripción está confirmada",
       html: buildHtml(data),
@@ -211,6 +235,17 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error("Resend error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Admin notification (different email, only when triggered from the public form)
+    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+    if (data.notifyAdmin && adminEmail) {
+      resend.emails.send({
+        from,
+        to: adminEmail,
+        subject: `Nueva inscripción — ${data.nombre} ${data.apellido}`,
+        html: buildAdminNotificationHtml(data),
+      }).catch(() => {});
     }
 
     return NextResponse.json({ ok: true });
