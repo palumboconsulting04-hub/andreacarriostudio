@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { submitIscrizione, getOrCreateContatto } from "@/lib/queries";
 import type { InscripcionState, MetodoPago, BozzaIscrizione } from "./types";
-import { horariosPorDisciplina } from "./data";
 import type { InscripcionEmailData } from "@/app/api/send-confirmation/route";
 
 interface Props {
@@ -122,18 +121,11 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
         metodoPago: estado.metodoPago,
         notifyAdmin: true,
         inscripciones: bozze.map((b, i) => {
-          const slots = horariosPorDisciplina[b.disciplinaId] ?? [];
-          const horariosLabel = b.horarios
-            .map(id => {
-              const s = slots.find(sl => sl.id === id);
-              return s ? `${s.dia} ${s.hora}–${s.horaFin}` : id;
-            })
-            .filter(Boolean);
           return {
             disciplina: b.disciplinaNombre,
             plan: b.planNombre,
             precio: b.planPrecio,
-            horarios: horariosLabel,
+            horarios: b.horariosLabels,
             alumna: b.esNinas && alumnas[i]?.nombre
               ? { nombre: alumnas[i].nombre, apellido: alumnas[i].apellido }
               : undefined,

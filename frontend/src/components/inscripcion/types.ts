@@ -45,6 +45,7 @@ export interface BozzaIscrizione {
   planNombre: string;
   planPrecio: number;
   horarios: string[];
+  horariosLabels: string[];
   esNinas: boolean;
 }
 

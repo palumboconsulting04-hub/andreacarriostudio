@@ -80,17 +80,17 @@ function buildHtml(data: InscripcionEmailData): string {
 
           <!-- Logo -->
           <tr>
-            <td style="padding:40px 32px 8px;text-align:center;">
-              <img src="https://andreacarriostudio.vercel.app/logo-email.png" alt="Andrea Carrió Studio" width="160" style="display:block;margin:0 auto;width:160px;max-width:160px;" />
+            <td style="padding:40px 32px 8px;text-align:center;background:#ffffff;">
+              <img src="https://andreacarriostudio.vercel.app/logo-email.png" alt="Andrea Carrió Studio" width="160" style="display:block;margin:0 auto;width:160px;max-width:160px;background:#ffffff;" />
             </td>
           </tr>
 
           <!-- Heading -->
           <tr>
             <td style="padding:28px 40px 32px;text-align:center;">
-              <h1 style="margin:0 0 14px;font-size:28px;font-weight:600;color:#25190f;font-family:Georgia,'Times New Roman',serif;line-height:1.35;">¡Gracias por unirte a<br>Andrea Carrió Studio!</h1>
-              <p style="margin:0;font-size:14px;color:#56423d;line-height:1.75;">
-                Hola <strong>${saludo}</strong>, estamos encantadas de recibirte en nuestra comunidad. Tu camino hacia el movimiento consciente, la gracia y el bienestar comienza aquí.
+              <h1 style="margin:0 0 14px;font-size:28px;font-weight:600;color:#25190f;font-family:Georgia,'Times New Roman',serif;line-height:1.35;">¡Hola ${saludo}!</h1>
+              <p style="margin:0;font-size:15px;color:#56423d;line-height:1.8;">
+                Gracias por confiar en nosotras y por querer empezar este camino juntas. Tu plaza está reservada y me hace mucha ilusión verte pronto en el estudio. 🤍
               </p>
             </td>
           </tr>
@@ -146,11 +146,11 @@ function buildHtml(data: InscripcionEmailData): string {
                   <td style="padding:14px 18px;">
                     ${metodoPago === "tarjeta" || metodoPago === "google-pay" || metodoPago === "apple-pay" || metodoPago === "paypal" ? `
                     <p style="margin:0;font-size:13px;color:#56423d;line-height:1.6;">
-                      <strong style="color:#7d2b13;">¡Todo listo!</strong> Hemos recibido tu pago correctamente. En breve nos ponemos en contacto contigo para confirmar los horarios y darte la bienvenida en persona.
+                      <strong style="color:#7d2b13;">¡Perfecto!</strong> Tu pago está confirmado. Te espero pronto en el estudio. 🤍
                     </p>
                     ` : `
                     <p style="margin:0;font-size:13px;color:#56423d;line-height:1.6;">
-                      <strong style="color:#7d2b13;">Recuerda:</strong> has elegido pagar en la escuela. Tu plaza queda reservada, pero la inscripción se confirma definitivamente cuando abones ${matricula > 0 ? `la matrícula de <strong>${matricula}€</strong> + ` : ""}la primera cuota de <strong>${totalMensual}€</strong> directamente en el estudio.
+                      <strong style="color:#7d2b13;">Recuerda</strong> traer el pago el primer día: ${matricula > 0 ? `<strong>${matricula}€</strong> de matrícula + ` : ""}<strong>${totalMensual}€</strong>/mes de cuota. Cualquier duda estoy por aquí. 🤍
                     </p>
                     `}
                   </td>
@@ -162,8 +162,9 @@ function buildHtml(data: InscripcionEmailData): string {
           <!-- CTA -->
           <tr>
             <td style="padding:0 32px 40px;text-align:center;">
-              <a href="https://andrecarriostudio.es" style="display:inline-block;background:#7d2b13;color:#ffffff;text-decoration:none;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:15px 36px;border-radius:9999px;">
-                Visita nuestro estudio &rarr;
+              <p style="margin:0 0 16px;font-size:13px;color:#56423d;">Únete a nuestro grupo de WhatsApp para estar al tanto de todo:</p>
+              <a href="https://chat.whatsapp.com/Gi2SUxvVc0xCqtw8egpkQu?mode=gi_t" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:1px;padding:15px 36px;border-radius:9999px;">
+                Unirme al grupo &rarr;
               </a>
             </td>
           </tr>
@@ -174,12 +175,7 @@ function buildHtml(data: InscripcionEmailData): string {
               <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#25190f;">Andrea Carrió Studio</p>
               <p style="margin:5px 0 0;font-size:11px;color:#89726c;">C/ Motilla del Palancar 34, Alfauir (Valencia)</p>
               <p style="margin:3px 0 0;font-size:11px;color:#89726c;">andreacarriostudio@gmail.com</p>
-              <p style="margin:16px 0 6px;">
-                <a href="https://andrecarriostudio.es" style="color:#89726c;text-decoration:none;font-size:10px;margin:0 8px;">Privacidad</a>
-                <a href="https://andrecarriostudio.es" style="color:#89726c;text-decoration:none;font-size:10px;margin:0 8px;">Términos</a>
-                <a href="mailto:andreacarriostudio@gmail.com" style="color:#89726c;text-decoration:none;font-size:10px;margin:0 8px;">Contacto</a>
-              </p>
-              <p style="margin:6px 0 0;font-size:10px;color:#bcb0ab;letter-spacing:1px;">© 2025 ANDREA CARRIÓ STUDIO · ALFAUIR, VALENCIA</p>
+              <p style="margin:16px 0 0;font-size:10px;color:#bcb0ab;letter-spacing:1px;">© 2025 ANDREA CARRIÓ STUDIO · ALFAUIR, VALENCIA</p>
             </td>
           </tr>
 
@@ -239,13 +235,15 @@ export async function POST(req: NextRequest) {
 
     // Admin notification (different email, only when triggered from the public form)
     const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+    console.log("ADMIN_EMAIL=" + (adminEmail ?? "NOT_SET") + " notify=" + data.notifyAdmin);
     if (data.notifyAdmin && adminEmail) {
-      resend.emails.send({
+      const { error: adminError } = await resend.emails.send({
         from,
         to: adminEmail,
         subject: `Nueva inscripción — ${data.nombre} ${data.apellido}`,
         html: buildAdminNotificationHtml(data),
-      }).catch(() => {});
+      });
+      if (adminError) console.error("Admin notification error:", adminError);
     }
 
     return NextResponse.json({ ok: true });

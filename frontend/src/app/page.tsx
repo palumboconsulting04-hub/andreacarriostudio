@@ -62,6 +62,10 @@ export default function Home() {
       planNombre: planObj.nombre,
       planPrecio: planObj.precio,
       horarios: [...estado.horarios],
+      horariosLabels: estado.horarios.map(id => {
+        const s = slots.find(sl => sl.id === id);
+        return s ? `${s.dia} ${s.hora}–${s.horaFin}` : "";
+      }).filter(Boolean),
       esNinas: DISCIPLINAS_NINAS.has(estado.disciplina),
     };
   };
