@@ -125,23 +125,27 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Pro
             ¡Gracias, {nombre}!
           </h2>
           <p className="text-base leading-relaxed" style={{ color: "#56423d" }}>
-            Tu solicitud ha sido recibida. Andrea se pondrá en contacto contigo en las próximas horas para confirmar todos los detalles.
+            Me alegra mucho confirmar tu reserva ✨<br /><br />
+            En unos minutos recibirás un mail de resumen con todos los detalles. Si no lo ves en la bandeja de entrada, revisa la carpeta de spam, que a veces se cuela por ahí.<br /><br />
+            Cualquier cosa que necesites, tienes mi número en la web. Estaré encantada de ayudarte.<br /><br />
+            ¡Hasta pronto!<br />
+            <strong>Andrea</strong>
           </p>
         </div>
 
         <div className="rounded-3xl p-8" style={{ backgroundColor: "#fff0eb", border: "1px solid #dcc1b9" }}>
           <p className="text-lg mb-2" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#25190f" }}>
-            ¿Nos cuentas un poco más sobre ti?
+            ¿Me cuentas un poco más sobre ti?
           </p>
           <p className="text-sm mb-6" style={{ color: "#89726c" }}>
-            Solo toma un minuto y nos ayuda a conocerte mejor.
+            Solo un minuto — me ayuda a preparar mejor tu primera clase.
           </p>
           <button
             onClick={() => setStep("form")}
             className="w-full py-3 rounded-2xl text-sm font-semibold tracking-widest uppercase transition-opacity hover:opacity-90"
             style={{ backgroundColor: "#7d2b13", color: "#fff8f5", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif", letterSpacing: "0.1em" }}
           >
-            Conociéndonos mejor
+            Claro, te cuento
           </button>
           <button
             onClick={() => setStep("done")}
