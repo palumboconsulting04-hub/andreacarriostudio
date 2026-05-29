@@ -251,6 +251,22 @@ export default function AdminDashboard() {
   const [usuariosProfile, setUsuariosProfile] = useState<IscrizioneDetalle | null>(null);
   const [usuariosProfileLoading, setUsuariosProfileLoading] = useState(false);
 
+  // ── Puertas Abiertas state ──
+  type PuertaRow = {
+    id: string;
+    created_at: string;
+    nombre: string;
+    apellido: string;
+    email: string;
+    telefono: string;
+    disciplina_adulta: string | null;
+    ninas: { nombre: string; edad: string }[];
+    alergias: string | null;
+  };
+  const [puertasData, setPuertasData] = useState<PuertaRow[]>([]);
+  const [puertasLoading, setPuertasLoading] = useState(false);
+  const [puertasSearch, setPuertasSearch] = useState("");
+
   // KPI drawer
   const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
@@ -395,6 +411,15 @@ export default function AdminDashboard() {
         pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
       setUsuariosData(((isc ?? []) as unknown as KpiStudentRow[]).map(i => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
       setUsuariosLoading(false);
+    });
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeSection !== "Puertas Abiertas") return;
+    setPuertasLoading(true);
+    supabase.from("puertas_abiertas").select("*").order("created_at", { ascending: false }).then(({ data }) => {
+      setPuertasData((data ?? []) as PuertaRow[]);
+      setPuertasLoading(false);
     });
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -904,6 +929,7 @@ export default function AdminDashboard() {
     { icon: "dashboard", label: "Resumen" },
     { icon: "calendar_month", label: "Calendario" },
     { icon: "group", label: "Usuarios" },
+    { icon: "celebration", label: "Puertas Abiertas" },
     { icon: "receipt_long", label: "Costes" },
     { icon: "trending_up", label: "Ventas" },
     { icon: "account_balance", label: "Finanzas" },
@@ -1908,6 +1934,143 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 )}
+              </section>
+            );
+          })()}
+
+          {/* ── Puertas Abiertas ── */}
+          {activeSection === "Puertas Abiertas" && (() => {
+            const DISC_LABEL: Record<string, string> = {
+              pilates: "Pilates Reformer",
+              barre: "Barre",
+              "ballet-adultas": "Ballet Adultas",
+              "acompanar": "Solo acompañar",
+            };
+            const q = puertasSearch.toLowerCase();
+            const filtered = puertasData.filter(r =>
+              !q ||
+              `${r.nombre} ${r.apellido}`.toLowerCase().includes(q) ||
+              r.email.toLowerCase().includes(q) ||
+              r.telefono.includes(q)
+            );
+            const conAlergias = puertasData.filter(r => r.alergias).length;
+            const conNinas = puertasData.filter(r => r.ninas?.length > 0).length;
+            return (
+              <section className="space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-headline-md text-headline-md text-primary">Puertas Abiertas</h3>
+                    <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
+                      {puertasData.length} {puertasData.length === 1 ? "reserva" : "reservas"} recibidas
+                    </p>
+                  </div>
+                  <a
+                    href="/puertas-abiertas"
+                    target="_blank"
+                    className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full border transition-colors hover:bg-surface-container-high"
+                    style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}
+                  >
+                    <Icon name="open_in_new" className="text-sm" />
+                    Ver página pública
+                  </a>
+                </div>
+
+                {/* KPIs rápidos */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Total inscritas", value: puertasData.length, icon: "groups" },
+                    { label: "Con alergias", value: conAlergias, icon: "medical_information" },
+                    { label: "Traen niña", value: conNinas, icon: "child_care" },
+                  ].map(k => (
+                    <div key={k.label} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
+                      <Icon name={k.icon} className="text-xl mb-1" style={{ color: "#7d2b13" }} />
+                      <p className="text-2xl font-bold" style={{ color: "#7d2b13" }}>{puertasLoading ? "—" : k.value}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{k.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Buscador */}
+                <div className="relative">
+                  <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "#89726c" }} />
+                  <input
+                    value={puertasSearch}
+                    onChange={e => setPuertasSearch(e.target.value)}
+                    placeholder="Buscar por nombre, email o teléfono..."
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm"
+                    style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}
+                  />
+                </div>
+
+                {/* Tabla */}
+                <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                  {puertasLoading ? (
+                    <div className="p-8 text-center text-sm" style={{ color: "#89726c" }}>Cargando...</div>
+                  ) : filtered.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Icon name="celebration" className="text-4xl mb-3" style={{ color: "#dcc1b9" }} />
+                      <p className="text-sm" style={{ color: "#89726c" }}>
+                        {puertasSearch ? "Sin resultados para esa búsqueda." : "Aún no hay reservas. Comparte el enlace para empezar a recibir inscripciones."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr style={{ backgroundColor: "#fff0eb" }}>
+                            {["Nombre", "Contacto", "Quiere probar", "Niñas", "Alergias", "Fecha"].map(h => (
+                              <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((r, i) => (
+                            <tr key={r.id} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                              <td className="px-4 py-3 font-medium" style={{ color: "#25190f" }}>
+                                {r.nombre} {r.apellido}
+                              </td>
+                              <td className="px-4 py-3">
+                                <p style={{ color: "#25190f" }}>{r.email}</p>
+                                <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{r.telefono}</p>
+                              </td>
+                              <td className="px-4 py-3">
+                                {r.disciplina_adulta ? (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>
+                                    {DISC_LABEL[r.disciplina_adulta] ?? r.disciplina_adulta}
+                                  </span>
+                                ) : <span style={{ color: "#89726c" }}>—</span>}
+                              </td>
+                              <td className="px-4 py-3">
+                                {r.ninas?.length > 0 ? (
+                                  <div className="space-y-0.5">
+                                    {r.ninas.map((n, ni) => (
+                                      <p key={ni} className="text-xs" style={{ color: "#56423d" }}>
+                                        {n.nombre} <span style={{ color: "#89726c" }}>({n.edad})</span>
+                                      </p>
+                                    ))}
+                                  </div>
+                                ) : <span style={{ color: "#89726c" }}>—</span>}
+                              </td>
+                              <td className="px-4 py-3 max-w-[180px]">
+                                {r.alergias ? (
+                                  <span className="flex items-start gap-1.5">
+                                    <Icon name="warning" className="text-xs mt-0.5 flex-shrink-0" style={{ color: "#e65100" }} />
+                                    <span className="text-xs leading-snug" style={{ color: "#56423d" }}>{r.alergias}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-xs" style={{ color: "#89726c" }}>Sin alergias</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "#89726c" }}>
+                                {new Date(r.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </section>
             );
           })()}
