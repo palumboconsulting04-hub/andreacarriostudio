@@ -44,7 +44,7 @@ export default function BalletParaNinasPage() {
       >
         <img
           alt="Clases de ballet para niñas en Valencia"
-          src="https://lh3.googleusercontent.com/aida/ADBb0ui1bcq8lc_YB7paw4HHDiXxyLuByp63iYWq44McJsxXlDfMixvfVLkJ15jHcPwRyyJYcqa6kYcGKQeiAE0_rMMZ9V88JQMp8RJ3mC5CfNv7dENIOd-sFLfHlgX8mf10QjmJvN_ouOAHGzUv03lrVZTyNMZiYQUxSnxz8OAZIhp3oWJGHcB1-4MT3Ge8MnC7-QUGNPb_LZyH3zuZcVsNavm4Eo6NDsgG0J0GVoeAiULppci04X-bnT1hYgM"
+          src="https://andreacarriostudio.es/wp-content/uploads/2026/05/WhatsApp-Image-2026-05-20-at-00.30.34.jpeg"
           style={{
             position: "absolute",
             inset: 0,
@@ -62,20 +62,6 @@ export default function BalletParaNinasPage() {
           }}
         />
         <div style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "0 20px", maxWidth: 800 }}>
-          <span
-            style={{
-              fontFamily: f.sans,
-              fontSize: 13,
-              fontWeight: 500,
-              letterSpacing: "0.3em",
-              color: "#fcf2ea",
-              textTransform: "uppercase",
-              display: "block",
-              marginBottom: 24,
-            }}
-          >
-            Artículos &amp; Bienestar
-          </span>
           <h1
             style={{
               fontFamily: f.serif,
