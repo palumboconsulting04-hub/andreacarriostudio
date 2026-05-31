@@ -68,6 +68,7 @@ function buildHtml(data: InscripcionEmailData): string {
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Confirmación de inscripción</title>
   <link rel="icon" href="https://andreacarriostudio.vercel.app/logo-icon.png" />
@@ -196,7 +197,7 @@ function buildAdminNotificationHtml(data: InscripcionEmailData): string {
     return `<tr><td style="padding:6px 0;border-bottom:1px solid #eee;">${ins.disciplina} — ${ins.plan}${alumna}</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right;">${horarios}</td></tr>`;
   }).join("");
 
-  return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#333;max-width:520px;margin:0 auto;padding:24px;">
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8" /><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /></head><body style="font-family:Arial,sans-serif;color:#333;max-width:520px;margin:0 auto;padding:24px;">
 <h2 style="margin:0 0 4px;color:#7d2b13;">Nueva inscripción</h2>
 <p style="margin:0 0 20px;font-size:13px;color:#888;">${new Date().toLocaleString("es-ES")}</p>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">

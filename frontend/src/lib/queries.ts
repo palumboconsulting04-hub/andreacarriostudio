@@ -121,7 +121,12 @@ export async function getOrCreateContatto(
   return data.id;
 }
 
-export async function submitIscrizione(contattoId: string, estado: InscripcionState, matricula = 0): Promise<string> {
+export async function submitIscrizione(
+  contattoId: string,
+  estado: InscripcionState,
+  matricula = 0,
+  stripePaymentIntentId?: string
+): Promise<string> {
   const payload = {
     contatto_id: contattoId,
     nome: estado.nombre,
@@ -134,6 +139,7 @@ export async function submitIscrizione(contattoId: string, estado: InscripcionSt
     stato: "attesa",
     nome_alumna: estado.nombreAlumna || null,
     cognome_alumna: estado.apellidoAlumna || null,
+    stripe_payment_intent_id: stripePaymentIntentId || null,
   };
 
   // Try with matricula; if column doesn't exist yet fall back without it

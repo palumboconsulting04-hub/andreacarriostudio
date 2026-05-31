@@ -1,9 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { loadStripe, type Appearance } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { submitIscrizione, getOrCreateContatto } from "@/lib/queries";
 import type { InscripcionState, MetodoPago, BozzaIscrizione } from "./types";
 import type { InscripcionEmailData } from "@/app/api/send-confirmation/route";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+const stripeAppearance: Appearance = {
+  theme: "stripe",
+  variables: {
+    colorPrimary: "#7d2b13",
+    colorBackground: "#fff1e9",
+    colorText: "#25190f",
+    colorDanger: "#df1b41",
+    colorTextSecondary: "#56423d",
+    borderRadius: "12px",
+    fontSizeBase: "14px",
+  },
+};
 
 interface Props {
   estado: InscripcionState;
@@ -16,7 +33,7 @@ interface Props {
 
 const metodosPago: { id: MetodoPago; label: string; proximamente?: boolean }[] = [
   { id: "en-escuela", label: "Pagar en la escuela" },
-  { id: "tarjeta", label: "Tarjeta de crédito", proximamente: true },
+  { id: "tarjeta", label: "Tarjeta de crédito" },
   { id: "google-pay", label: "Google Pay", proximamente: true },
   { id: "apple-pay", label: "Apple Pay", proximamente: true },
   { id: "paypal", label: "PayPal", proximamente: true },
@@ -55,15 +72,196 @@ function ModalPrivacidad({ onClose, onAceptar }: { onClose: () => void; onAcepta
   );
 }
 
+// --- Stripe payment fase (inside Elements provider) ---
+
+interface SavedPagoData {
+  contattoId: string;
+  iscrizioneId: string;
+  emailPayload: InscripcionEmailData;
+}
+
+interface StripePaymentFaseProps {
+  bozze: BozzaIscrizione[];
+  totalMensual: number;
+  totalMatricula: number;
+  matriculaOferta: boolean;
+  matriculaPrecio: number;
+  totalPersonas: number;
+  savedData: SavedPagoData;
+  onConfirmado: (contattoId: string, iscrizioneId: string) => void;
+  onBack: () => void;
+}
+
+function StripePaymentFase({
+  bozze,
+  totalMensual,
+  totalMatricula,
+  matriculaOferta,
+  matriculaPrecio,
+  totalPersonas,
+  savedData,
+  onConfirmado,
+  onBack,
+}: StripePaymentFaseProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [pagando, setPagando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const totalAmount = totalMensual + totalMatricula;
+
+  const handlePagar = async () => {
+    if (!stripe || !elements) return;
+    setPagando(true);
+    setError(null);
+
+    const { error: confirmError } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: window.location.href,
+        payment_method_data: {
+          billing_details: { email: savedData.emailPayload.email },
+        },
+      },
+      redirect: "if_required",
+    });
+
+    if (confirmError) {
+      setError(confirmError.message ?? "Error al procesar el pago.");
+      setPagando(false);
+      return;
+    }
+
+    fetch("/api/send-confirmation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(savedData.emailPayload),
+    }).catch(() => {});
+
+    onConfirmado(savedData.contattoId, savedData.iscrizioneId);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto px-6 pb-16">
+      <div className="flex items-center gap-2 mb-8">
+        <button onClick={onBack} className="flex items-center gap-1.5 text-sm transition-colors hover:opacity-70" style={{ color: "#56423d" }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 8H3M7 4L3 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          Volver
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        {/* Stripe form */}
+        <div className="lg:col-span-3 space-y-6">
+          <h2 className="text-4xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>
+            Pago con tarjeta
+          </h2>
+
+          <div className="rounded-2xl border p-5" style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff" }}>
+            <PaymentElement
+              options={{
+                layout: "tabs",
+                fields: { billingDetails: { email: "never" } },
+              }}
+            />
+          </div>
+
+          {error && <p className="text-xs text-red-600">{error}</p>}
+
+          <button
+            onClick={handlePagar}
+            disabled={!stripe || !elements || pagando}
+            className="w-full py-4 rounded-full text-sm tracking-widest uppercase font-semibold transition-colors"
+            style={{
+              backgroundColor: !stripe || !elements || pagando ? "#dcc1b9" : "#7d2b13",
+              color: "#ffffff",
+              cursor: !stripe || !elements || pagando ? "not-allowed" : "pointer",
+            }}
+          >
+            {pagando ? "Procesando..." : `Pagar ${totalAmount}€`}
+          </button>
+
+          <p className="text-xs text-center" style={{ color: "#89726c" }}>
+            Pago seguro. Tu tarjeta está protegida con cifrado SSL.
+          </p>
+        </div>
+
+        {/* Summary */}
+        <div className="lg:col-span-2">
+          <div className="rounded-3xl border p-6 sticky top-24" style={{ backgroundColor: "#ffffff", borderColor: "#dcc1b9" }}>
+            <h3 className="text-xl mb-4" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>Resumen</h3>
+
+            <div className="space-y-3 mb-5">
+              {bozze.map((b, i) => (
+                <div key={i} className="pb-3 border-b" style={{ borderColor: "#dcc1b9" }}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "#25190f" }}>{b.disciplinaNombre}</p>
+                      <p className="text-xs" style={{ color: "#89726c" }}>{b.planNombre} · {b.horarios.length} horario{b.horarios.length !== 1 ? "s" : ""}</p>
+                    </div>
+                    <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>{b.planPrecio}€/mes</p>
+                  </div>
+                </div>
+              ))}
+
+              <div className="rounded-2xl p-4 border" style={{ backgroundColor: "#fff8f5", borderColor: "#dcc1b9" }}>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "#25190f" }}>Matrícula</p>
+                    <p className="text-xs leading-snug mt-0.5" style={{ color: "#56423d" }}>
+                      Incluye evaluación inicial, plaza reservada y material de bienvenida
+                    </p>
+                    <p className="text-xs mt-1 italic" style={{ color: "#89726c" }}>
+                      Pago único — no se repite mientras sigas con nosotros
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    {matriculaOferta && totalPersonas === 1 && (
+                      <p className="text-xs line-through mb-0.5" style={{ color: "#bcb0ab" }}>50€</p>
+                    )}
+                    <p className="text-sm font-bold" style={{ color: "#7d2b13" }}>{totalMatricula}€</p>
+                    {totalPersonas > 1 && (
+                      <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{totalPersonas} personas × {matriculaPrecio}€</p>
+                    )}
+                    {matriculaOferta && (
+                      <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full mt-1 inline-block" style={{ backgroundColor: "#7d2b13", color: "#fff" }}>
+                        Hasta 31 jul
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-end pt-1 border-t" style={{ borderColor: "#dcc1b9" }}>
+                <div>
+                  <span className="text-sm font-semibold" style={{ color: "#25190f" }}>Total primer pago</span>
+                  <p className="text-xs" style={{ color: "#89726c" }}>{totalMensual}€/mes + {totalMatricula}€ matrícula</p>
+                </div>
+                <span className="text-3xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>{totalAmount}€</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Main component ---
+
 export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmado, existingContattoId }: Props) {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rgpdAceptado, setRgpdAceptado] = useState(false);
   const [modalPrivacidad, setModalPrivacidad] = useState(false);
-  // Alumna name per niñas bozza
   const [alumnas, setAlumnas] = useState<{ nombre: string; apellido: string }[]>(
     bozze.map(() => ({ nombre: "", apellido: "" }))
   );
+
+  // Stripe payment fase
+  const [fase, setFase] = useState<"datos" | "pago">("datos");
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [savedPagoData, setSavedPagoData] = useState<SavedPagoData | null>(null);
 
   const segundaInscripcion = !!existingContattoId;
   const bozzeNinas = bozze.map((b, i) => ({ bozza: b, idx: i })).filter(({ bozza }) => bozza.esNinas);
@@ -73,7 +271,6 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
   const matriculaPrecio = new Date() <= MATRICULA_OFERTA_HASTA ? 35 : 50;
   const matriculaOferta = new Date() <= MATRICULA_OFERTA_HASTA;
 
-  // 1 matrícula por persona: 1 para el adulto + 1 por cada niña única
   const hasAdult = bozze.some(b => !b.esNinas);
   const uniqueNinas = new Set(
     bozze.map((b, i) => b.esNinas ? `${alumnas[i]?.nombre ?? ""}_${alumnas[i]?.apellido ?? ""}` : null)
@@ -82,9 +279,11 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
   const totalPersonas = (hasAdult ? 1 : 0) + uniqueNinas.size;
   const totalMatricula = totalPersonas * matriculaPrecio;
 
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(estado.email.trim());
+
   const contactoOk = segundaInscripcion
     ? true
-    : estado.nombre.trim() !== "" && estado.apellido.trim() !== "" && estado.email.trim() !== "";
+    : estado.nombre.trim() !== "" && estado.apellido.trim() !== "" && emailValido;
 
   const alumnaOk = bozzeNinas.every(({ idx }) =>
     alumnas[idx]?.nombre.trim() !== "" && alumnas[idx]?.apellido.trim() !== ""
@@ -96,67 +295,96 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
     setAlumnas(prev => prev.map((a, i) => i === idx ? { ...a, [field]: value } : a));
   };
 
+  const buildEmailPayload = (): InscripcionEmailData => ({
+    email: estado.email,
+    nombre: estado.nombre,
+    apellido: estado.apellido,
+    totalMensual,
+    matricula: totalMatricula,
+    metodoPago: estado.metodoPago,
+    notifyAdmin: true,
+    inscripciones: bozze.map((b, i) => ({
+      disciplina: b.disciplinaNombre,
+      plan: b.planNombre,
+      precio: b.planPrecio,
+      horarios: b.horariosLabels,
+      alumna: b.esNinas && alumnas[i]?.nombre
+        ? { nombre: alumnas[i].nombre, apellido: alumnas[i].apellido }
+        : undefined,
+    })),
+  });
+
+  const saveToSupabase = async (stripePaymentIntentId?: string) => {
+    let cId = existingContattoId ?? null;
+    if (!cId) {
+      cId = await getOrCreateContatto(estado.nombre, estado.apellido, estado.email, estado.telefono || null);
+    }
+    let firstId = "";
+    let adultCharged = false;
+    const ninasCharged = new Set<string>();
+    for (let i = 0; i < bozze.length; i++) {
+      const b = bozze[i];
+      const bEstado = {
+        ...estado,
+        disciplina: b.disciplinaId,
+        plan: b.planId,
+        horarios: b.horarios,
+        nombreAlumna: b.esNinas ? (alumnas[i]?.nombre ?? "") : "",
+        apellidoAlumna: b.esNinas ? (alumnas[i]?.apellido ?? "") : "",
+      };
+      let thisMatricula = 0;
+      if (b.esNinas) {
+        const key = `${alumnas[i]?.nombre ?? ""}_${alumnas[i]?.apellido ?? ""}`;
+        if (!ninasCharged.has(key)) { thisMatricula = matriculaPrecio; ninasCharged.add(key); }
+      } else {
+        if (!adultCharged) { thisMatricula = matriculaPrecio; adultCharged = true; }
+      }
+      const id = await submitIscrizione(cId, bEstado, thisMatricula, stripePaymentIntentId);
+      if (i === 0) firstId = id;
+    }
+    return { cId, firstId };
+  };
+
   const handleConfirmar = async () => {
     if (!puedeConfirmar || enviando) return;
     setEnviando(true);
     setError(null);
+
     try {
-      let cId = existingContattoId ?? null;
-      if (!cId) {
-        cId = await getOrCreateContatto(estado.nombre, estado.apellido, estado.email, estado.telefono || null);
-      }
-      let firstId = "";
-      let adultCharged = false;
-      const ninasCharged = new Set<string>();
-      for (let i = 0; i < bozze.length; i++) {
-        const b = bozze[i];
-        const bEstado = {
-          ...estado,
-          disciplina: b.disciplinaId,
-          plan: b.planId,
-          horarios: b.horarios,
-          nombreAlumna: b.esNinas ? (alumnas[i]?.nombre ?? "") : "",
-          apellidoAlumna: b.esNinas ? (alumnas[i]?.apellido ?? "") : "",
-        };
-        let thisMatricula = 0;
-        if (b.esNinas) {
-          const key = `${alumnas[i]?.nombre ?? ""}_${alumnas[i]?.apellido ?? ""}`;
-          if (!ninasCharged.has(key)) { thisMatricula = matriculaPrecio; ninasCharged.add(key); }
-        } else {
-          if (!adultCharged) { thisMatricula = matriculaPrecio; adultCharged = true; }
-        }
-        const id = await submitIscrizione(cId, bEstado, thisMatricula);
-        if (i === 0) firstId = id;
-      }
+      if (estado.metodoPago === "tarjeta") {
+        // 1. Create Stripe PaymentIntent
+        const totalAmount = totalMensual + totalMatricula;
+        const res = await fetch("/api/create-payment-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amountEur: totalAmount,
+            email: estado.email,
+            description: `Inscripción — ${bozze.map(b => b.disciplinaNombre).join(", ")}`,
+          }),
+        });
+        const { clientSecret: cs, paymentIntentId: piId, error: apiErr } = await res.json();
+        if (apiErr || !cs) throw new Error(apiErr || "Error al crear el pago");
 
-      // Send confirmation email (non-blocking)
-      const emailPayload: InscripcionEmailData = {
-        email: estado.email,
-        nombre: estado.nombre,
-        apellido: estado.apellido,
-        totalMensual,
-        matricula: totalMatricula,
-        metodoPago: estado.metodoPago,
-        notifyAdmin: true,
-        inscripciones: bozze.map((b, i) => {
-          return {
-            disciplina: b.disciplinaNombre,
-            plan: b.planNombre,
-            precio: b.planPrecio,
-            horarios: b.horariosLabels,
-            alumna: b.esNinas && alumnas[i]?.nombre
-              ? { nombre: alumnas[i].nombre, apellido: alumnas[i].apellido }
-              : undefined,
-          };
-        }),
-      };
-      fetch("/api/send-confirmation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(emailPayload),
-      }).catch(() => {}); // fire-and-forget
+        // 2. Save to Supabase with stripe_payment_intent_id
+        const { cId, firstId } = await saveToSupabase(piId);
 
-      onConfirmado(cId, firstId);
+        // 3. Transition to Stripe payment fase
+        setSavedPagoData({ contattoId: cId, iscrizioneId: firstId, emailPayload: buildEmailPayload() });
+        setClientSecret(cs);
+        setFase("pago");
+      } else {
+        // en-escuela: save + email + done
+        const { cId, firstId } = await saveToSupabase();
+
+        fetch("/api/send-confirmation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildEmailPayload()),
+        }).catch(() => {});
+
+        onConfirmado(cId, firstId);
+      }
     } catch {
       setError("Ha ocurrido un error. Por favor, inténtalo de nuevo.");
     } finally {
@@ -164,6 +392,26 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
     }
   };
 
+  // Render Stripe payment fase
+  if (fase === "pago" && clientSecret && savedPagoData) {
+    return (
+      <Elements stripe={stripePromise} options={{ clientSecret, appearance: stripeAppearance }}>
+        <StripePaymentFase
+          bozze={bozze}
+          totalMensual={totalMensual}
+          totalMatricula={totalMatricula}
+          matriculaOferta={matriculaOferta}
+          matriculaPrecio={matriculaPrecio}
+          totalPersonas={totalPersonas}
+          savedData={savedPagoData}
+          onConfirmado={onConfirmado}
+          onBack={() => setFase("datos")}
+        />
+      </Elements>
+    );
+  }
+
+  // Render datos fase
   return (
     <div className="max-w-4xl mx-auto px-6 pb-16">
       {/* Breadcrumb */}
@@ -181,7 +429,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
             Datos personales
           </h2>
 
-          {/* Contacto — bloqueado si segunda inscripción */}
+          {/* Contacto */}
           {segundaInscripcion ? (
             <div className="rounded-2xl p-5 border space-y-1" style={{ backgroundColor: "#fff1e9", borderColor: "#dcc1b9" }}>
               <p className="text-xs tracking-widest uppercase font-semibold mb-3" style={{ color: "#7d2b13", fontFamily: "var(--font-montserrat)" }}>Tus datos</p>
@@ -200,7 +448,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
             </>
           )}
 
-          {/* Alumna por cada bozza de niñas */}
+          {/* Alumna per bozza niñas */}
           {bozzeNinas.map(({ bozza, idx }) => (
             <div key={idx}>
               <p className="text-xs tracking-widest uppercase font-semibold mb-3" style={{ color: "#7d2b13", fontFamily: "var(--font-montserrat)" }}>
@@ -327,7 +575,11 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
                 cursor: puedeConfirmar && !enviando ? "pointer" : "not-allowed",
               }}
             >
-              {enviando ? "Enviando..." : bozze.length > 1 ? `Confirmar ${bozze.length} inscripciones` : "Confirmar inscripción"}
+              {enviando
+                ? "Preparando pago..."
+                : estado.metodoPago === "tarjeta"
+                  ? bozze.length > 1 ? `Continuar al pago (${bozze.length} inscripciones)` : "Continuar al pago"
+                  : bozze.length > 1 ? `Confirmar ${bozze.length} inscripciones` : "Confirmar inscripción"}
             </button>
 
             <p className="text-xs text-center mt-3" style={{ color: "#89726c" }}>Sin compromiso. Cancela cuando quieras.</p>
