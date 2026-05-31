@@ -76,6 +76,7 @@ type IscrizioneDetalle = {
   discipline: { nome: string } | null;
   iscrizione_orari: { orari: { giorno: string; ora_inizio: string; ora_fine: string } | null }[];
   prezzo?: number | null;
+  matricula?: number | null;
 };
 
 type VentaRow = {
@@ -110,6 +111,10 @@ const PLAN_LABEL: Record<string, string> = {
   "avanzado": "Avanzado",
   "intensivo": "Intensivo",
 };
+// El pago con tarjeta (webhook Stripe) guarda "pagado"; el alta manual guarda "pagato".
+// Tratamos ambos como pagado.
+const PAID_STATI = new Set(["pagato", "pagado"]);
+const isPaid = (stato: string) => PAID_STATI.has(stato);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -236,7 +241,6 @@ export default function AdminDashboard() {
   const [ocupacionDisciplinas, setOcupacionDisciplinas] = useState<OcupacionDisciplina[]>([]);
   const [nuevasInscripcionesMes, setNuevasInscripcionesMes] = useState(0);
   const [avgPricePerStudent, setAvgPricePerStudent] = useState(0);
-  const [matriculasMes, setMatriculasMes] = useState(0);
 
   // Sofia chat
   type SofiaMessage = { role: "user" | "assistant"; content: string };
@@ -286,7 +290,7 @@ export default function AdminDashboard() {
   const loadStats = async () => {
     const todayEs = DOW_ES[new Date().getDay()];
     const [r1, r3, r5] = await Promise.all([
-      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "pagato"),
+      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).in("stato", ["pagato", "pagado"]),
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
       supabase
         .from("iscrizioni")
@@ -338,7 +342,7 @@ export default function AdminDashboard() {
     setDeleteConfirm(false);
     const { data } = await supabase
       .from("iscrizioni")
-      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
+      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
       .eq("id", iscrizioneId)
       .single();
     if (data) {
@@ -357,7 +361,7 @@ export default function AdminDashboard() {
     if (activeSection !== "Finanzas" && activeSection !== "Resumen") return;
     setFinanzasLoading(true);
     Promise.all([
-      supabase.from("iscrizioni").select("created_at, disciplina_id, piano_id, matricula").eq("stato", "pagato"),
+      supabase.from("iscrizioni").select("created_at, disciplina_id, piano_id, matricula").in("stato", ["pagato", "pagado"]),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
       supabase.from("costes").select("importe_mensual").eq("activo", true),
     ]).then(([{ data: isc }, { data: piani }, { data: costes }]) => {
@@ -516,9 +520,9 @@ export default function AdminDashboard() {
     if (drawerDetalle.stato === "attesa") {
       setPendingCount(p => Math.max(0, p - 1));
       setPendingAmount(p => Math.max(0, p - (drawerDetalle.prezzo ?? 0)));
-    } else if (drawerDetalle.stato === "pagato") {
+    } else if (isPaid(drawerDetalle.stato)) {
       setIscrittiCount(p => Math.max(0, p - 1));
-      setFacturacionMes(p => Math.max(0, p - (drawerDetalle.prezzo ?? 0)));
+      setFacturacionMes(p => Math.max(0, p - (drawerDetalle.prezzo ?? 0) - (drawerDetalle.matricula ?? 0)));
     }
     setDrawerOrario(null);
     setDeleteConfirm(false);
@@ -602,17 +606,18 @@ export default function AdminDashboard() {
     if (data) setOrari(data as unknown as AdminOrario[]);
   };
 
-  const ajustarMetrics = (iscrizione: { prezzo?: number | null }, fromStato: string, toStato: string) => {
+  const ajustarMetrics = (iscrizione: { prezzo?: number | null; matricula?: number | null }, fromStato: string, toStato: string) => {
     const prezzo = iscrizione.prezzo ?? 0;
-    if (fromStato === "attesa" && toStato === "pagato") {
+    const mat = iscrizione.matricula ?? 0;
+    if (fromStato === "attesa" && isPaid(toStato)) {
       setPendingAmount((p) => p - prezzo);
       setPendingCount((p) => p - 1);
-      setFacturacionMes((p) => p + prezzo);
+      setFacturacionMes((p) => p + prezzo + mat);
       setIscrittiCount((p) => p + 1);
-    } else if (fromStato === "pagato" && toStato === "attesa") {
+    } else if (isPaid(fromStato) && toStato === "attesa") {
       setPendingAmount((p) => p + prezzo);
       setPendingCount((p) => p + 1);
-      setFacturacionMes((p) => p - prezzo);
+      setFacturacionMes((p) => p - prezzo - mat);
       setIscrittiCount((p) => Math.max(0, p - 1));
     }
   };
@@ -634,7 +639,7 @@ export default function AdminDashboard() {
     setKpiLoading(true);
     const { data } = await supabase
       .from("iscrizioni")
-      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
+      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
       .eq("id", id).single();
     if (data) {
       const { data: pd } = await supabase.from("piani").select("prezzo").eq("id", (data as unknown as IscrizioneDetalle).piano_id).eq("disciplina_id", (data as unknown as IscrizioneDetalle).disciplina_id).single();
@@ -658,7 +663,7 @@ export default function AdminDashboard() {
     setUsuariosProfile(null);
     const { data } = await supabase
       .from("iscrizioni")
-      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
+      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
       .eq("id", id)
       .single();
     if (data) {
@@ -685,9 +690,9 @@ export default function AdminDashboard() {
     if (usuariosProfile.stato === "attesa") {
       setPendingCount(p => Math.max(0, p - 1));
       setPendingAmount(p => Math.max(0, p - (usuariosProfile.prezzo ?? 0)));
-    } else if (usuariosProfile.stato === "pagato") {
+    } else if (isPaid(usuariosProfile.stato)) {
       setIscrittiCount(p => Math.max(0, p - 1));
-      setFacturacionMes(p => Math.max(0, p - (usuariosProfile.prezzo ?? 0)));
+      setFacturacionMes(p => Math.max(0, p - (usuariosProfile.prezzo ?? 0) - (usuariosProfile.matricula ?? 0)));
     }
     setBookings(prev => prev.filter(b => b.id !== usuariosProfile.id));
     setUsuariosData(prev => prev.filter(u => u.id !== usuariosProfile.id));
@@ -700,7 +705,7 @@ export default function AdminDashboard() {
     setKpiAlumnosDisciplina(null);
     setKpiStudents([]);
     setKpiLoading(true);
-    const { data: isc } = await supabase.from("iscrizioni").select("disciplina_id, discipline(nome)").eq("stato", "pagato");
+    const { data: isc } = await supabase.from("iscrizioni").select("disciplina_id, discipline(nome)").in("stato", ["pagato", "pagado"]);
     const countMap: Record<string, { nombre: string; count: number }> = {};
     for (const i of (isc ?? []) as unknown as { disciplina_id: string; discipline: { nome: string } | null }[]) {
       const did = i.disciplina_id;
@@ -722,7 +727,7 @@ export default function AdminDashboard() {
     setKpiAlumnosDisciplina(disc);
     setKpiLoading(true);
     const [{ data: isc }, { data: piani }] = await Promise.all([
-      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").eq("disciplina_id", disc.disciplina_id).eq("stato", "pagato").order("created_at", { ascending: false }),
+      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").eq("disciplina_id", disc.disciplina_id).in("stato", ["pagato", "pagado"]).order("created_at", { ascending: false }),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
     ]);
     const pm: Record<string, number> = {};
@@ -734,7 +739,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const todayEs = DOW_ES[new Date().getDay()];
     Promise.all([
-      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "pagato"),
+      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).in("stato", ["pagato", "pagado"]),
       supabase.from("orari").select("*", { count: "exact", head: true }).eq("giorno", todayEs).eq("attivo", true),
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true),
@@ -758,21 +763,18 @@ export default function AdminDashboard() {
       const tm = now2.getMonth(), ty = now2.getFullYear();
       const curMonthStr = `${ty}-${String(tm + 1).padStart(2, "0")}`;
       let factMes = 0, factAnt = 0, pendAmt = 0;
-      for (const isc of (r6.data ?? []) as { disciplina_id: string; piano_id: string; stato: string; created_at: string }[]) {
+      for (const isc of (r6.data ?? []) as { disciplina_id: string; piano_id: string; stato: string; created_at: string; matricula: number }[]) {
         const prezzo = pm[`${isc.piano_id}:${isc.disciplina_id}`] ?? 0;
+        const mat = isc.matricula ?? 0;
         if (isc.stato === "attesa") { pendAmt += prezzo; }
-        if (isc.stato === "pagato") {
-          factMes += prezzo;
-          if (isc.created_at.substring(0, 7) < curMonthStr) factAnt += prezzo;
+        if (isPaid(isc.stato)) {
+          factMes += prezzo + mat;
+          if (isc.created_at.substring(0, 7) < curMonthStr) factAnt += prezzo + mat;
         }
       }
       setFacturacionMes(factMes);
       setFacturacionMesAnterior(factAnt);
       setPendingAmount(pendAmt);
-      const matriculasEsteMes = ((r6.data ?? []) as { created_at: string; matricula: number }[])
-        .filter(i => i.created_at.substring(0, 7) === curMonthStr)
-        .reduce((s, i) => s + (i.matricula ?? 0), 0);
-      setMatriculasMes(matriculasEsteMes);
       const nuevasEstesMes = ((r6.data ?? []) as { created_at: string }[]).filter(i => {
         const d = new Date(i.created_at);
         return d.getMonth() === tm && d.getFullYear() === ty;
@@ -780,7 +782,7 @@ export default function AdminDashboard() {
       setNuevasInscripcionesMes(nuevasEstesMes);
 
       // Precio medio por alumna (sobre todas las pagato)
-      const pagati = ((r6.data ?? []) as { disciplina_id: string; piano_id: string; stato: string }[]).filter(i => i.stato === "pagato");
+      const pagati = ((r6.data ?? []) as { disciplina_id: string; piano_id: string; stato: string }[]).filter(i => isPaid(i.stato));
       const totalPagati = pagati.reduce((s, i) => s + (pm[`${i.piano_id}:${i.disciplina_id}`] ?? 0), 0);
       setAvgPricePerStudent(pagati.length > 0 ? totalPagati / pagati.length : 0);
 
@@ -889,9 +891,9 @@ export default function AdminDashboard() {
   const ventasMesFiltradas = ventasData.filter(v => v.created_at.startsWith(ventasMes));
   const prevMesStr = vMonth === 1 ? `${vYear - 1}-12` : `${vYear}-${String(vMonth - 1).padStart(2, "0")}`;
   const ventasPrevMes = ventasData.filter(v => v.created_at.startsWith(prevMesStr));
-  const pagadasMes = ventasMesFiltradas.filter(v => v.stato === "pagato");
+  const pagadasMes = ventasMesFiltradas.filter(v => isPaid(v.stato));
   const ingresosMesV = pagadasMes.reduce((s, v) => s + (v.prezzo ?? 0), 0);
-  const ingresosMesAntV = ventasPrevMes.filter(v => v.stato === "pagato").reduce((s, v) => s + (v.prezzo ?? 0), 0);
+  const ingresosMesAntV = ventasPrevMes.filter(v => isPaid(v.stato)).reduce((s, v) => s + (v.prezzo ?? 0), 0);
   const ingresosDiff = ingresosMesAntV > 0 ? ((ingresosMesV - ingresosMesAntV) / ingresosMesAntV) * 100 : null;
   const ticketMedioV = pagadasMes.length > 0 ? ingresosMesV / pagadasMes.length : 0;
   const pendientesCountV = ventasMesFiltradas.filter(v => v.stato === "attesa").length;
@@ -900,13 +902,13 @@ export default function AdminDashboard() {
     ? Array.from({ length: daysInMonth }, (_, i) => {
         const dayStr = `${ventasMes}-${String(i + 1).padStart(2, "0")}`;
         const rows = ventasMesFiltradas.filter(v => v.created_at.startsWith(dayStr));
-        return { label: String(i + 1), ingresos: rows.filter(v => v.stato === "pagato").reduce((s, v) => s + (v.prezzo ?? 0), 0), inscripciones: rows.length };
+        return { label: String(i + 1), ingresos: rows.filter(v => isPaid(v.stato)).reduce((s, v) => s + (v.prezzo ?? 0), 0), inscripciones: rows.length };
       })
     : [1, 2, 3, 4].map(w => {
         const start = (w - 1) * 7 + 1;
         const end = w === 4 ? daysInMonth : w * 7;
         const rows = ventasMesFiltradas.filter(v => { const d = new Date(v.created_at).getDate(); return d >= start && d <= end; });
-        return { label: `Sem ${w}`, ingresos: rows.filter(v => v.stato === "pagato").reduce((s, v) => s + (v.prezzo ?? 0), 0), inscripciones: rows.length };
+        return { label: `Sem ${w}`, ingresos: rows.filter(v => isPaid(v.stato)).reduce((s, v) => s + (v.prezzo ?? 0), 0), inscripciones: rows.length };
       });
   const discMap: Record<string, { nombre: string; ingresos: number; count: number }> = {};
   pagadasMes.forEach(v => {
@@ -1190,20 +1192,6 @@ export default function AdminDashboard() {
                   <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : nuevasInscripcionesMes}</p>
                   <p className="text-xs mt-2" style={{ color: "#89726c" }}>
                     {new Date().toLocaleDateString("es-ES", { month: "long" })}
-                  </p>
-                </div>
-
-                {/* Matrículas */}
-                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
-                  <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Matrículas</p>
-                    <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
-                      <Icon name="school" className="text-base" />
-                    </div>
-                  </div>
-                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : `${matriculasMes}€`}</p>
-                  <p className="text-xs mt-2" style={{ color: "#89726c" }}>
-                    {nuevasInscripcionesMes > 0 ? `${nuevasInscripcionesMes} nueva${nuevasInscripcionesMes !== 1 ? "s" : ""} · pago único` : "Sin nuevas altas"}
                   </p>
                 </div>
 
@@ -1709,7 +1697,7 @@ export default function AdminDashboard() {
                                 <td className="py-3 px-4 font-semibold" style={{ color: "#7d2b13" }}>{v.prezzo != null ? `${v.prezzo}€` : "—"}</td>
                                 <td className="py-3 px-4 whitespace-nowrap" style={{ color: "#89726c" }}>{new Date(v.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</td>
                                 <td className="py-3 px-4">
-                                  {v.stato === "pagato"
+                                  {isPaid(v.stato)
                                     ? <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e8f5e9] text-[#2e7d32] text-xs font-semibold">Cobrado</span>
                                     : <span className="inline-flex items-center px-3 py-1 rounded-full bg-error-container text-on-error-container text-xs font-semibold">Pendiente</span>}
                                 </td>
@@ -2375,6 +2363,7 @@ export default function AdminDashboard() {
                         { icon: "school", label: "Disciplina", value: kpiStudentProfile.discipline?.nome ?? kpiStudentProfile.disciplina_id },
                         { icon: "card_membership", label: "Plan", value: PLAN_LABEL[kpiStudentProfile.piano_id] ?? kpiStudentProfile.piano_id },
                         { icon: "euro", label: "Cuota mensual", value: kpiStudentProfile.prezzo != null ? `${kpiStudentProfile.prezzo} €/mes` : "—" },
+                        { icon: "confirmation_number", label: "Matrícula", value: (kpiStudentProfile.matricula ?? 0) > 0 ? `${kpiStudentProfile.matricula}€ · ${isPaid(kpiStudentProfile.stato) ? "Pagada" : "Pendiente"}` : "—" },
                         { icon: "payments", label: "Pago", value: METODO_LABEL[kpiStudentProfile.metodo_pagamento] ?? kpiStudentProfile.metodo_pagamento },
                         { icon: "calendar_today", label: "Inscrita desde", value: formatData(kpiStudentProfile.created_at) },
                         { icon: "history", label: "Antigüedad", value: calcAntigüedad(kpiStudentProfile.created_at) },
@@ -2687,6 +2676,7 @@ export default function AdminDashboard() {
                         { icon: "school", label: "Disciplina", value: drawerDetalle.discipline?.nome ?? drawerDetalle.disciplina_id },
                         { icon: "card_membership", label: "Plan", value: PLAN_LABEL[drawerDetalle.piano_id] ?? drawerDetalle.piano_id },
                         { icon: "euro", label: "Cuota mensual", value: drawerDetalle.prezzo != null ? `${drawerDetalle.prezzo} €/mes` : "—" },
+                        { icon: "confirmation_number", label: "Matrícula", value: (drawerDetalle.matricula ?? 0) > 0 ? `${drawerDetalle.matricula}€ · ${isPaid(drawerDetalle.stato) ? "Pagada" : "Pendiente"}` : "—" },
                         { icon: "payments", label: "Pago", value: METODO_LABEL[drawerDetalle.metodo_pagamento] ?? drawerDetalle.metodo_pagamento },
                         { icon: "calendar_today", label: "Inscrita desde", value: formatData(drawerDetalle.created_at) },
                         { icon: "history", label: "Antigüedad", value: calcAntigüedad(drawerDetalle.created_at) },
@@ -3198,6 +3188,7 @@ export default function AdminDashboard() {
                         { icon: "school", label: "Disciplina", value: usuariosProfile.discipline?.nome ?? usuariosProfile.disciplina_id },
                         { icon: "card_membership", label: "Plan", value: PLAN_LABEL[usuariosProfile.piano_id] ?? usuariosProfile.piano_id },
                         { icon: "euro", label: "Cuota mensual", value: usuariosProfile.prezzo != null ? `${usuariosProfile.prezzo} €/mes` : "—" },
+                        { icon: "confirmation_number", label: "Matrícula", value: (usuariosProfile.matricula ?? 0) > 0 ? `${usuariosProfile.matricula}€ · ${isPaid(usuariosProfile.stato) ? "Pagada" : "Pendiente"}` : "—" },
                         { icon: "payments", label: "Método de pago", value: METODO_LABEL[usuariosProfile.metodo_pagamento] ?? usuariosProfile.metodo_pagamento },
                         { icon: "calendar_today", label: "Inscrita desde", value: formatData(usuariosProfile.created_at) },
                         { icon: "history", label: "Antigüedad", value: calcAntigüedad(usuariosProfile.created_at) },
