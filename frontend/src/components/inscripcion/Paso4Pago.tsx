@@ -4,6 +4,7 @@ import { useState } from "react";
 import { loadStripe, type Appearance } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { submitIscrizione, getOrCreateContatto } from "@/lib/queries";
+import { findCoupon, applyCoupon, type Coupon } from "@/lib/coupons";
 import type { InscripcionState, MetodoPago, BozzaIscrizione } from "./types";
 import type { InscripcionEmailData } from "@/app/api/send-confirmation/route";
 
@@ -87,6 +88,7 @@ interface StripePaymentFaseProps {
   matriculaOferta: boolean;
   matriculaPrecio: number;
   totalPersonas: number;
+  couponAplicado: Coupon | null;
   savedData: SavedPagoData;
   onConfirmado: (contattoId: string, iscrizioneId: string) => void;
   onBack: () => void;
@@ -99,6 +101,7 @@ function StripePaymentFase({
   matriculaOferta,
   matriculaPrecio,
   totalPersonas,
+  couponAplicado,
   savedData,
   onConfirmado,
   onBack,
@@ -108,7 +111,8 @@ function StripePaymentFase({
   const [pagando, setPagando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const totalAmount = totalMensual + totalMatricula;
+  const totalBase = totalMensual + totalMatricula;
+  const totalAmount = applyCoupon(totalBase, couponAplicado);
 
   const handlePagar = async () => {
     if (!stripe || !elements) return;
@@ -232,12 +236,28 @@ function StripePaymentFase({
                 </div>
               </div>
 
+              {couponAplicado && (
+                <div className="flex justify-between items-center pt-1">
+                  <span className="text-xs font-semibold" style={{ color: "#7d2b13" }}>
+                    Cupón {couponAplicado.code}
+                  </span>
+                  <span className="text-xs font-semibold" style={{ color: "#7d2b13" }}>
+                    −{Math.round(couponAplicado.descuento * 100)}%
+                  </span>
+                </div>
+              )}
+
               <div className="flex justify-between items-end pt-1 border-t" style={{ borderColor: "#dcc1b9" }}>
                 <div>
                   <span className="text-sm font-semibold" style={{ color: "#25190f" }}>Total primer pago</span>
                   <p className="text-xs" style={{ color: "#89726c" }}>{totalMensual}€/mes + {totalMatricula}€ matrícula</p>
                 </div>
-                <span className="text-3xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>{totalAmount}€</span>
+                <div className="text-right">
+                  {couponAplicado && (
+                    <span className="block text-sm line-through" style={{ color: "#bcb0ab" }}>{totalBase}€</span>
+                  )}
+                  <span className="text-3xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>{totalAmount}€</span>
+                </div>
               </div>
             </div>
           </div>
@@ -263,6 +283,11 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [savedPagoData, setSavedPagoData] = useState<SavedPagoData | null>(null);
 
+  // Cupón de descuento (opcional)
+  const [couponInput, setCouponInput] = useState("");
+  const [couponAplicado, setCouponAplicado] = useState<Coupon | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
   const segundaInscripcion = !!existingContattoId;
   const bozzeNinas = bozze.map((b, i) => ({ bozza: b, idx: i })).filter(({ bozza }) => bozza.esNinas);
   const totalMensual = bozze.reduce((s, b) => s + b.planPrecio, 0);
@@ -278,6 +303,20 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
   );
   const totalPersonas = (hasAdult ? 1 : 0) + uniqueNinas.size;
   const totalMatricula = totalPersonas * matriculaPrecio;
+
+  const totalBase = totalMensual + totalMatricula;
+  const totalFinal = applyCoupon(totalBase, couponAplicado);
+
+  const handleAplicarCoupon = () => {
+    const found = findCoupon(couponInput);
+    if (found) {
+      setCouponAplicado(found);
+      setCouponError(null);
+    } else {
+      setCouponAplicado(null);
+      setCouponError("Código no válido");
+    }
+  };
 
   const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(estado.email.trim());
 
@@ -352,15 +391,15 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
 
     try {
       if (estado.metodoPago === "tarjeta") {
-        // 1. Create Stripe PaymentIntent
-        const totalAmount = totalMensual + totalMatricula;
+        // 1. Create Stripe PaymentIntent (server re-validates the coupon)
         const res = await fetch("/api/create-payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            amountEur: totalAmount,
+            amountEur: totalBase,
             email: estado.email,
             description: `Inscripción — ${bozze.map(b => b.disciplinaNombre).join(", ")}`,
+            couponCode: couponAplicado?.code,
           }),
         });
         const { clientSecret: cs, paymentIntentId: piId, error: apiErr } = await res.json();
@@ -403,6 +442,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
           matriculaOferta={matriculaOferta}
           matriculaPrecio={matriculaPrecio}
           totalPersonas={totalPersonas}
+          couponAplicado={couponAplicado}
           savedData={savedPagoData}
           onConfirmado={onConfirmado}
           onBack={() => setFase("datos")}
@@ -542,12 +582,65 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
                 </div>
               </div>
 
+              {/* Cupón de descuento */}
+              <div className="pt-1">
+                {couponAplicado ? (
+                  <div className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ backgroundColor: "#ffdbd1" }}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold" style={{ color: "#7d2b13" }}>
+                        {couponAplicado.code} · −{Math.round(couponAplicado.descuento * 100)}%
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setCouponAplicado(null); setCouponInput(""); }}
+                      className="text-xs underline hover:opacity-70"
+                      style={{ color: "#7d2b13" }}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponInput}
+                      onChange={(e) => { setCouponInput(e.target.value); setCouponError(null); }}
+                      placeholder="Código de descuento"
+                      className="flex-1 rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                      style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#25190f", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "#7d2b13")}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = "#dcc1b9")}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAplicarCoupon}
+                      disabled={couponInput.trim() === ""}
+                      className="px-4 py-2.5 rounded-xl text-xs font-semibold tracking-widest uppercase transition-colors"
+                      style={{
+                        backgroundColor: couponInput.trim() === "" ? "#dcc1b9" : "#7d2b13",
+                        color: "#ffffff",
+                        cursor: couponInput.trim() === "" ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                )}
+                {couponError && <p className="text-xs text-red-600 mt-2">{couponError}</p>}
+              </div>
+
               <div className="flex justify-between items-end pt-1 border-t" style={{ borderColor: "#dcc1b9" }}>
                 <div>
                   <span className="text-sm font-semibold" style={{ color: "#25190f" }}>Total primer pago</span>
                   <p className="text-xs" style={{ color: "#89726c" }}>{totalMensual}€/mes + {totalMatricula}€ matrícula</p>
                 </div>
-                <span className="text-3xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>{totalMensual + totalMatricula}€</span>
+                <div className="text-right">
+                  {couponAplicado && (
+                    <span className="block text-sm line-through" style={{ color: "#bcb0ab" }}>{totalBase}€</span>
+                  )}
+                  <span className="text-3xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>{totalFinal}€</span>
+                </div>
               </div>
             </div>
 
