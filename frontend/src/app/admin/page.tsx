@@ -156,6 +156,26 @@ function calcAntigüedad(created_at: string): string {
   return `${months} meses`;
 }
 
+// Formatea los horarios elegidos: "Martes y Jueves · 18:00" si comparten hora,
+// o "Mar 18:00 · Jue 19:00" si las horas difieren.
+function formatHorarios(orari: { orari: { giorno: string; ora_inizio: string } | null }[]): string {
+  const items = (orari ?? [])
+    .map((o) => o.orari)
+    .filter((o): o is { giorno: string; ora_inizio: string } => !!o)
+    .sort((a, b) => {
+      const dA = GIORNI.indexOf(a.giorno); const dB = GIORNI.indexOf(b.giorno);
+      const oA = dA === -1 ? 99 : dA; const oB = dB === -1 ? 99 : dB;
+      if (oA !== oB) return oA - oB;
+      return a.ora_inizio.localeCompare(b.ora_inizio);
+    });
+  if (items.length === 0) return "—";
+  const horas = new Set(items.map((i) => i.ora_inizio.substring(0, 5)));
+  if (horas.size === 1) {
+    return `${items.map((i) => i.giorno).join(" y ")} · ${[...horas][0]}`;
+  }
+  return items.map((i) => `${i.giorno.substring(0, 3)} ${i.ora_inizio.substring(0, 5)}`).join(" · ");
+}
+
 function formatData(created_at: string): string {
   const d = new Date(created_at);
   const today = new Date();
@@ -2215,11 +2235,12 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-surface-container-lowest rounded-[24px] shadow-sm shadow-[#3D2B1F]/5 border border-surface-container-high overflow-hidden">
               <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[540px]">
+              <table className="w-full text-left border-collapse min-w-[680px]">
                 <thead className="bg-surface-container-low border-b border-outline-variant">
                   <tr>
                     <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Usuario</th>
                     <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Disciplina</th>
+                    <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Horario</th>
                     <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Fecha</th>
                     <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Estado</th>
                   </tr>
@@ -2227,11 +2248,11 @@ export default function AdminDashboard() {
                 <tbody className="divide-y divide-outline-variant/50">
                   {loading ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-on-surface-variant">Cargando...</td>
+                      <td colSpan={5} className="py-8 text-center text-on-surface-variant">Cargando...</td>
                     </tr>
                   ) : bookings.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-10 text-center text-on-surface-variant font-body-md text-body-md">
+                      <td colSpan={5} className="py-10 text-center text-on-surface-variant font-body-md text-body-md">
                         No hay reservas aún
                       </td>
                     </tr>
@@ -2239,15 +2260,28 @@ export default function AdminDashboard() {
                     bookings.map((b) => (
                       <tr key={b.id} className="hover:bg-surface-container-low transition-colors">
                         <td className="py-4 px-4 md:px-6 font-body-md text-body-md text-on-surface">
-                          <span>{b.nome} {b.cognome}</span>
-                          {b.nome_alumna && (
-                            <span className="block text-xs mt-0.5" style={{ color: "#89726c" }}>
-                              Alumna: {b.nome_alumna} {b.cognome_alumna}
-                            </span>
+                          {b.nome_alumna ? (
+                            <>
+                              <span className="flex items-center gap-1.5 font-medium">
+                                <Icon name="child_care" className="text-sm" style={{ color: "#7d2b13" }} />
+                                {b.nome_alumna} {b.cognome_alumna}
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide" style={{ backgroundColor: "#f3e1d9", color: "#7d2b13" }}>
+                                  Hija
+                                </span>
+                              </span>
+                              <span className="block text-xs mt-0.5" style={{ color: "#89726c" }}>
+                                Tutor/a: {b.nome} {b.cognome}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="font-medium">{b.nome} {b.cognome}</span>
                           )}
                         </td>
                         <td className="py-4 px-4 md:px-6 font-body-md text-body-md text-on-surface">
                           {b.discipline?.nome ?? "—"}
+                        </td>
+                        <td className="py-4 px-4 md:px-6 font-body-md text-body-md text-on-surface whitespace-nowrap">
+                          {formatHorarios(b.iscrizione_orari)}
                         </td>
                         <td className="py-4 px-4 md:px-6 font-body-md text-body-md text-on-surface-variant whitespace-nowrap">
                           {formatData(b.created_at)}
