@@ -208,8 +208,43 @@ export default function PuertasAbiertas() {
         </div>
       </div>
 
+      {/* ── Andrea / La escuela ── */}
+      <div className="max-w-xl mx-auto px-4 pt-12">
+        <div
+          className="rounded-3xl p-7 sm:p-8 flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left"
+          style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
+        >
+          {/* TODO: sustituir por la foto real de Andrea (guardar en public/andrea.jpg y cambiar src) */}
+          <Image
+            src="/ballet-adultos.png"
+            alt="Andrea Carrió"
+            width={110}
+            height={110}
+            className="rounded-full flex-shrink-0"
+            style={{ objectFit: "cover", objectPosition: "50% 22%", width: 110, height: 110 }}
+          />
+          <div>
+            <p
+              className="text-xs uppercase tracking-[0.2em] mb-1.5"
+              style={{ color: C.muted, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+            >
+              Soy Andrea
+            </p>
+            <p className="text-sm leading-relaxed" style={{ color: C.brown }}>
+              Durante años he sido la profesora de ballet de esta escuela, en la{" "}
+              <strong style={{ color: C.burgundy }}>Calle Motilla del Palancar, 34</strong>{" "}
+              (la que muchas conocéis como la escuela de Maricruz Alcalá). Hoy tomo el relevo y la hago
+              completamente mía, con la misma ilusión de siempre y un objetivo claro:{" "}
+              <strong style={{ color: C.burgundy }}>
+                ballet para niñas con rigor académico, siguiendo el método RAD (Royal Academy of Dance).
+              </strong>
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* ── Form ── */}
-      <div className="max-w-xl mx-auto px-4 pb-20 -mt-4">
+      <div className="max-w-xl mx-auto px-4 pb-20 mt-8">
         <div
           className="rounded-3xl p-8 sm:p-10 shadow-lg"
           style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
