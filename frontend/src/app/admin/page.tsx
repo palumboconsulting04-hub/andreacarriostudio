@@ -1061,6 +1061,11 @@ export default function AdminDashboard() {
   const planBreakdownV = Object.values(planMapV).sort((a, b) => b.ingresos - a.ingresos);
   const maxPlan = Math.max(...planBreakdownV.map(p => p.ingresos), 1);
 
+  const handleLogout = async () => {
+    try { await fetch("/api/admin/logout", { method: "POST" }); } catch {}
+    window.location.href = "/admin/login";
+  };
+
   const navItems = [
     { icon: "dashboard", label: "Resumen" },
     { icon: "calendar_month", label: "Calendario" },
@@ -1140,20 +1145,6 @@ export default function AdminDashboard() {
         </ul>
 
         <ul className="mt-auto space-y-1 border-t border-outline-variant pt-4 md:space-y-0.5">
-          {[
-            { icon: "settings", label: "Configuración" },
-            { icon: "help_outline", label: "Soporte" },
-          ].map((item) => (
-            <li key={item.label}>
-              <a
-                href="#"
-                className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 font-label-md text-label-md md:py-2.5 md:px-3 md:rounded-lg md:text-sm"
-              >
-                <Icon name={item.icon} className="mr-3 md:mr-2.5 md:text-[18px]" />
-                {item.label}
-              </a>
-            </li>
-          ))}
           <li>
             <a
               href="/admin/email-preview"
@@ -1163,6 +1154,16 @@ export default function AdminDashboard() {
               <Icon name="mail_outline" className="mr-3 md:mr-2.5 md:text-[18px]" />
               Preview email
             </a>
+          </li>
+          <li>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 font-label-md text-label-md md:py-2.5 md:px-3 md:rounded-lg md:text-sm"
+              style={{ color: "#b71c1c" }}
+            >
+              <Icon name="logout" className="mr-3 md:mr-2.5 md:text-[18px]" />
+              Cerrar sesión
+            </button>
           </li>
         </ul>
       </nav>
@@ -1856,7 +1857,7 @@ export default function AdminDashboard() {
                 {/* Resultado neto mes */}
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
                   <div className="flex justify-between items-start">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Resultado Mes</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Resultado Mes <InfoTip text="Beneficio o pérdida de este mes: los ingresos cobrados menos los costes fijos. Verde = ganas, rojo = pierdes." /></p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="account_balance_wallet" className="text-base" /></div>
                   </div>
                   <p className="text-3xl font-bold" style={{ color: finResultadoMes >= 0 ? "#2e7d32" : "#b71c1c" }}>
@@ -1873,7 +1874,7 @@ export default function AdminDashboard() {
                 {/* Margen */}
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
                   <div className="flex justify-between items-start">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Margen</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Margen <InfoTip text="Qué parte de los ingresos del mes es beneficio. Ejemplo: 30% significa que de cada 100€ que entran, 30€ son ganancia." /></p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="percent" className="text-base" /></div>
                   </div>
                   <p className="text-3xl font-bold" style={{ color: finMargen >= 0 ? "#7d2b13" : "#b71c1c" }}>
@@ -1885,7 +1886,7 @@ export default function AdminDashboard() {
                 {/* Resultado YTD */}
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
                   <div className="flex justify-between items-start">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Resultado YTD</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Resultado YTD <InfoTip text="Resultado acumulado de todo el año, desde enero hasta hoy (YTD = 'lo que va de año'). Suma de los beneficios/pérdidas de cada mes." /></p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="calendar_today" className="text-base" /></div>
                   </div>
                   <p className="text-3xl font-bold" style={{ color: finResultadoYTD >= 0 ? "#2e7d32" : "#b71c1c" }}>
@@ -1897,7 +1898,7 @@ export default function AdminDashboard() {
                 {/* Costes fijos */}
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
                   <div className="flex justify-between items-start">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Costes Fijos</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Costes Fijos <InfoTip text="Gastos fijos que pagas cada mes (alquiler, luz, seguros, etc.). Los gestionas en la sección Costes." /></p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="receipt_long" className="text-base" /></div>
                   </div>
                   <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>
@@ -1909,7 +1910,7 @@ export default function AdminDashboard() {
 
               {/* Gráfico Ingresos vs Costes — últimos 6 meses */}
               <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
-                <p className="text-sm font-semibold mb-6" style={{ color: "#7d2b13" }}>Ingresos vs Costes — últimos 6 meses</p>
+                <p className="text-sm font-semibold mb-6 flex items-center gap-1.5" style={{ color: "#7d2b13" }}>Ingresos vs Costes — últimos 6 meses <InfoTip text="Compara mes a mes lo que entra (barras oscuras) con lo que cuesta mantener el estudio (barras claras). Si la oscura es más alta, ese mes ganaste." /></p>
                 {finanzasLoading
                   ? <div className="h-52 flex items-center justify-center"><p className="text-sm" style={{ color: "#89726c" }}>Cargando...</p></div>
                   : <ResponsiveContainer width="100%" height={220}>
@@ -1929,7 +1930,7 @@ export default function AdminDashboard() {
               {/* Tabla P&L mensual */}
               <div className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden">
                 <div className="px-6 py-4 border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
-                  <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>P&L Mensual — {new Date().getFullYear()}</p>
+                  <p className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "#7d2b13" }}>P&amp;L Mensual — {new Date().getFullYear()} <InfoTip text="P&L (Pérdidas y Ganancias) es la tabla mes a mes: cuánto entró, cuánto costó y qué resultado quedó. Sirve para ver la evolución del negocio durante el año." /></p>
                   <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>Ingresos cobrados vs estructura de costes</p>
                 </div>
                 <div className="overflow-x-auto">
