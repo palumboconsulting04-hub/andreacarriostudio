@@ -350,7 +350,7 @@ export default function AdminDashboard() {
   };
 
   // KPI drawer
-  const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | null>(null);
+  const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | "facturacion" | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
   const [kpiStudents, setKpiStudents] = useState<KpiStudentRow[]>([]);
   const [kpiStudentProfile, setKpiStudentProfile] = useState<IscrizioneDetalle | null>(null);
@@ -828,6 +828,24 @@ export default function AdminDashboard() {
     setRowDeleteId(null);
   };
 
+  // Listado de alumnas que contribuyen a la facturación del mes (matrícula y/o bono).
+  const handleKpiFacturacion = async () => {
+    setKpiDrawer("facturacion");
+    setKpiStudentProfile(null);
+    setKpiAlumnosDisciplina(null);
+    setKpiOcupacionDisciplina(null);
+    setKpiStudents([]);
+    setKpiLoading(true);
+    const [{ data: isc }, { data: piani }] = await Promise.all([
+      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").in("stato", INSCRITA_STATI_ARR).order("created_at", { ascending: false }),
+      supabase.from("piani").select("id, disciplina_id, prezzo"),
+    ]);
+    const pm: Record<string, number> = {};
+    for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[]) pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
+    setKpiStudents(((isc ?? []) as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+    setKpiLoading(false);
+  };
+
   const handleKpiAlumnos = async () => {
     setKpiDrawer("alumnos");
     setKpiStudentProfile(null);
@@ -1245,7 +1263,10 @@ export default function AdminDashboard() {
                 </button>
 
                 {/* Facturación Mes */}
-                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
+                <button
+                  onClick={handleKpiFacturacion}
+                  className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
+                >
                   <div className="flex justify-between items-start mb-3">
                     <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Facturación Mes <InfoTip text="Dinero cobrado este mes: matrículas y bonos que ya se están cobrando. No incluye lo que está pendiente de pago." /></p>
                     <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
@@ -1262,9 +1283,9 @@ export default function AdminDashboard() {
                           {Math.round(((facturacionMes - facturacionMesAnterior) / facturacionMesAnterior) * 100)}%
                         </span>
                       </>
-                    ) : <span>Inscripciones pagadas</span>}
+                    ) : <span>Ver quién aporta →</span>}
                   </p>
-                </div>
+                </button>
 
                 {/* Interesadas */}
                 <button
@@ -2510,6 +2531,7 @@ export default function AdminDashboard() {
                     : kpiOcupacionDisciplina ? kpiOcupacionDisciplina.nombre
                     : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? kpiAlumnosDisciplina.nombre
                     : kpiDrawer === "pendientes" ? "Interesadas sin pagar"
+                    : kpiDrawer === "facturacion" ? "Facturación del mes"
                     : kpiDrawer === "alumnos" ? "Alumnas Activas"
                     : "Ocupación por Disciplina"}
                 </p>
@@ -2519,6 +2541,7 @@ export default function AdminDashboard() {
                     : kpiDrawer === "pendientes" ? `${pendingCount} contacto${pendingCount !== 1 ? "s" : ""} · ${pendingAmount}€ potencial`
                     : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? `${kpiStudents.length} alumna${kpiStudents.length !== 1 ? "s" : ""}`
                     : kpiDrawer === "alumnos" ? `${iscrittiCount} alumna${iscrittiCount !== 1 ? "s" : ""} activas`
+                    : kpiDrawer === "facturacion" ? `${facturacionMes}€ · ${kpiStudents.length} alumna${kpiStudents.length !== 1 ? "s" : ""}`
                     : `${ocupacionMedia}% media`}
                 </p>
               </div>
