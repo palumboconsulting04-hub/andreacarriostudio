@@ -160,11 +160,11 @@ export default function PuertasAbiertas() {
         </p>
 
         <a
-          href="/"
+          href="https://andreacarriostudio.es"
           className="text-sm uppercase tracking-widest hover:opacity-70 transition-opacity"
           style={{ color: C.muted, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
         >
-          Volver al inicio
+          Ir a la web de Andrea Carrió Studio
         </a>
       </div>
     );
