@@ -64,6 +64,67 @@ function buildHtml(data: InscripcionEmailData): string {
     </tr>
   `).join("");
 
+  // El flujo público con tarjeta es el de suscripción: hoy se paga SOLO la
+  // matrícula y el bono empieza el 1 de septiembre. El alta manual del admin
+  // (en-escuela) conserva el resumen clásico.
+  const isCard = ["tarjeta", "google-pay", "apple-pay", "paypal"].includes(metodoPago);
+  const metodoLabel = METODO_LABEL[metodoPago] ?? metodoPago;
+
+  const resumenRows = isCard ? `
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;padding-bottom:6px;">Matrícula <span style="font-size:11px;color:#89726c;">(pago de hoy)</span></td>
+                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:6px;">${matricula}€</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;padding-bottom:2px;">Bono mensual</td>
+                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:2px;">${totalMensual}€/mes</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" style="font-size:11px;color:#89726c;font-style:italic;padding-bottom:10px;">Empieza el 1 de septiembre — se cobra solo cada mes</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;padding-bottom:10px;">Método de pago</td>
+                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:10px;">${metodoLabel}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;border-top:1px solid #f0ddd5;padding-top:10px;">Estado</td>
+                        <td style="text-align:right;border-top:1px solid #f0ddd5;padding-top:10px;">
+                          <span style="background:#e8f5e9;color:#2e7d32;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;">Matrícula pagada &middot; ${matricula}€</span>
+                        </td>
+                      </tr>
+  ` : `
+                      ${matricula > 0 ? `
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;padding-bottom:6px;">Cuota mensual</td>
+                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:6px;">${totalMensual}€/mes</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;padding-bottom:10px;">Matrícula <span style="font-size:11px;color:#89726c;">(pago único)</span></td>
+                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:10px;">${matricula}€</td>
+                      </tr>
+                      ` : ""}
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;padding-bottom:10px;">Método de pago</td>
+                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:10px;">${metodoLabel}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#56423d;border-top:1px solid #f0ddd5;padding-top:10px;">Estado</td>
+                        <td style="text-align:right;border-top:1px solid #f0ddd5;padding-top:10px;">
+                          <span style="background:#fff3e0;color:#e65100;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;">Pendiente &middot; ${totalMensual}€/mes${matricula > 0 ? ` + ${matricula}€ matrícula` : ""}</span>
+                        </td>
+                      </tr>
+  `;
+
+  const avisoHtml = isCard ? `
+                    <p style="margin:0;font-size:13px;color:#56423d;line-height:1.6;">
+                      <strong style="color:#7d2b13;">¡Perfecto!</strong> Hoy has pagado la matrícula (<strong>${matricula}€</strong>). El bono (<strong>${totalMensual}€/mes</strong>) se cobrará automáticamente en tu tarjeta a partir del <strong>1 de septiembre</strong>, y después cada mes. Puedes cancelar cuando quieras escribiéndome. 🤍
+                    </p>
+  ` : `
+                    <p style="margin:0;font-size:13px;color:#56423d;line-height:1.6;">
+                      <strong style="color:#7d2b13;">Recuerda</strong> traer el pago el primer día: ${matricula > 0 ? `<strong>${matricula}€</strong> de matrícula + ` : ""}<strong>${totalMensual}€</strong>/mes de cuota. Cualquier duda estoy por aquí. 🤍
+                    </p>
+  `;
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -107,31 +168,7 @@ function buildHtml(data: InscripcionEmailData): string {
                   <td style="padding:16px 20px 12px;">
                     <p style="margin:0 0 14px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#89726c;font-weight:700;">&#128179; Resumen de pago</p>
                     <table width="100%" cellpadding="0" cellspacing="0">
-                      ${matricula > 0 ? `
-                      <tr>
-                        <td style="font-size:13px;color:#56423d;padding-bottom:6px;">Cuota mensual</td>
-                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:6px;">${totalMensual}€/mes</td>
-                      </tr>
-                      <tr>
-                        <td style="font-size:13px;color:#56423d;padding-bottom:10px;">
-                          Matrícula <span style="font-size:11px;color:#89726c;">(pago único)</span>
-                        </td>
-                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:10px;">${matricula}€</td>
-                      </tr>
-                      ` : ""}
-                      <tr>
-                        <td style="font-size:13px;color:#56423d;padding-bottom:10px;">Método de pago</td>
-                        <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:10px;">${METODO_LABEL[metodoPago] ?? metodoPago}</td>
-                      </tr>
-                      <tr>
-                        <td style="font-size:13px;color:#56423d;border-top:1px solid #f0ddd5;padding-top:10px;">Estado</td>
-                        <td style="text-align:right;border-top:1px solid #f0ddd5;padding-top:10px;">
-                          ${metodoPago === "tarjeta" || metodoPago === "google-pay" || metodoPago === "apple-pay" || metodoPago === "paypal"
-                            ? `<span style="background:#e8f5e9;color:#2e7d32;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;">Pagado &middot; ${totalMensual + matricula}€</span>`
-                            : `<span style="background:#fff3e0;color:#e65100;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;">Pendiente &middot; ${totalMensual}€/mes${matricula > 0 ? ` + ${matricula}€ matrícula` : ""}</span>`
-                          }
-                        </td>
-                      </tr>
+                      ${resumenRows}
                     </table>
                   </td>
                 </tr>
@@ -145,15 +182,7 @@ function buildHtml(data: InscripcionEmailData): string {
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f5;border-left:3px solid #7d2b13;border-radius:0 12px 12px 0;">
                 <tr>
                   <td style="padding:14px 18px;">
-                    ${metodoPago === "tarjeta" || metodoPago === "google-pay" || metodoPago === "apple-pay" || metodoPago === "paypal" ? `
-                    <p style="margin:0;font-size:13px;color:#56423d;line-height:1.6;">
-                      <strong style="color:#7d2b13;">¡Perfecto!</strong> Tu pago está confirmado. Te espero pronto en el estudio. 🤍
-                    </p>
-                    ` : `
-                    <p style="margin:0;font-size:13px;color:#56423d;line-height:1.6;">
-                      <strong style="color:#7d2b13;">Recuerda</strong> traer el pago el primer día: ${matricula > 0 ? `<strong>${matricula}€</strong> de matrícula + ` : ""}<strong>${totalMensual}€</strong>/mes de cuota. Cualquier duda estoy por aquí. 🤍
-                    </p>
-                    `}
+                    ${avisoHtml}
                   </td>
                 </tr>
               </table>
@@ -190,7 +219,10 @@ function buildHtml(data: InscripcionEmailData): string {
 
 function buildAdminNotificationHtml(data: InscripcionEmailData): string {
   const metodo = METODO_LABEL[data.metodoPago] ?? data.metodoPago;
-  const total = data.totalMensual + (data.matricula ?? 0);
+  const isCard = ["tarjeta", "google-pay", "apple-pay", "paypal"].includes(data.metodoPago);
+  const pagoTxt = isCard
+    ? `${metodo} · Matrícula ${data.matricula ?? 0}€ (hoy) + bono ${data.totalMensual}€/mes (desde 1 sept)`
+    : `${metodo} · ${data.totalMensual + (data.matricula ?? 0)}€${data.matricula > 0 ? ` (incl. ${data.matricula}€ matrícula)` : ""}`;
   const rows = data.inscripciones.map(ins => {
     const alumna = ins.alumna ? ` · Alumna: ${ins.alumna.nombre} ${ins.alumna.apellido}` : "";
     const horarios = ins.horarios.length > 0 ? ins.horarios.join(", ") : "Sin horario";
@@ -203,7 +235,7 @@ function buildAdminNotificationHtml(data: InscripcionEmailData): string {
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
   <tr><td style="font-size:13px;color:#666;padding-bottom:4px;">Nombre</td><td style="font-size:13px;font-weight:600;text-align:right;">${data.nombre} ${data.apellido}</td></tr>
   <tr><td style="font-size:13px;color:#666;padding-bottom:4px;">Email</td><td style="font-size:13px;text-align:right;"><a href="mailto:${data.email}">${data.email}</a></td></tr>
-  <tr><td style="font-size:13px;color:#666;padding-bottom:4px;">Pago</td><td style="font-size:13px;font-weight:600;text-align:right;">${metodo} · ${total}€${data.matricula > 0 ? ` (incl. ${data.matricula}€ matrícula)` : ""}</td></tr>
+  <tr><td style="font-size:13px;color:#666;padding-bottom:4px;">Pago</td><td style="font-size:13px;font-weight:600;text-align:right;">${pagoTxt}</td></tr>
 </table>
 <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #7d2b13;">
   <tr><th style="text-align:left;font-size:11px;color:#888;padding:8px 0 4px;">Disciplina / Plan</th><th style="text-align:right;font-size:11px;color:#888;padding:8px 0 4px;">Horarios</th></tr>
