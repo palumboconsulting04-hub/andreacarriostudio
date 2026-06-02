@@ -21,7 +21,7 @@ const estadoInicial: InscripcionState = {
   apellido: "",
   email: "",
   telefono: "",
-  metodoPago: "en-escuela",
+  metodoPago: "tarjeta",
   nombreAlumna: "",
   apellidoAlumna: "",
 };

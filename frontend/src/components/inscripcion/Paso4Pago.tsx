@@ -33,7 +33,6 @@ interface Props {
 }
 
 const metodosPago: { id: MetodoPago; label: string; proximamente?: boolean }[] = [
-  { id: "en-escuela", label: "Pagar en la escuela" },
   { id: "tarjeta", label: "Tarjeta de crédito" },
   { id: "google-pay", label: "Google Pay", proximamente: true },
   { id: "apple-pay", label: "Apple Pay", proximamente: true },
@@ -111,8 +110,9 @@ function StripePaymentFase({
   const [pagando, setPagando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const totalBase = totalMensual + totalMatricula;
-  const totalAmount = applyCoupon(totalBase, couponAplicado);
+  // Hoy solo se cobra la matrícula (el cupón se aplica a la matrícula).
+  // El bono mensual se cobra automáticamente a partir del 1 de septiembre.
+  const matriculaHoy = applyCoupon(totalMatricula, couponAplicado);
 
   const handlePagar = async () => {
     if (!stripe || !elements) return;
@@ -182,11 +182,14 @@ function StripePaymentFase({
               cursor: !stripe || !elements || pagando ? "not-allowed" : "pointer",
             }}
           >
-            {pagando ? "Procesando..." : `Pagar ${totalAmount}€`}
+            {pagando ? "Procesando..." : `Pagar matrícula ${matriculaHoy}€`}
           </button>
 
-          <p className="text-xs text-center" style={{ color: "#89726c" }}>
-            Pago seguro. Tu tarjeta está protegida con cifrado SSL.
+          <p className="text-xs text-center leading-relaxed" style={{ color: "#89726c" }}>
+            Hoy solo pagas la matrícula. El bono ({totalMensual}€/mes) se cobrará
+            automáticamente en esta tarjeta a partir del <strong>1 de septiembre</strong> y
+            después cada mes. Puedes cancelar cuando quieras escribiendo a Andrea.
+            <br />Pago seguro con cifrado SSL.
           </p>
         </div>
 
@@ -249,14 +252,14 @@ function StripePaymentFase({
 
               <div className="flex justify-between items-end pt-1 border-t" style={{ borderColor: "#dcc1b9" }}>
                 <div>
-                  <span className="text-sm font-semibold" style={{ color: "#25190f" }}>Total primer pago</span>
-                  <p className="text-xs" style={{ color: "#89726c" }}>{totalMensual}€/mes + {totalMatricula}€ matrícula</p>
+                  <span className="text-sm font-semibold" style={{ color: "#25190f" }}>Hoy pagas (matrícula)</span>
+                  <p className="text-xs" style={{ color: "#89726c" }}>Bono {totalMensual}€/mes desde el 1 de sept</p>
                 </div>
                 <div className="text-right">
                   {couponAplicado && (
-                    <span className="block text-sm line-through" style={{ color: "#bcb0ab" }}>{totalBase}€</span>
+                    <span className="block text-sm line-through" style={{ color: "#bcb0ab" }}>{totalMatricula}€</span>
                   )}
-                  <span className="text-3xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>{totalAmount}€</span>
+                  <span className="text-3xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>{matriculaHoy}€</span>
                 </div>
               </div>
             </div>
@@ -273,6 +276,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rgpdAceptado, setRgpdAceptado] = useState(false);
+  const [autorizaCobro, setAutorizaCobro] = useState(false);
   const [modalPrivacidad, setModalPrivacidad] = useState(false);
   const [alumnas, setAlumnas] = useState<{ nombre: string; apellido: string }[]>(
     bozze.map(() => ({ nombre: "", apellido: "" }))
@@ -304,8 +308,8 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
   const totalPersonas = (hasAdult ? 1 : 0) + uniqueNinas.size;
   const totalMatricula = totalPersonas * matriculaPrecio;
 
-  const totalBase = totalMensual + totalMatricula;
-  const totalFinal = applyCoupon(totalBase, couponAplicado);
+  // Lo que se cobra HOY: solo la matrícula (con el cupón aplicado, si lo hay).
+  const matriculaFinal = applyCoupon(totalMatricula, couponAplicado);
 
   const handleAplicarCoupon = () => {
     const found = findCoupon(couponInput);
@@ -328,7 +332,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
     alumnas[idx]?.nombre.trim() !== "" && alumnas[idx]?.apellido.trim() !== ""
   );
 
-  const puedeConfirmar = contactoOk && alumnaOk && rgpdAceptado;
+  const puedeConfirmar = contactoOk && alumnaOk && rgpdAceptado && autorizaCobro;
 
   const updateAlumna = (idx: number, field: "nombre" | "apellido", value: string) => {
     setAlumnas(prev => prev.map((a, i) => i === idx ? { ...a, [field]: value } : a));
@@ -353,7 +357,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
     })),
   });
 
-  const saveToSupabase = async (stripePaymentIntentId?: string) => {
+  const saveToSupabase = async (stripePaymentIntentId?: string, stripeCustomerId?: string) => {
     let cId = existingContattoId ?? null;
     if (!cId) {
       cId = await getOrCreateContatto(estado.nombre, estado.apellido, estado.email, estado.telefono || null);
@@ -378,7 +382,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
       } else {
         if (!adultCharged) { thisMatricula = matriculaPrecio; adultCharged = true; }
       }
-      const id = await submitIscrizione(cId, bEstado, thisMatricula, stripePaymentIntentId);
+      const id = await submitIscrizione(cId, bEstado, thisMatricula, stripePaymentIntentId, stripeCustomerId);
       if (i === 0) firstId = id;
     }
     return { cId, firstId };
@@ -391,24 +395,26 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
 
     try {
       if (estado.metodoPago === "tarjeta") {
-        // 1. Create Stripe PaymentIntent (server re-validates the coupon)
-        const res = await fetch("/api/create-payment-intent", {
+        // 1. Cobrar la matrícula hoy y guardar la tarjeta (el servidor re-valida el cupón).
+        //    Al confirmarse el pago, el webhook crea la suscripción del bono (1 sept).
+        const res = await fetch("/api/create-subscription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            amountEur: totalBase,
+            matriculaEur: totalMatricula,
             email: estado.email,
-            description: `Inscripción — ${bozze.map(b => b.disciplinaNombre).join(", ")}`,
+            nombre: `${estado.nombre} ${estado.apellido}`.trim(),
+            description: `Matrícula — ${bozze.map(b => b.disciplinaNombre).join(", ")}`,
             couponCode: couponAplicado?.code,
           }),
         });
-        const { clientSecret: cs, paymentIntentId: piId, error: apiErr } = await res.json();
+        const { clientSecret: cs, paymentIntentId: piId, customerId, error: apiErr } = await res.json();
         if (apiErr || !cs) throw new Error(apiErr || "Error al crear el pago");
 
-        // 2. Save to Supabase with stripe_payment_intent_id
-        const { cId, firstId } = await saveToSupabase(piId);
+        // 2. Guardar inscripciones con el PaymentIntent y el cliente de Stripe.
+        const { cId, firstId } = await saveToSupabase(piId, customerId);
 
-        // 3. Transition to Stripe payment fase
+        // 3. Pasar a la fase de pago (PaymentElement).
         setSavedPagoData({ contattoId: cId, iscrizioneId: firstId, emailPayload: buildEmailPayload() });
         setClientSecret(cs);
         setFase("pago");
@@ -632,14 +638,14 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
 
               <div className="flex justify-between items-end pt-1 border-t" style={{ borderColor: "#dcc1b9" }}>
                 <div>
-                  <span className="text-sm font-semibold" style={{ color: "#25190f" }}>Total primer pago</span>
-                  <p className="text-xs" style={{ color: "#89726c" }}>{totalMensual}€/mes + {totalMatricula}€ matrícula</p>
+                  <span className="text-sm font-semibold" style={{ color: "#25190f" }}>Hoy pagas (matrícula)</span>
+                  <p className="text-xs" style={{ color: "#89726c" }}>Luego el bono: {totalMensual}€/mes desde el 1 de septiembre</p>
                 </div>
                 <div className="text-right">
                   {couponAplicado && (
-                    <span className="block text-sm line-through" style={{ color: "#bcb0ab" }}>{totalBase}€</span>
+                    <span className="block text-sm line-through" style={{ color: "#bcb0ab" }}>{totalMatricula}€</span>
                   )}
-                  <span className="text-3xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>{totalFinal}€</span>
+                  <span className="text-3xl" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>{matriculaFinal}€</span>
                 </div>
               </div>
             </div>
@@ -653,6 +659,15 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
                 <button type="button" onClick={() => setModalPrivacidad(true)} className="underline hover:opacity-70" style={{ color: "#7d2b13" }}>
                   política de privacidad
                 </button>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
+              <input type="checkbox" checked={autorizaCobro} onChange={(e) => setAutorizaCobro(e.target.checked)} className="mt-0.5 shrink-0 accent-[#7d2b13]" />
+              <span className="text-xs leading-snug" style={{ color: "#56423d" }}>
+                Autorizo que hoy se cobre la matrícula y que, a partir del{" "}
+                <strong>1 de septiembre</strong>, se cobre automáticamente el bono mensual
+                ({totalMensual}€/mes) en mi tarjeta hasta que solicite la baja.
               </span>
             </label>
 
