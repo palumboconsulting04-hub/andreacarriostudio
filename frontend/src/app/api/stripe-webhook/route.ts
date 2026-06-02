@@ -124,15 +124,21 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
     invoice_settings: { default_payment_method: paymentMethodId },
   });
 
-  const sub = await stripe.subscriptions.create({
+  // Regla: el bono empieza SIEMPRE el 1 de septiembre, sin importar cuándo se
+  // apunte la madre. Mientras esa fecha esté en el futuro, se usa como fin del
+  // periodo de prueba (no se cobra nada hasta entonces). Si el curso ya ha
+  // empezado (alta después del 1 de sept), el bono se cobra desde ese momento.
+  const ahora = Math.floor(Date.now() / 1000);
+  const subParams: Stripe.SubscriptionCreateParams = {
     customer: customerId,
     items,
     default_payment_method: paymentMethodId,
-    // Periodo de prueba hasta el 1 de septiembre: no se cobra nada hasta entonces;
-    // ese día se cobra el primer bono y luego automáticamente cada mes.
-    trial_end: BONO_BILLING_ANCHOR,
     metadata: { origen: "inscripcion-bono" },
-  });
+  };
+  if (BONO_BILLING_ANCHOR > ahora + 3600) {
+    subParams.trial_end = BONO_BILLING_ANCHOR;
+  }
+  const sub = await stripe.subscriptions.create(subParams);
 
   await supabaseAdmin
     .from("iscrizioni")
