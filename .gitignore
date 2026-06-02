@@ -27,3 +27,6 @@ Thumbs.db
 .mcp.json
 
 .vercel
+
+# Scratch / temporales locales
+tmp_elementor/

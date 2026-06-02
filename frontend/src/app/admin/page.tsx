@@ -290,6 +290,13 @@ export default function AdminDashboard() {
   const [puertasData, setPuertasData] = useState<PuertaRow[]>([]);
   const [puertasLoading, setPuertasLoading] = useState(false);
   const [puertasSearch, setPuertasSearch] = useState("");
+  const [puertasDeleteId, setPuertasDeleteId] = useState<string | null>(null);
+
+  const handleDeletePuerta = async (id: string) => {
+    const res = await fetch(`/api/admin/puertas-abiertas?id=${id}`, { method: "DELETE" });
+    if (res.ok) setPuertasData(prev => prev.filter(r => r.id !== id));
+    setPuertasDeleteId(null);
+  };
 
   // KPI drawer
   const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | null>(null);
@@ -441,10 +448,11 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeSection !== "Puertas Abiertas") return;
     setPuertasLoading(true);
-    supabase.from("puertas_abiertas").select("*").order("created_at", { ascending: false }).then(({ data }) => {
-      setPuertasData((data ?? []) as PuertaRow[]);
-      setPuertasLoading(false);
-    });
+    fetch("/api/admin/puertas-abiertas")
+      .then(r => r.json())
+      .then(({ data }) => setPuertasData((data ?? []) as PuertaRow[]))
+      .catch(() => setPuertasData([]))
+      .finally(() => setPuertasLoading(false));
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchVentas() {
@@ -1949,10 +1957,10 @@ export default function AdminDashboard() {
           {/* ── Puertas Abiertas ── */}
           {activeSection === "Puertas Abiertas" && (() => {
             const DISC_LABEL: Record<string, string> = {
-              pilates: "Pilates Reformer",
-              barre: "Barre",
+              "ballet-nina": "Ballet Niña",
               "ballet-adultas": "Ballet Adultas",
-              "acompanar": "Solo acompañar",
+              "barre": "Barre",
+              "pilates-mat": "Pilates Mat",
             };
             const q = puertasSearch.toLowerCase();
             const filtered = puertasData.filter(r =>
@@ -2026,8 +2034,8 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Nombre", "Contacto", "Quiere probar", "Niñas", "Alergias", "Fecha"].map(h => (
-                              <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
+                            {["Nombre", "Contacto", "Quiere probar", "Niñas", "Alergias", "Fecha", ""].map((h, hi) => (
+                              <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -2071,6 +2079,35 @@ export default function AdminDashboard() {
                               </td>
                               <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "#89726c" }}>
                                 {new Date(r.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                {puertasDeleteId === r.id ? (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => handleDeletePuerta(r.id)}
+                                      className="px-2.5 py-1 rounded-full text-xs font-semibold"
+                                      style={{ backgroundColor: "#b3261e", color: "#fff" }}
+                                    >
+                                      Sí, borrar
+                                    </button>
+                                    <button
+                                      onClick={() => setPuertasDeleteId(null)}
+                                      className="px-2.5 py-1 rounded-full text-xs"
+                                      style={{ backgroundColor: "#f0ddd5", color: "#56423d" }}
+                                    >
+                                      No
+                                    </button>
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => setPuertasDeleteId(r.id)}
+                                    className="p-1.5 rounded-lg hover:bg-[#fbe9e7] transition-colors"
+                                    aria-label="Borrar reserva"
+                                    title="Borrar reserva"
+                                  >
+                                    <Icon name="delete" className="text-base" style={{ color: "#b3261e" }} />
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           ))}

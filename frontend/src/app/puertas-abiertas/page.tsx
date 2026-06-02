@@ -6,13 +6,17 @@ import Image from "next/image";
 type Nina = { nombre: string; edad: string };
 
 const DISCIPLINAS = [
-  { value: "pilates", label: "Pilates Reformer" },
-  { value: "barre", label: "Barre" },
+  { value: "ballet-nina", label: "Ballet Niña" },
   { value: "ballet-adultas", label: "Ballet Adultas" },
-  { value: "acompanar", label: "Solo vengo a acompañar" },
+  { value: "barre", label: "Barre" },
+  { value: "pilates-mat", label: "Pilates Mat" },
 ];
 
-const EDAD_NINA_OPTIONS = ["3–4 años", "5–6 años", "7–9 años", "10–12 años"];
+const EDAD_NINA_OPTIONS = [
+  "Pre-Ballet · 3–6 años",
+  "Ballet 1 · 7–9 años",
+  "Ballet 2 · 10–12 años",
+];
 
 const C = {
   burgundy: "#7d2b13",
@@ -133,11 +137,28 @@ export default function PuertasAbiertas() {
         >
           ¡Reserva hecha!
         </h2>
-        <p className="text-base max-w-md leading-relaxed mb-10" style={{ color: C.brown }}>
-          Me alegra mucho que quieras venir. En breve te escribo con todos los detalles para que estés lista el día de las Puertas Abiertas.<br /><br />
+        <p className="text-base max-w-md leading-relaxed mb-8" style={{ color: C.brown }}>
+          Me alegra mucho que quieras venir. He creado un grupo de WhatsApp donde iré compartiendo todos los detalles de la Jornada de Puertas Abiertas. Únete para no perderte nada.
+        </p>
+
+        <a
+          href="https://chat.whatsapp.com/GTZt2CDM41kERzY0Iek9kH?mode=gi_t"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-3 px-7 py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity mb-4"
+          style={{ backgroundColor: "#25D366", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.51 5.26l-.999 3.648 3.477-1.717zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/>
+          </svg>
+          Unirme al grupo de WhatsApp
+        </a>
+
+        <p className="text-sm max-w-md leading-relaxed mb-10" style={{ color: C.brown }}>
           ¡Hasta pronto!<br />
           <strong>Andrea</strong>
         </p>
+
         <a
           href="/"
           className="text-sm uppercase tracking-widest hover:opacity-70 transition-opacity"
@@ -154,7 +175,7 @@ export default function PuertasAbiertas() {
 
       {/* ── Hero ── */}
       <div
-        className="relative overflow-hidden px-6 py-16 sm:py-24 text-center"
+        className="relative overflow-hidden px-6 pt-16 pb-8 sm:pt-24 sm:pb-10 text-center"
         style={{
           background: `linear-gradient(160deg, #fff0eb 0%, ${C.bg} 55%, #f0e0d8 100%)`,
         }}
@@ -187,10 +208,10 @@ export default function PuertasAbiertas() {
           </p>
 
           <h1
-            className="text-5xl sm:text-6xl mb-6 leading-tight"
+            className="text-4xl sm:text-5xl mb-6 leading-tight"
             style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.burgundy }}
           >
-            Puertas<br />Abiertas
+            Jornada de<br />Puertas Abiertas
           </h1>
 
           <div className="flex items-center justify-center gap-3 mb-6">
@@ -200,51 +221,73 @@ export default function PuertasAbiertas() {
           </div>
 
           <p
+            className="text-lg sm:text-xl mb-5 leading-snug max-w-md mx-auto"
+            style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.burgundy }}
+          >
+            Una tarde para descubrir el estudio antes de empezar.
+          </p>
+
+          <p
             className="text-base sm:text-lg leading-relaxed max-w-md mx-auto"
             style={{ color: C.brown }}
           >
-            Quiero que conozcas el estudio antes de decidir. Ven a probar una clase, muévete, y siéntelo por ti misma. No hace falta saber bailar — solo tener ganas.
+            Ven el 24 de julio, conoce a Andrea en persona y descubre el estudio desde dentro. Si vienes con tu hija, que ella pruebe su primera clase de ballet. Si vienes para ti, muévete y siéntelo en tu propio cuerpo.
+          </p>
+
+          <p
+            className="text-base sm:text-lg leading-relaxed mt-4 font-semibold"
+            style={{ color: C.burgundy, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+          >
+            No hace falta experiencia. Solo ganas.
           </p>
         </div>
       </div>
 
-      {/* ── Andrea / La escuela ── */}
-      <div className="max-w-xl mx-auto px-4 pt-12">
+      {/* ── Cuerpo: Andrea + Formulario ── */}
+      <div className="max-w-5xl mx-auto px-4 pt-6 pb-20">
+        <div className="grid lg:grid-cols-[0.85fr_1.15fr] gap-6 lg:gap-10 lg:items-start">
+
+        {/* ── Soy Andrea (fija en desktop) ── */}
+        <div className="lg:sticky lg:top-8">
         <div
-          className="rounded-3xl p-7 sm:p-8 flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left"
+          className="rounded-3xl overflow-hidden flex flex-col text-center sm:text-left"
           style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
         >
-          {/* TODO: sustituir por la foto real de Andrea (guardar en public/andrea.jpg y cambiar src) */}
           <Image
-            src="/ballet-adultos.png"
+            src="/andrea.jpg"
             alt="Andrea Carrió"
-            width={110}
-            height={110}
-            className="rounded-full flex-shrink-0"
-            style={{ objectFit: "cover", objectPosition: "50% 22%", width: 110, height: 110 }}
+            width={1792}
+            height={2400}
+            priority
+            sizes="(max-width: 1024px) 100vw, 400px"
+            className="w-full h-auto block"
           />
-          <div>
+          <div className="p-7 sm:p-8">
             <p
               className="text-xs uppercase tracking-[0.2em] mb-1.5"
               style={{ color: C.muted, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
             >
               Soy Andrea
             </p>
-            <p className="text-sm leading-relaxed" style={{ color: C.brown }}>
-              Durante años he sido la profesora de ballet de esta escuela, en la{" "}
-              <strong style={{ color: C.burgundy }}>Calle Motilla del Palancar, 34</strong>{" "}
-              (la que muchas conocéis como la escuela de Maricruz Alcalá). Hoy tomo el relevo y la hago
-              completamente mía, con la misma ilusión de siempre y un objetivo claro:{" "}
-              <strong style={{ color: C.burgundy }}>
-                ballet para niñas con rigor académico, siguiendo el método RAD (Royal Academy of Dance).
-              </strong>
-            </p>
+            <div className="text-sm leading-relaxed space-y-3" style={{ color: C.brown }}>
+              <p>
+                Durante años he sido profesora de ballet en diferentes escuelas de Valencia — entre ellas, esta misma, en la{" "}
+                <strong style={{ color: C.burgundy }}>Calle Motilla del Palancar 34</strong>. La que muchas de vosotras conocéis como la escuela de Maricruz Alcalá.
+              </p>
+              <p>Hoy tomo el relevo y la hago completamente mía.</p>
+              <p>
+                La danza me acompaña desde que tengo memoria. Es la forma en la que entiendo el cuerpo, el movimiento y la vida. Y ahora quiero volcar todo eso aquí — en este estudio, en este barrio — para crear un espacio donde bailar y moverse sea algo que se disfruta, se siente y se comparte. Un lugar donde enseñar todo lo que sé, con todo el amor que tengo por este oficio.
+              </p>
+              <p>
+                <strong style={{ color: C.burgundy }}>Esto es Andrea Carrió Studio.</strong> Y me alegra mucho que estés aquí.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+        </div>{/* /columna Andrea */}
 
-      {/* ── Form ── */}
-      <div className="max-w-xl mx-auto px-4 pb-20 mt-8">
+        {/* ── Formulario ── */}
+        <div>
         <div
           className="rounded-3xl p-8 sm:p-10 shadow-lg"
           style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
@@ -314,7 +357,7 @@ export default function PuertasAbiertas() {
 
             {/* ── Niñas ── */}
             <div>
-              <SectionLabel text="¿Traes a tu hija?" />
+              <SectionLabel text="¿La reserva es para tu hija?" />
               <div className="flex gap-2 mb-4">
                 <button onClick={() => setTraeNina(true)} style={chip(traeNina === true)}>Sí</button>
                 <button
@@ -425,7 +468,10 @@ export default function PuertasAbiertas() {
             </p>
           </div>
         </div>
-      </div>
+        </div>{/* /columna formulario */}
+
+        </div>{/* /grid */}
+      </div>{/* /cuerpo */}
 
     </div>
   );
