@@ -800,6 +800,34 @@ export default function AdminDashboard() {
     setUsuariosProfile(null);
   };
 
+  // ── Borrado rápido desde tabla (Usuarios / Reservas Recientes) ──
+  const [rowDeleteId, setRowDeleteId] = useState<string | null>(null);
+  const [rowDeleting, setRowDeleting] = useState(false);
+  const handleEliminarRow = async (id: string, stato: string, prezzo?: number | null, matricula?: number | null) => {
+    setRowDeleting(true);
+    const res = await fetch("/api/admin/delete-iscrizione", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) {
+      if (stato === "attesa") {
+        setPendingCount(p => Math.max(0, p - 1));
+        setPendingAmount(p => Math.max(0, p - (prezzo ?? 0)));
+      } else if (isPaid(stato)) {
+        setIscrittiCount(p => Math.max(0, p - 1));
+        setFacturacionMes(p => Math.max(0, p - (prezzo ?? 0) - (matricula ?? 0)));
+      } else if (stato === "matricula_pagada") {
+        setIscrittiCount(p => Math.max(0, p - 1));
+        setFacturacionMes(p => Math.max(0, p - (matricula ?? 0)));
+      }
+      setBookings(prev => prev.filter(b => b.id !== id));
+      setUsuariosData(prev => prev.filter(u => u.id !== id));
+    }
+    setRowDeleting(false);
+    setRowDeleteId(null);
+  };
+
   const handleKpiAlumnos = async () => {
     setKpiDrawer("alumnos");
     setKpiStudentProfile(null);
@@ -1986,14 +2014,14 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm min-w-[640px]">
                         <thead>
                           <tr className="border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
-                            {["Alumna", "Tutor", "Disciplina", "Plan", "Cuota", "Estado", "Inscrita"].map(h => (
-                              <th key={h} className="text-left py-3 px-4 text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>{h}</th>
+                            {["Alumna", "Tutor", "Disciplina", "Plan", "Cuota", "Estado", "Inscrita", ""].map((h, hi) => (
+                              <th key={hi} className="text-left py-3 px-4 text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {filtered.length === 0 ? (
-                            <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: "#89726c" }}>No hay resultados</td></tr>
+                            <tr><td colSpan={8} className="py-12 text-center text-sm" style={{ color: "#89726c" }}>No hay resultados</td></tr>
                           ) : filtered.map(u => {
                             const esNina = NINAS_IDS.has(u.disciplina_id);
                             const alumnaName = esNina && u.nome_alumna
@@ -2019,6 +2047,18 @@ export default function AdminDashboard() {
                                 </td>
                                 <td className="py-3 px-4 whitespace-nowrap text-xs" style={{ color: "#89726c" }}>
                                   {new Date(u.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                                </td>
+                                <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                  {rowDeleteId === u.id ? (
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <button onClick={() => handleEliminarRow(u.id, u.stato, u.prezzo, null)} disabled={rowDeleting} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#b71c1c", color: "#fff" }}>{rowDeleting ? "..." : "Sí, borrar"}</button>
+                                      <button onClick={() => setRowDeleteId(null)} className="px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: "#f0ddd5", color: "#56423d" }}>No</button>
+                                    </span>
+                                  ) : (
+                                    <button onClick={() => setRowDeleteId(u.id)} className="p-1.5 rounded-lg hover:bg-[#fbe9e7] transition-colors" aria-label="Eliminar" title="Eliminar">
+                                      <Icon name="delete" className="text-base" style={{ color: "#b71c1c" }} />
+                                    </button>
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -2358,16 +2398,17 @@ export default function AdminDashboard() {
                     <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Horario</th>
                     <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Fecha</th>
                     <th className="py-4 px-4 md:px-6 font-label-md text-label-md text-on-surface-variant">Estado</th>
+                    <th className="py-4 px-4 md:px-6"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/50">
                   {loading ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-on-surface-variant">Cargando...</td>
+                      <td colSpan={6} className="py-8 text-center text-on-surface-variant">Cargando...</td>
                     </tr>
                   ) : bookings.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center text-on-surface-variant font-body-md text-body-md">
+                      <td colSpan={6} className="py-10 text-center text-on-surface-variant font-body-md text-body-md">
                         No hay reservas aún
                       </td>
                     </tr>
@@ -2410,6 +2451,18 @@ export default function AdminDashboard() {
                             <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e8f5e9] text-[#2e7d32] font-label-md text-xs">
                               Pagado
                             </span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 md:px-6 text-right whitespace-nowrap">
+                          {rowDeleteId === b.id ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <button onClick={() => handleEliminarRow(b.id, b.stato, null, null)} disabled={rowDeleting} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#b71c1c", color: "#fff" }}>{rowDeleting ? "..." : "Sí, borrar"}</button>
+                              <button onClick={() => setRowDeleteId(null)} className="px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: "#f0ddd5", color: "#56423d" }}>No</button>
+                            </span>
+                          ) : (
+                            <button onClick={() => setRowDeleteId(b.id)} className="p-1.5 rounded-lg hover:bg-[#fbe9e7] transition-colors" aria-label="Eliminar" title="Eliminar">
+                              <Icon name="delete" className="text-base" style={{ color: "#b71c1c" }} />
+                            </button>
                           )}
                         </td>
                       </tr>
