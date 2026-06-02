@@ -128,8 +128,9 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
     customer: customerId,
     items,
     default_payment_method: paymentMethodId,
-    billing_cycle_anchor: BONO_BILLING_ANCHOR, // primer cobro: 1 de septiembre
-    proration_behavior: "none", // no cobrar el tramo hasta septiembre
+    // Periodo de prueba hasta el 1 de septiembre: no se cobra nada hasta entonces;
+    // ese día se cobra el primer bono y luego automáticamente cada mes.
+    trial_end: BONO_BILLING_ANCHOR,
     metadata: { origen: "inscripcion-bono" },
   });
 
