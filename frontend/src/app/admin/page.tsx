@@ -77,6 +77,7 @@ type IscrizioneDetalle = {
   iscrizione_orari: { orari: { giorno: string; ora_inizio: string; ora_fine: string } | null }[];
   prezzo?: number | null;
   matricula?: number | null;
+  stripe_subscription_id?: string | null;
 };
 
 type VentaRow = {
@@ -112,9 +113,23 @@ const PLAN_LABEL: Record<string, string> = {
   "intensivo": "Intensivo",
 };
 // El pago con tarjeta (webhook Stripe) guarda "pagado"; el alta manual guarda "pagato".
-// Tratamos ambos como pagado.
-const PAID_STATI = new Set(["pagato", "pagado"]);
+// "activa" = suscripción del bono cobrándose cada mes. Los tres cuentan como pago.
+const PAID_STATI = new Set(["pagato", "pagado", "activa"]);
 const isPaid = (stato: string) => PAID_STATI.has(stato);
+
+// Etiquetas y colores de cada estado de inscripción.
+const STATO_INFO: Record<string, { label: string; bg: string; color: string }> = {
+  attesa:           { label: "Pendiente",        bg: "#fde7e7", color: "#b71c1c" },
+  pagado:           { label: "Pagado",           bg: "#e8f5e9", color: "#2e7d32" },
+  pagato:           { label: "Pagado",           bg: "#e8f5e9", color: "#2e7d32" },
+  matricula_pagada: { label: "Matrícula pagada", bg: "#fff3e0", color: "#e65100" },
+  activa:           { label: "Bono activo",      bg: "#e8f5e9", color: "#2e7d32" },
+  impago:           { label: "Impago",           bg: "#fde7e7", color: "#b71c1c" },
+  cancelada:        { label: "Cancelada",        bg: "#eceff1", color: "#546e7a" },
+};
+const statoInfo = (s: string) => STATO_INFO[s] ?? { label: s, bg: "#eceff1", color: "#546e7a" };
+// Estados con suscripción del bono que se puede cancelar.
+const SUB_CANCELABLE = new Set(["matricula_pagada", "activa", "impago"]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -689,9 +704,10 @@ export default function AdminDashboard() {
   const handleUsuarioClick = async (id: string) => {
     setUsuariosProfileLoading(true);
     setUsuariosProfile(null);
+    setConfirmCancelSub(false);
     const { data } = await supabase
       .from("iscrizioni")
-      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
+      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, stripe_subscription_id, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
       .eq("id", id)
       .single();
     if (data) {
@@ -699,6 +715,25 @@ export default function AdminDashboard() {
       setUsuariosProfile({ ...(data as unknown as IscrizioneDetalle), prezzo: pd?.prezzo ?? null });
     }
     setUsuariosProfileLoading(false);
+  };
+
+  // ── Cancelar suscripción del bono (la madre se da de baja) ──
+  const [cancelandoSub, setCancelandoSub] = useState(false);
+  const [confirmCancelSub, setConfirmCancelSub] = useState(false);
+  const handleCancelarSuscripcion = async () => {
+    if (!usuariosProfile) return;
+    setCancelandoSub(true);
+    const res = await fetch("/api/admin/cancel-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ iscrizioneId: usuariosProfile.id }),
+    });
+    if (res.ok) {
+      setUsuariosProfile(p => p ? { ...p, stato: "cancelada" } : p);
+      setUsuariosData(prev => prev.map(u => u.id === usuariosProfile.id ? { ...u, stato: "cancelada" } : u));
+    }
+    setCancelandoSub(false);
+    setConfirmCancelSub(false);
   };
 
   const handleCambiarStatoUsuario = async (nuevoStato: string) => {
@@ -3292,23 +3327,38 @@ export default function AdminDashboard() {
                     </div>
                   )}
 
-                  {/* Estado de pago */}
+                  {/* Estado */}
                   <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
                     <div className="flex items-center justify-between p-4">
-                      <p className="text-sm font-medium" style={{ color: "#25190f" }}>Estado de pago</p>
-                      {usuariosProfile.stato === "attesa"
-                        ? <span className="px-3 py-1 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>
-                        : <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>}
+                      <p className="text-sm font-medium" style={{ color: "#25190f" }}>Estado</p>
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: statoInfo(usuariosProfile.stato).bg, color: statoInfo(usuariosProfile.stato).color }}>
+                        {statoInfo(usuariosProfile.stato).label}
+                      </span>
                     </div>
-                    {usuariosProfile.stato === "attesa" ? (
+                    {usuariosProfile.stripe_subscription_id && SUB_CANCELABLE.has(usuariosProfile.stato) ? (
+                      confirmCancelSub ? (
+                        <div className="flex border-t" style={{ borderColor: "#dcc1b9" }}>
+                          <button onClick={handleCancelarSuscripcion} disabled={cancelandoSub} className="flex-1 py-3 text-sm font-semibold" style={{ backgroundColor: "#b71c1c", color: "#fff" }}>
+                            {cancelandoSub ? "Cancelando..." : "Sí, dar de baja"}
+                          </button>
+                          <button onClick={() => setConfirmCancelSub(false)} className="flex-1 py-3 text-sm" style={{ backgroundColor: "#fff1e9", color: "#89726c" }}>
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmCancelSub(true)} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#b71c1c" }}>
+                          Cancelar suscripción del bono
+                        </button>
+                      )
+                    ) : usuariosProfile.stato === "attesa" ? (
                       <button onClick={() => handleCambiarStatoUsuario("pagato")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#7d2b13", color: "#fff" }}>
                         Marcar como pagado
                       </button>
-                    ) : (
+                    ) : (usuariosProfile.stato === "pagato" || usuariosProfile.stato === "pagado") ? (
                       <button onClick={() => handleCambiarStatoUsuario("attesa")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#89726c" }}>
                         Deshacer pago
                       </button>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Eliminar */}
