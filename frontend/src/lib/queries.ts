@@ -125,7 +125,8 @@ export async function submitIscrizione(
   contattoId: string,
   estado: InscripcionState,
   matricula = 0,
-  stripePaymentIntentId?: string
+  stripePaymentIntentId?: string,
+  stripeCustomerId?: string
 ): Promise<string> {
   const payload = {
     contatto_id: contattoId,
@@ -140,6 +141,7 @@ export async function submitIscrizione(
     nome_alumna: estado.nombreAlumna || null,
     cognome_alumna: estado.apellidoAlumna || null,
     stripe_payment_intent_id: stripePaymentIntentId || null,
+    stripe_customer_id: stripeCustomerId || null,
   };
 
   // Try with matricula; if column doesn't exist yet fall back without it
