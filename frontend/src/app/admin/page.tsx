@@ -117,6 +117,11 @@ const PLAN_LABEL: Record<string, string> = {
 const PAID_STATI = new Set(["pagato", "pagado", "activa"]);
 const isPaid = (stato: string) => PAID_STATI.has(stato);
 
+// Estados que cuentan como alumna inscrita (incluye "matrícula pagada", cuyo bono
+// empieza en septiembre). El bono solo se factura en los estados de PAID_STATI;
+// la matrícula se cuenta para cualquier estado de INSCRITA_STATI.
+const INSCRITA_STATI_ARR = ["pagato", "pagado", "activa", "matricula_pagada"];
+
 // Etiquetas y colores de cada estado de inscripción.
 const STATO_INFO: Record<string, { label: string; bg: string; color: string }> = {
   attesa:           { label: "Pendiente",        bg: "#fde7e7", color: "#b71c1c" },
@@ -332,7 +337,7 @@ export default function AdminDashboard() {
   const loadStats = async () => {
     const todayEs = DOW_ES[new Date().getDay()];
     const [r1, r3, r5] = await Promise.all([
-      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).in("stato", ["pagato", "pagado"]),
+      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).in("stato", INSCRITA_STATI_ARR),
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
       supabase
         .from("iscrizioni")
@@ -403,7 +408,7 @@ export default function AdminDashboard() {
     if (activeSection !== "Finanzas" && activeSection !== "Resumen") return;
     setFinanzasLoading(true);
     Promise.all([
-      supabase.from("iscrizioni").select("created_at, disciplina_id, piano_id, matricula").in("stato", ["pagato", "pagado"]),
+      supabase.from("iscrizioni").select("created_at, disciplina_id, piano_id, matricula, stato").in("stato", INSCRITA_STATI_ARR),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
       supabase.from("costes").select("importe_mensual").eq("activo", true),
     ]).then(([{ data: isc }, { data: piani }, { data: costes }]) => {
@@ -417,9 +422,11 @@ export default function AdminDashboard() {
         const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
         const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" });
-        const mrr = ((isc ?? []) as { created_at: string; disciplina_id: string; piano_id: string; matricula: number }[])
-          .filter(v => v.created_at.substring(0, 7) <= mes)
+        // Bono mensual recurrente: solo de quien ya lo está facturando (no la matrícula pagada).
+        const mrr = ((isc ?? []) as { created_at: string; disciplina_id: string; piano_id: string; matricula: number; stato: string }[])
+          .filter(v => v.created_at.substring(0, 7) <= mes && PAID_STATI.has(v.stato))
           .reduce((s, v) => s + (pm[`${v.piano_id}:${v.disciplina_id}`] ?? 0), 0);
+        // Matrícula: ingreso del mes en que se cobró, para cualquier inscrita.
         const matMes = ((isc ?? []) as { created_at: string; matricula: number }[])
           .filter(v => v.created_at.substring(0, 7) === mes)
           .reduce((s, v) => s + (v.matricula ?? 0), 0);
@@ -768,7 +775,7 @@ export default function AdminDashboard() {
     setKpiAlumnosDisciplina(null);
     setKpiStudents([]);
     setKpiLoading(true);
-    const { data: isc } = await supabase.from("iscrizioni").select("disciplina_id, discipline(nome)").in("stato", ["pagato", "pagado"]);
+    const { data: isc } = await supabase.from("iscrizioni").select("disciplina_id, discipline(nome)").in("stato", INSCRITA_STATI_ARR);
     const countMap: Record<string, { nombre: string; count: number }> = {};
     for (const i of (isc ?? []) as unknown as { disciplina_id: string; discipline: { nome: string } | null }[]) {
       const did = i.disciplina_id;
@@ -790,7 +797,7 @@ export default function AdminDashboard() {
     setKpiAlumnosDisciplina(disc);
     setKpiLoading(true);
     const [{ data: isc }, { data: piani }] = await Promise.all([
-      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").eq("disciplina_id", disc.disciplina_id).in("stato", ["pagato", "pagado"]).order("created_at", { ascending: false }),
+      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").eq("disciplina_id", disc.disciplina_id).in("stato", INSCRITA_STATI_ARR).order("created_at", { ascending: false }),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
     ]);
     const pm: Record<string, number> = {};
@@ -802,7 +809,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const todayEs = DOW_ES[new Date().getDay()];
     Promise.all([
-      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).in("stato", ["pagato", "pagado"]),
+      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).in("stato", INSCRITA_STATI_ARR),
       supabase.from("orari").select("*", { count: "exact", head: true }).eq("giorno", todayEs).eq("attivo", true),
       supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true),
@@ -829,10 +836,15 @@ export default function AdminDashboard() {
       for (const isc of (r6.data ?? []) as { disciplina_id: string; piano_id: string; stato: string; created_at: string; matricula: number }[]) {
         const prezzo = pm[`${isc.piano_id}:${isc.disciplina_id}`] ?? 0;
         const mat = isc.matricula ?? 0;
-        if (isc.stato === "attesa") { pendAmt += prezzo; }
-        if (isPaid(isc.stato)) {
+        if (isc.stato === "attesa") {
+          pendAmt += prezzo;
+        } else if (isPaid(isc.stato)) {
           factMes += prezzo + mat;
           if (isc.created_at.substring(0, 7) < curMonthStr) factAnt += prezzo + mat;
+        } else if (isc.stato === "matricula_pagada") {
+          // El bono empieza en septiembre: hoy solo cuenta la matrícula.
+          factMes += mat;
+          if (isc.created_at.substring(0, 7) < curMonthStr) factAnt += mat;
         }
       }
       setFacturacionMes(factMes);
