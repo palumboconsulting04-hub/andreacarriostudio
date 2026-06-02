@@ -211,6 +211,37 @@ function Icon({ name, className = "", style }: { name: string; className?: strin
   return <span className={`material-symbols-outlined ${className}`} style={style}>{name}</span>;
 }
 
+// Icono ⓘ que, al pulsarlo, muestra una explicación corta de la métrica.
+function InfoTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex align-middle">
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label="Información"
+        onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen((o) => !o); }}
+        className="inline-flex items-center justify-center cursor-help"
+        style={{ color: "#b0a39e" }}
+      >
+        <Icon name="info" style={{ fontSize: "15px" }} />
+      </span>
+      {open && (
+        <>
+          <span className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpen(false); }} />
+          <span
+            onClick={(e) => e.stopPropagation()}
+            className="absolute z-50 left-0 top-6 w-52 p-3 rounded-xl text-xs font-normal normal-case tracking-normal leading-snug shadow-lg"
+            style={{ backgroundColor: "#25190f", color: "#fff8f5" }}
+          >
+            {text}
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
+
 // Sep=1, Oct=2, Nov=3, Dec=4, Jan=5, Feb=6, Mar=7, Apr=8, May=9, Jun=10, Jul/Aug=1
 function getSchoolYearMonth(): number {
   const m = new Date().getMonth();
@@ -1175,7 +1206,7 @@ export default function AdminDashboard() {
                   className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Total Alumnos</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Total Alumnos <InfoTip text="Alumnas con plaza: han pagado la matrícula o ya tienen el bono activo. Pulsa la tarjeta para ver el detalle." /></p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
                       <Icon name="group" className="text-base" />
                     </div>
@@ -1187,7 +1218,7 @@ export default function AdminDashboard() {
                 {/* Facturación Mes */}
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Facturación Mes</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Facturación Mes <InfoTip text="Dinero cobrado este mes: matrículas y bonos que ya se están cobrando. No incluye lo que está pendiente de pago." /></p>
                     <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
                       <Icon name="euro" className="text-base" />
                     </div>
@@ -1212,7 +1243,7 @@ export default function AdminDashboard() {
                   className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Interesadas</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Interesadas <InfoTip text="Personas apuntadas que aún no han pagado online (por ejemplo, eligieron pagar en la escuela). Pendientes de convertir." /></p>
                     <div className="p-2 rounded-full" style={{ backgroundColor: "#fff3e0", color: "#e65100" }}>
                       <Icon name="person_search" className="text-base" />
                     </div>
@@ -1229,7 +1260,7 @@ export default function AdminDashboard() {
                   className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Ocupación Media</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Ocupación Media <InfoTip text="Porcentaje de plazas ocupadas sobre el total de plazas disponibles en las clases." /></p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
                       <Icon name="monitoring" className="text-base" />
                     </div>
@@ -1243,7 +1274,7 @@ export default function AdminDashboard() {
                 {/* Resultado del Mes */}
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Resultado Mes</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Resultado Mes <InfoTip text="Lo que queda al restar los costes fijos a la facturación del mes: beneficio (verde) o pérdida (rojo)." /></p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
                       <Icon name="account_balance" className="text-base" />
                     </div>
@@ -1259,7 +1290,7 @@ export default function AdminDashboard() {
                 {/* Nuevas Inscripciones */}
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Nuevas Inscripciones</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Nuevas Inscripciones <InfoTip text="Altas nuevas registradas este mes (incluye pendientes y pagadas)." /></p>
                     <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
                       <Icon name="person_add" className="text-base" />
                     </div>
@@ -1274,7 +1305,7 @@ export default function AdminDashboard() {
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Objetivo Alumnos</p>
+                      <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Objetivo Alumnos <InfoTip text="Número de alumnas que necesitas para cubrir costes y el margen objetivo de este mes del curso." /></p>
                       <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>Mes {schoolYearMes} del curso</p>
                     </div>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
