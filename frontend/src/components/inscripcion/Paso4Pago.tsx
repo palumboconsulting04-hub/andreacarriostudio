@@ -19,7 +19,7 @@ const stripeAppearance: Appearance = {
     colorDanger: "#df1b41",
     colorTextSecondary: "#56423d",
     borderRadius: "12px",
-    fontSizeBase: "14px",
+    fontSizeBase: "16px",
   },
 };
 
@@ -614,7 +614,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
                       onChange={(e) => { setCouponInput(e.target.value); setCouponError(null); }}
                       placeholder="Código de descuento"
                       className="flex-1 rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
-                      style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#25190f", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+                      style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#25190f", fontSize: "16px", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "#7d2b13")}
                       onBlur={(e) => (e.currentTarget.style.borderColor = "#dcc1b9")}
                     />
@@ -712,7 +712,8 @@ function Field({ label, type, value, onChange, placeholder }: {
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full rounded-xl border px-4 py-3 text-sm transition-colors focus:outline-none"
-        style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#25190f", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+        // fontSize 16px evita el zoom automático del móvil al enfocar el campo.
+        style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#25190f", fontSize: "16px", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
         onFocus={(e) => (e.currentTarget.style.borderColor = "#7d2b13")}
         onBlur={(e) => (e.currentTarget.style.borderColor = "#dcc1b9")}
       />
