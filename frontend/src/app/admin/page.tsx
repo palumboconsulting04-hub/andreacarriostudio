@@ -462,11 +462,11 @@ export default function AdminDashboard() {
 
   const handleCambiarStato = async (nuevoStato: string) => {
     if (!drawerDetalle) return;
-    const { error } = await supabase
-      .from("iscrizioni")
-      .update({ stato: nuevoStato })
-      .eq("id", drawerDetalle.id);
-    if (!error) {
+    const res = await fetch("/api/admin/iscrizione-stato", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: drawerDetalle.id, stato: nuevoStato }),
+    });
+    if (res.ok) {
       ajustarMetrics(drawerDetalle, drawerDetalle.stato, nuevoStato);
       setDrawerDetalle((prev) => prev ? { ...prev, stato: nuevoStato } : prev);
       setDrawerAlumnos((prev) =>
@@ -676,8 +676,10 @@ export default function AdminDashboard() {
   const handleEliminarAlumno = async () => {
     if (!drawerDetalle) return;
     setDeleteLoading(true);
-    await supabase.from("iscrizione_orari").delete().eq("iscrizione_id", drawerDetalle.id);
-    await supabase.from("iscrizioni").delete().eq("id", drawerDetalle.id);
+    await fetch("/api/admin/delete-iscrizione", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: drawerDetalle.id }),
+    });
     if (drawerDetalle.stato === "attesa") {
       setPendingCount(p => Math.max(0, p - 1));
       setPendingAmount(p => Math.max(0, p - (drawerDetalle.prezzo ?? 0)));
@@ -811,8 +813,11 @@ export default function AdminDashboard() {
 
   const handleCambiarStatoKpi = async (nuevoStato: string) => {
     if (!kpiStudentProfile) return;
-    const { error } = await supabase.from("iscrizioni").update({ stato: nuevoStato }).eq("id", kpiStudentProfile.id);
-    if (!error) {
+    const res = await fetch("/api/admin/iscrizione-stato", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: kpiStudentProfile.id, stato: nuevoStato }),
+    });
+    if (res.ok) {
       ajustarMetrics(kpiStudentProfile, kpiStudentProfile.stato, nuevoStato);
       setKpiStudentProfile((p) => p ? { ...p, stato: nuevoStato } : p);
       setKpiStudents((prev) => prev.map((s) => s.id === kpiStudentProfile.id ? { ...s, stato: nuevoStato } : s));
@@ -861,8 +866,11 @@ export default function AdminDashboard() {
 
   const handleCambiarStatoUsuario = async (nuevoStato: string) => {
     if (!usuariosProfile) return;
-    const { error } = await supabase.from("iscrizioni").update({ stato: nuevoStato }).eq("id", usuariosProfile.id);
-    if (!error) {
+    const res = await fetch("/api/admin/iscrizione-stato", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: usuariosProfile.id, stato: nuevoStato }),
+    });
+    if (res.ok) {
       ajustarMetrics(usuariosProfile, usuariosProfile.stato, nuevoStato);
       setUsuariosProfile(p => p ? { ...p, stato: nuevoStato } : p);
       setUsuariosData(prev => prev.map(u => u.id === usuariosProfile.id ? { ...u, stato: nuevoStato } : u));
@@ -871,8 +879,10 @@ export default function AdminDashboard() {
 
   const handleEliminarUsuario = async () => {
     if (!usuariosProfile) return;
-    await supabase.from("iscrizione_orari").delete().eq("iscrizione_id", usuariosProfile.id);
-    await supabase.from("iscrizioni").delete().eq("id", usuariosProfile.id);
+    await fetch("/api/admin/delete-iscrizione", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: usuariosProfile.id }),
+    });
     if (usuariosProfile.stato === "attesa") {
       setPendingCount(p => Math.max(0, p - 1));
       setPendingAmount(p => Math.max(0, p - (usuariosProfile.prezzo ?? 0)));
