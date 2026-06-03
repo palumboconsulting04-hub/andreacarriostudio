@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
       amount: Math.round(matriculaFinal * 100),
       currency: "eur",
       customer: customer.id,
-      receipt_email: emailNorm,
+      // Sin receipt_email: la confirmación la envía la web (Resend); así Stripe
+      // no manda además su propio recibo automático al cliente.
       description: description || "Matrícula — Andrea Carrió Studio",
       // Guarda la tarjeta para poder cobrar el bono automáticamente en septiembre.
       setup_future_usage: "off_session",
