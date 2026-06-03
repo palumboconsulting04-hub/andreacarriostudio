@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId, InscripcionState } from "@/components/inscripcion/types";
+import type { Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId } from "@/components/inscripcion/types";
 
 // Static content not stored in DB
 const DESCRIPCIONES: Record<string, string> = {
@@ -99,69 +99,8 @@ export async function fetchOrari(disciplinaId: string): Promise<HorarioSlot[]> {
   });
 }
 
-export async function getOrCreateContatto(
-  nome: string,
-  cognome: string,
-  email: string,
-  telefono: string | null
-): Promise<string> {
-  const emailNorm = email.toLowerCase().trim();
-  const { data: existing } = await supabase
-    .from("contatti")
-    .select("id")
-    .eq("email", emailNorm)
-    .maybeSingle();
-  if (existing) return existing.id;
-  const { data, error } = await supabase
-    .from("contatti")
-    .insert({ nome, cognome, email: emailNorm, telefono: telefono || null })
-    .select("id")
-    .single();
-  if (error) throw error;
-  return data.id;
-}
-
-export async function submitIscrizione(
-  contattoId: string,
-  estado: InscripcionState,
-  matricula = 0,
-  stripePaymentIntentId?: string,
-  stripeCustomerId?: string
-): Promise<string> {
-  const payload = {
-    contatto_id: contattoId,
-    nome: estado.nombre,
-    cognome: estado.apellido,
-    email: estado.email,
-    telefono: estado.telefono || null,
-    disciplina_id: estado.disciplina,
-    piano_id: estado.plan,
-    metodo_pagamento: estado.metodoPago,
-    stato: "attesa",
-    nome_alumna: estado.nombreAlumna || null,
-    cognome_alumna: estado.apellidoAlumna || null,
-    stripe_payment_intent_id: stripePaymentIntentId || null,
-    stripe_customer_id: stripeCustomerId || null,
-  };
-
-  // Try with matricula; if column doesn't exist yet fall back without it
-  let result = await supabase.from("iscrizioni").insert({ ...payload, matricula }).select("id").single();
-  if (result.error?.message?.includes("matricula")) {
-    result = await supabase.from("iscrizioni").insert(payload).select("id").single();
-  }
-
-  const { data: iscrizione, error } = result;
-  if (error) throw error;
-
-  if (estado.horarios.length > 0) {
-    const { error: orariError } = await supabase
-      .from("iscrizione_orari")
-      .insert(estado.horarios.map((orario_id) => ({ iscrizione_id: iscrizione!.id, orario_id })));
-    if (orariError) throw orariError;
-  }
-
-  return iscrizione!.id;
-}
+// Nota: la creación de contacto + inscripción + horarios se hace en el servidor
+// (src/app/api/inscripcion/route.ts) con service-role, no desde el navegador.
 
 export interface ProfiloMarketing {
   iscrizione_id: string;
