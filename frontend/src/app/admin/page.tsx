@@ -382,6 +382,12 @@ export default function AdminDashboard() {
   const [usuariosFiltroDisc, setUsuariosFiltroDisc] = useState("");
   const [usuariosFiltroStato, setUsuariosFiltroStato] = useState("");
   const [copiedEmail, setCopiedEmail] = useState(false);
+  // Asistencia / pasar lista
+  const [asistenciaFecha, setAsistenciaFecha] = useState(() => new Date().toLocaleDateString("en-CA"));
+  const [asistenciaOrarioId, setAsistenciaOrarioId] = useState<string>("");
+  const [asistenciaRoster, setAsistenciaRoster] = useState<{ iscrizione_id: string; nombre: string; estado: string | null; nota: string | null }[]>([]);
+  const [asistenciaLoading, setAsistenciaLoading] = useState(false);
+  const [asistenciaResumen, setAsistenciaResumen] = useState<{ presente: number; falta: number; justificada: number; total: number; porcentaje: number | null } | null>(null);
   const [usuariosProfile, setUsuariosProfile] = useState<IscrizioneDetalle | null>(null);
   const [usuariosProfileLoading, setUsuariosProfileLoading] = useState(false);
 
@@ -541,6 +547,14 @@ export default function AdminDashboard() {
     if (activeSection !== "Ventas") return;
     fetchVentas();
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeSection !== "Asistencia") return;
+    const clases = clasesDelDia(asistenciaFecha);
+    const sel = clases.some(c => c.id === asistenciaOrarioId) ? asistenciaOrarioId : (clases[0]?.id ?? "");
+    if (sel !== asistenciaOrarioId) setAsistenciaOrarioId(sel);
+    cargarRoster(sel, asistenciaFecha);
+  }, [activeSection, asistenciaFecha, orari]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (activeSection !== "Usuarios") return;
@@ -802,6 +816,11 @@ export default function AdminDashboard() {
     setUsuariosProfileLoading(true);
     setUsuariosProfile(null);
     setConfirmCancelSub(false);
+    setAsistenciaResumen(null);
+    fetch(`/api/admin/asistencia?iscrizione_id=${id}`)
+      .then(r => r.json())
+      .then(j => setAsistenciaResumen(j.resumen ?? null))
+      .catch(() => {});
     const { data } = await supabase
       .from("iscrizioni")
       .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, stripe_subscription_id, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
@@ -1153,6 +1172,49 @@ export default function AdminDashboard() {
     .filter(o => o.giorno === todayEs)
     .sort((a, b) => a.ora_inizio.localeCompare(b.ora_inizio));
 
+  // ── Asistencia ──
+  // Clases activas en el día de la semana de una fecha dada.
+  const clasesDelDia = (fecha: string) =>
+    orari
+      .filter(o => o.giorno === DOW_ES[new Date(`${fecha}T00:00:00`).getDay()])
+      .sort((a, b) => a.ora_inizio.localeCompare(b.ora_inizio));
+
+  const cargarRoster = async (orarioId: string, fecha: string) => {
+    if (!orarioId) { setAsistenciaRoster([]); return; }
+    setAsistenciaLoading(true);
+    try {
+      const res = await fetch(`/api/admin/asistencia?orario_id=${orarioId}&fecha=${fecha}`);
+      const json = await res.json();
+      setAsistenciaRoster(json.alumnas ?? []);
+    } catch { setAsistenciaRoster([]); }
+    setAsistenciaLoading(false);
+  };
+
+  // Marca (o desmarca, si se pulsa el estado ya activo) la asistencia de una alumna.
+  const marcarAsistencia = async (iscrizioneId: string, estado: string) => {
+    const actual = asistenciaRoster.find(a => a.iscrizione_id === iscrizioneId)?.estado;
+    const nuevo = actual === estado ? null : estado;
+    setAsistenciaRoster(prev => prev.map(a => a.iscrizione_id === iscrizioneId ? { ...a, estado: nuevo } : a));
+    if (nuevo === null) {
+      await fetch(`/api/admin/asistencia?iscrizione_id=${iscrizioneId}&orario_id=${asistenciaOrarioId}&fecha=${asistenciaFecha}`, { method: "DELETE" });
+    } else {
+      await fetch("/api/admin/asistencia", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ iscrizione_id: iscrizioneId, orario_id: asistenciaOrarioId, fecha: asistenciaFecha, estado: nuevo }),
+      });
+    }
+  };
+
+  const marcarTodasPresentes = async () => {
+    const objetivo = asistenciaRoster.filter(a => a.estado !== "presente");
+    if (objetivo.length === 0) return;
+    setAsistenciaRoster(prev => prev.map(a => ({ ...a, estado: "presente" })));
+    await Promise.all(objetivo.map(a => fetch("/api/admin/asistencia", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ iscrizione_id: a.iscrizione_id, orario_id: asistenciaOrarioId, fecha: asistenciaFecha, estado: "presente" }),
+    })));
+  };
+
   const handleLogout = async () => {
     try { await fetch("/api/admin/logout", { method: "POST" }); } catch {}
     window.location.href = "/admin/login";
@@ -1161,6 +1223,7 @@ export default function AdminDashboard() {
   const navItems = [
     { icon: "dashboard", label: "Resumen" },
     { icon: "calendar_month", label: "Calendario" },
+    { icon: "checklist", label: "Asistencia" },
     { icon: "group", label: "Usuarios" },
     { icon: "celebration", label: "Puertas Abiertas" },
     { icon: "receipt_long", label: "Costes" },
@@ -2157,6 +2220,119 @@ export default function AdminDashboard() {
           )}
 
           {/* ── Usuarios ── */}
+          {/* ── Asistencia ── */}
+          {activeSection === "Asistencia" && (() => {
+            const clases = clasesDelDia(asistenciaFecha);
+            const presentes = asistenciaRoster.filter(a => a.estado === "presente").length;
+            const faltas = asistenciaRoster.filter(a => a.estado === "falta").length;
+            const justificadas = asistenciaRoster.filter(a => a.estado === "justificada").length;
+            const sinMarcar = asistenciaRoster.filter(a => !a.estado).length;
+            const ESTADOS = [
+              { key: "presente",    label: "Presente", icon: "check",      bg: "#2e7d32", soft: "#e8f5e9", color: "#2e7d32" },
+              { key: "falta",       label: "Falta",    icon: "close",      bg: "#b71c1c", soft: "#fde7e7", color: "#b71c1c" },
+              { key: "justificada", label: "Justif.",  icon: "event_busy", bg: "#e65100", soft: "#fff3e0", color: "#e65100" },
+            ];
+            return (
+              <section className="space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-headline-md text-headline-md text-primary">Asistencia</h3>
+                    <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>Pasa lista de cada clase</p>
+                  </div>
+                  <input
+                    type="date"
+                    value={asistenciaFecha}
+                    onChange={e => setAsistenciaFecha(e.target.value)}
+                    className="border rounded-full px-4 py-2.5 text-sm focus:outline-none"
+                    style={{ borderColor: "#dcc1b9", color: "#25190f" }}
+                  />
+                </div>
+
+                {clases.length === 0 ? (
+                  <div className="rounded-[24px] p-8 text-center border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                    <p className="text-sm" style={{ color: "#89726c" }}>No hay clases programadas para este día. 🌿</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Selector de clase */}
+                    <div className="flex flex-wrap gap-2">
+                      {clases.map(c => {
+                        const active = c.id === asistenciaOrarioId;
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => { setAsistenciaOrarioId(c.id); cargarRoster(c.id, asistenciaFecha); }}
+                            className="px-4 py-2 rounded-full text-sm font-semibold transition-colors border"
+                            style={{ backgroundColor: active ? "#7d2b13" : "#fff", color: active ? "#fff" : "#7d2b13", borderColor: active ? "#7d2b13" : "#dcc1b9" }}
+                          >
+                            {c.ora_inizio.substring(0, 5)} · {c.discipline?.nome ?? c.disciplina_id}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {asistenciaLoading ? (
+                      <div className="flex items-center justify-center h-40">
+                        <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#7d2b13", borderTopColor: "transparent" }} />
+                      </div>
+                    ) : asistenciaRoster.length === 0 ? (
+                      <div className="rounded-[24px] p-8 text-center border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                        <p className="text-sm" style={{ color: "#89726c" }}>No hay alumnas inscritas en esta clase.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs" style={{ color: "#89726c" }}>
+                            <span style={{ color: "#2e7d32", fontWeight: 600 }}>{presentes} presentes</span>
+                            {" · "}<span style={{ color: "#b71c1c" }}>{faltas} faltas</span>
+                            {" · "}<span style={{ color: "#e65100" }}>{justificadas} justif.</span>
+                            {sinMarcar > 0 && <> · {sinMarcar} sin marcar</>}
+                          </p>
+                          <button
+                            onClick={marcarTodasPresentes}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
+                            style={{ borderColor: "#2e7d32", color: "#2e7d32" }}
+                          >
+                            <Icon name="done_all" className="text-sm" /> Todas presentes
+                          </button>
+                        </div>
+
+                        <div className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden divide-y" style={{ borderColor: "#dcc1b9" }}>
+                          {asistenciaRoster.map(a => (
+                            <div key={a.iscrizione_id} className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderColor: "#f0e0d8" }}>
+                              <span className="text-sm font-medium truncate" style={{ color: "#25190f" }}>{a.nombre}</span>
+                              <div className="flex gap-1.5 shrink-0">
+                                {ESTADOS.map(es => {
+                                  const active = a.estado === es.key;
+                                  return (
+                                    <button
+                                      key={es.key}
+                                      onClick={() => marcarAsistencia(a.iscrizione_id, es.key)}
+                                      title={es.label}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-colors border"
+                                      style={{
+                                        backgroundColor: active ? es.bg : es.soft,
+                                        color: active ? "#fff" : es.color,
+                                        borderColor: active ? es.bg : "transparent",
+                                      }}
+                                    >
+                                      <Icon name={es.icon} className="text-sm" />
+                                      <span className="hidden sm:inline">{es.label}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            );
+          })()}
+
           {activeSection === "Usuarios" && (() => {
             const q = usuariosSearch.toLowerCase();
             // Disciplinas presentes en las alumnas, para el selector de filtro.
@@ -3652,6 +3828,27 @@ export default function AdminDashboard() {
                             </p>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Asistencia */}
+                  {asistenciaResumen && asistenciaResumen.total > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Asistencia</p>
+                      <div className="rounded-xl border p-4 flex items-center gap-4" style={{ borderColor: "#dcc1b9" }}>
+                        <div className="text-center shrink-0">
+                          <p className="text-2xl font-bold" style={{ color: asistenciaResumen.porcentaje != null && asistenciaResumen.porcentaje >= 80 ? "#2e7d32" : asistenciaResumen.porcentaje != null && asistenciaResumen.porcentaje >= 50 ? "#e65100" : "#b71c1c" }}>
+                            {asistenciaResumen.porcentaje}%
+                          </p>
+                          <p className="text-[10px] uppercase tracking-wide" style={{ color: "#89726c" }}>asistencia</p>
+                        </div>
+                        <div className="flex-1 text-xs space-y-0.5" style={{ color: "#56423d" }}>
+                          <p><span style={{ color: "#2e7d32", fontWeight: 600 }}>{asistenciaResumen.presente}</span> presente{asistenciaResumen.presente !== 1 ? "s" : ""}</p>
+                          <p><span style={{ color: "#b71c1c", fontWeight: 600 }}>{asistenciaResumen.falta}</span> falta{asistenciaResumen.falta !== 1 ? "s" : ""}</p>
+                          <p><span style={{ color: "#e65100", fontWeight: 600 }}>{asistenciaResumen.justificada}</span> justificada{asistenciaResumen.justificada !== 1 ? "s" : ""}</p>
+                          <p style={{ color: "#89726c" }}>{asistenciaResumen.total} clase{asistenciaResumen.total !== 1 ? "s" : ""} registrada{asistenciaResumen.total !== 1 ? "s" : ""}</p>
+                        </div>
                       </div>
                     </div>
                   )}
