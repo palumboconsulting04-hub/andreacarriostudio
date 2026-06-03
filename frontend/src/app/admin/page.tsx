@@ -686,24 +686,20 @@ export default function AdminDashboard() {
   const handleNuevaInscripcionSubmit = async () => {
     if (!nif.nome || !nif.cognome || !nif.email || !nif.disciplina_id || !nif.piano_id) return;
     setNifLoading(true);
-    const emailNorm = nif.email.toLowerCase().trim();
-    let contattoId: string;
-    const { data: existing } = await supabase.from("contatti").select("id").eq("email", emailNorm).maybeSingle();
-    if (existing) {
-      contattoId = existing.id;
-    } else {
-      const { data: newC } = await supabase.from("contatti").insert({ nome: nif.nome, cognome: nif.cognome, email: emailNorm, telefono: nif.telefono || null }).select("id").single();
-      contattoId = newC!.id;
-    }
-    const { data: isc } = await supabase.from("iscrizioni").insert({
-      contatto_id: contattoId, nome: nif.nome, cognome: nif.cognome, email: emailNorm,
-      telefono: nif.telefono || null, disciplina_id: nif.disciplina_id, piano_id: nif.piano_id,
-      metodo_pagamento: nif.metodo_pagamento, stato: "attesa",
-      nome_alumna: nif.nome_alumna || null, cognome_alumna: nif.cognome_alumna || null,
-    }).select("id").single();
-    if (isc && nif.horarios.length > 0) {
-      await supabase.from("iscrizione_orari").insert(nif.horarios.map(orario_id => ({ iscrizione_id: isc.id, orario_id })));
-    }
+    const res = await fetch("/api/inscripcion", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contatto: { nome: nif.nome, cognome: nif.cognome, email: nif.email, telefono: nif.telefono || null },
+        inscripciones: [{
+          disciplina_id: nif.disciplina_id, piano_id: nif.piano_id,
+          nome: nif.nome, cognome: nif.cognome, email: nif.email, telefono: nif.telefono || null,
+          metodo_pagamento: nif.metodo_pagamento,
+          nome_alumna: nif.nome_alumna || null, cognome_alumna: nif.cognome_alumna || null,
+          matricula: 0, horarios: nif.horarios,
+        }],
+      }),
+    });
+    if (!res.ok) { setNifLoading(false); return; }
     const newPrezzo = nifPiani.find(p => p.id === nif.piano_id)?.prezzo ?? 0;
     setPendingCount(p => p + 1);
     setPendingAmount(p => p + newPrezzo);

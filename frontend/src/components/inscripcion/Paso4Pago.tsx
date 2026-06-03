@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { loadStripe, type Appearance } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { submitIscrizione, getOrCreateContatto } from "@/lib/queries";
 import { findCoupon, applyCoupon, type Coupon } from "@/lib/coupons";
 import type { InscripcionState, MetodoPago, BozzaIscrizione } from "./types";
 import type { InscripcionEmailData } from "@/app/api/send-confirmation/route";
@@ -358,23 +357,11 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
   });
 
   const saveToSupabase = async (stripePaymentIntentId?: string, stripeCustomerId?: string) => {
-    let cId = existingContattoId ?? null;
-    if (!cId) {
-      cId = await getOrCreateContatto(estado.nombre, estado.apellido, estado.email, estado.telefono || null);
-    }
-    let firstId = "";
+    // Construye la lista de inscripciones (con su matrícula por persona) y la
+    // persiste en el servidor (service-role), sin escribir con la clave pública.
     let adultCharged = false;
     const ninasCharged = new Set<string>();
-    for (let i = 0; i < bozze.length; i++) {
-      const b = bozze[i];
-      const bEstado = {
-        ...estado,
-        disciplina: b.disciplinaId,
-        plan: b.planId,
-        horarios: b.horarios,
-        nombreAlumna: b.esNinas ? (alumnas[i]?.nombre ?? "") : "",
-        apellidoAlumna: b.esNinas ? (alumnas[i]?.apellido ?? "") : "",
-      };
+    const inscripciones = bozze.map((b, i) => {
       let thisMatricula = 0;
       if (b.esNinas) {
         const key = `${alumnas[i]?.nombre ?? ""}_${alumnas[i]?.apellido ?? ""}`;
@@ -382,9 +369,34 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
       } else {
         if (!adultCharged) { thisMatricula = matriculaPrecio; adultCharged = true; }
       }
-      const id = await submitIscrizione(cId, bEstado, thisMatricula, stripePaymentIntentId, stripeCustomerId);
-      if (i === 0) firstId = id;
-    }
+      return {
+        disciplina_id: b.disciplinaId,
+        piano_id: b.planId,
+        nome: estado.nombre,
+        cognome: estado.apellido,
+        email: estado.email,
+        telefono: estado.telefono || null,
+        metodo_pagamento: estado.metodoPago,
+        nome_alumna: b.esNinas ? (alumnas[i]?.nombre ?? "") : "",
+        cognome_alumna: b.esNinas ? (alumnas[i]?.apellido ?? "") : "",
+        matricula: thisMatricula,
+        horarios: b.horarios,
+      };
+    });
+
+    const res = await fetch("/api/inscripcion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contatto: { nome: estado.nombre, cognome: estado.apellido, email: estado.email, telefono: estado.telefono || null },
+        existingContattoId: existingContattoId ?? null,
+        stripePaymentIntentId,
+        stripeCustomerId,
+        inscripciones,
+      }),
+    });
+    if (!res.ok) throw new Error("No se pudo guardar la inscripción");
+    const { cId, firstId } = await res.json();
     return { cId, firstId };
   };
 
