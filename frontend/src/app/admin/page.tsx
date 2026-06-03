@@ -92,6 +92,7 @@ type VentaRow = {
   cognome_alumna: string | null;
   discipline: { nome: string } | null;
   prezzo?: number | null;
+  matricula?: number | null;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -135,6 +136,24 @@ const STATO_INFO: Record<string, { label: string; bg: string; color: string }> =
 const statoInfo = (s: string) => STATO_INFO[s] ?? { label: s, bg: "#eceff1", color: "#546e7a" };
 // Estados con suscripción del bono que se puede cancelar.
 const SUB_CANCELABLE = new Set(["matricula_pagada", "activa", "impago"]);
+
+// La matrícula se considera pagada en cualquier estado salvo el pendiente de pago.
+const matriculaPagada = (stato: string) => stato !== "attesa" && stato !== "cancelada";
+
+// Estado de la cuota mensual (bono) para mostrar en los paneles de alumna.
+// "matricula_pagada" = pagó la matrícula pero el bono no empieza a cobrarse hasta septiembre.
+function bonoEstado(stato: string): { label: string; bg: string; color: string } {
+  switch (stato) {
+    case "matricula_pagada": return { label: "Empieza en septiembre", bg: "#fff3e0", color: "#e65100" };
+    case "activa":
+    case "pagado":
+    case "pagato":           return { label: "Cobrándose",            bg: "#e8f5e9", color: "#2e7d32" };
+    case "impago":           return { label: "Impago",                bg: "#fde7e7", color: "#b71c1c" };
+    case "attesa":           return { label: "Pendiente",             bg: "#fde7e7", color: "#b71c1c" };
+    case "cancelada":        return { label: "Cancelado",             bg: "#eceff1", color: "#546e7a" };
+    default:                 return { label: "—",                     bg: "#eceff1", color: "#546e7a" };
+  }
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -239,6 +258,33 @@ function InfoTip({ text }: { text: string }) {
         </>
       )}
     </span>
+  );
+}
+
+// Desglose claro de qué ha pagado la alumna: matrícula (pago único) y cuota mensual (bono).
+function PagoResumen({ stato, matricula }: { stato: string; matricula?: number | null }) {
+  const mat = matricula ?? 0;
+  const matPagada = matriculaPagada(stato);
+  const bono = bonoEstado(stato);
+  return (
+    <div className="px-4 py-3 space-y-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs flex items-center gap-2" style={{ color: "#89726c" }}>
+          <Icon name="confirmation_number" className="text-sm" style={{ color: "#7d2b13" }} />
+          Matrícula{mat > 0 ? ` · ${mat}€` : ""}
+        </span>
+        {matPagada
+          ? <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>✓ Pagada</span>
+          : <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>}
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs flex items-center gap-2" style={{ color: "#89726c" }}>
+          <Icon name="event_repeat" className="text-sm" style={{ color: "#7d2b13" }} />
+          Cuota mensual (bono)
+        </span>
+        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: bono.bg, color: bono.color }}>{bono.label}</span>
+      </div>
+    </div>
   );
 }
 
@@ -513,7 +559,7 @@ export default function AdminDashboard() {
     const [{ data: isc }, { data: piani }] = await Promise.all([
       supabase
         .from("iscrizioni")
-        .select("id, created_at, stato, disciplina_id, piano_id, nome, cognome, nome_alumna, cognome_alumna, discipline(nome)")
+        .select("id, created_at, stato, disciplina_id, piano_id, nome, cognome, nome_alumna, cognome_alumna, matricula, discipline(nome)")
         .order("created_at", { ascending: false }),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
     ]);
@@ -1043,9 +1089,18 @@ export default function AdminDashboard() {
   const ventasMesFiltradas = ventasData.filter(v => v.created_at.startsWith(ventasMes));
   const prevMesStr = vMonth === 1 ? `${vYear - 1}-12` : `${vYear}-${String(vMonth - 1).padStart(2, "0")}`;
   const ventasPrevMes = ventasData.filter(v => v.created_at.startsWith(prevMesStr));
-  const pagadasMes = ventasMesFiltradas.filter(v => isPaid(v.stato));
-  const ingresosMesV = pagadasMes.reduce((s, v) => s + (v.prezzo ?? 0), 0);
-  const ingresosMesAntV = ventasPrevMes.filter(v => isPaid(v.stato)).reduce((s, v) => s + (v.prezzo ?? 0), 0);
+  // Ingreso real aportado por una inscripción: cuota cobrándose + matrícula cuando está
+  // pagada; solo matrícula si el bono aún no ha arrancado (matricula_pagada, empieza en sept.).
+  const ingresoFila = (v: VentaRow) => {
+    const prezzo = v.prezzo ?? 0;
+    const mat = v.matricula ?? 0;
+    if (isPaid(v.stato)) return prezzo + mat;
+    if (v.stato === "matricula_pagada") return mat;
+    return 0;
+  };
+  const pagadasMes = ventasMesFiltradas.filter(v => ingresoFila(v) > 0);
+  const ingresosMesV = pagadasMes.reduce((s, v) => s + ingresoFila(v), 0);
+  const ingresosMesAntV = ventasPrevMes.reduce((s, v) => s + ingresoFila(v), 0);
   const ingresosDiff = ingresosMesAntV > 0 ? ((ingresosMesV - ingresosMesAntV) / ingresosMesAntV) * 100 : null;
   const ticketMedioV = pagadasMes.length > 0 ? ingresosMesV / pagadasMes.length : 0;
   const pendientesCountV = ventasMesFiltradas.filter(v => v.stato === "attesa").length;
@@ -1054,18 +1109,18 @@ export default function AdminDashboard() {
     ? Array.from({ length: daysInMonth }, (_, i) => {
         const dayStr = `${ventasMes}-${String(i + 1).padStart(2, "0")}`;
         const rows = ventasMesFiltradas.filter(v => v.created_at.startsWith(dayStr));
-        return { label: String(i + 1), ingresos: rows.filter(v => isPaid(v.stato)).reduce((s, v) => s + (v.prezzo ?? 0), 0), inscripciones: rows.length };
+        return { label: String(i + 1), ingresos: rows.reduce((s, v) => s + ingresoFila(v), 0), inscripciones: rows.length };
       })
     : [1, 2, 3, 4].map(w => {
         const start = (w - 1) * 7 + 1;
         const end = w === 4 ? daysInMonth : w * 7;
         const rows = ventasMesFiltradas.filter(v => { const d = new Date(v.created_at).getDate(); return d >= start && d <= end; });
-        return { label: `Sem ${w}`, ingresos: rows.filter(v => isPaid(v.stato)).reduce((s, v) => s + (v.prezzo ?? 0), 0), inscripciones: rows.length };
+        return { label: `Sem ${w}`, ingresos: rows.reduce((s, v) => s + ingresoFila(v), 0), inscripciones: rows.length };
       });
   const discMap: Record<string, { nombre: string; ingresos: number; count: number }> = {};
   pagadasMes.forEach(v => {
     if (!discMap[v.disciplina_id]) discMap[v.disciplina_id] = { nombre: v.discipline?.nome ?? v.disciplina_id, ingresos: 0, count: 0 };
-    discMap[v.disciplina_id].ingresos += v.prezzo ?? 0;
+    discMap[v.disciplina_id].ingresos += ingresoFila(v);
     discMap[v.disciplina_id].count++;
   });
   const discBreakdown = Object.values(discMap).sort((a, b) => b.ingresos - a.ingresos);
@@ -1073,7 +1128,7 @@ export default function AdminDashboard() {
   const planMapV: Record<string, { nombre: string; ingresos: number; count: number }> = {};
   pagadasMes.forEach(v => {
     if (!planMapV[v.piano_id]) planMapV[v.piano_id] = { nombre: PLAN_LABEL[v.piano_id] ?? v.piano_id, ingresos: 0, count: 0 };
-    planMapV[v.piano_id].ingresos += v.prezzo ?? 0;
+    planMapV[v.piano_id].ingresos += ingresoFila(v);
     planMapV[v.piano_id].count++;
   });
   const planBreakdownV = Object.values(planMapV).sort((a, b) => b.ingresos - a.ingresos);
@@ -2589,7 +2644,6 @@ export default function AdminDashboard() {
                         { icon: "school", label: "Disciplina", value: kpiStudentProfile.discipline?.nome ?? kpiStudentProfile.disciplina_id },
                         { icon: "card_membership", label: "Plan", value: PLAN_LABEL[kpiStudentProfile.piano_id] ?? kpiStudentProfile.piano_id },
                         { icon: "euro", label: "Cuota mensual", value: kpiStudentProfile.prezzo != null ? `${kpiStudentProfile.prezzo} €/mes` : "—" },
-                        { icon: "confirmation_number", label: "Matrícula", value: (kpiStudentProfile.matricula ?? 0) > 0 ? `${kpiStudentProfile.matricula}€ · ${isPaid(kpiStudentProfile.stato) ? "Pagada" : "Pendiente"}` : "—" },
                         { icon: "payments", label: "Pago", value: METODO_LABEL[kpiStudentProfile.metodo_pagamento] ?? kpiStudentProfile.metodo_pagamento },
                         { icon: "calendar_today", label: "Inscrita desde", value: formatData(kpiStudentProfile.created_at) },
                         { icon: "history", label: "Antigüedad", value: calcAntigüedad(kpiStudentProfile.created_at) },
@@ -2602,12 +2656,8 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
-                    <div className="flex items-center justify-between p-4">
-                      <p className="text-sm font-medium" style={{ color: "#25190f" }}>Estado de pago</p>
-                      {kpiStudentProfile.stato === "attesa"
-                        ? <span className="px-3 py-1 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>
-                        : <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>}
-                    </div>
+                    <p className="text-sm font-medium px-4 pt-4" style={{ color: "#25190f" }}>Estado de pago</p>
+                    <PagoResumen stato={kpiStudentProfile.stato} matricula={kpiStudentProfile.matricula} />
                     {kpiStudentProfile.stato === "attesa" ? (
                       <button onClick={() => handleCambiarStatoKpi("pagato")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#7d2b13", color: "#fff" }}>Marcar como pagado</button>
                     ) : (
@@ -2902,7 +2952,6 @@ export default function AdminDashboard() {
                         { icon: "school", label: "Disciplina", value: drawerDetalle.discipline?.nome ?? drawerDetalle.disciplina_id },
                         { icon: "card_membership", label: "Plan", value: PLAN_LABEL[drawerDetalle.piano_id] ?? drawerDetalle.piano_id },
                         { icon: "euro", label: "Cuota mensual", value: drawerDetalle.prezzo != null ? `${drawerDetalle.prezzo} €/mes` : "—" },
-                        { icon: "confirmation_number", label: "Matrícula", value: (drawerDetalle.matricula ?? 0) > 0 ? `${drawerDetalle.matricula}€ · ${isPaid(drawerDetalle.stato) ? "Pagada" : "Pendiente"}` : "—" },
                         { icon: "payments", label: "Pago", value: METODO_LABEL[drawerDetalle.metodo_pagamento] ?? drawerDetalle.metodo_pagamento },
                         { icon: "calendar_today", label: "Inscrita desde", value: formatData(drawerDetalle.created_at) },
                         { icon: "history", label: "Antigüedad", value: calcAntigüedad(drawerDetalle.created_at) },
@@ -2920,14 +2969,8 @@ export default function AdminDashboard() {
 
                   {/* Estado de pago */}
                   <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
-                    <div className="flex items-center justify-between p-4">
-                      <p className="text-sm font-medium" style={{ color: "#25190f" }}>Estado de pago</p>
-                      {drawerDetalle.stato === "attesa" ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>
-                      ) : (
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>
-                      )}
-                    </div>
+                    <p className="text-sm font-medium px-4 pt-4" style={{ color: "#25190f" }}>Estado de pago</p>
+                    <PagoResumen stato={drawerDetalle.stato} matricula={drawerDetalle.matricula} />
                     {drawerDetalle.stato === "attesa" ? (
                       <button
                         onClick={() => handleCambiarStato("pagato")}
@@ -3414,7 +3457,6 @@ export default function AdminDashboard() {
                         { icon: "school", label: "Disciplina", value: usuariosProfile.discipline?.nome ?? usuariosProfile.disciplina_id },
                         { icon: "card_membership", label: "Plan", value: PLAN_LABEL[usuariosProfile.piano_id] ?? usuariosProfile.piano_id },
                         { icon: "euro", label: "Cuota mensual", value: usuariosProfile.prezzo != null ? `${usuariosProfile.prezzo} €/mes` : "—" },
-                        { icon: "confirmation_number", label: "Matrícula", value: (usuariosProfile.matricula ?? 0) > 0 ? `${usuariosProfile.matricula}€ · ${isPaid(usuariosProfile.stato) ? "Pagada" : "Pendiente"}` : "—" },
                         { icon: "payments", label: "Método de pago", value: METODO_LABEL[usuariosProfile.metodo_pagamento] ?? usuariosProfile.metodo_pagamento },
                         { icon: "calendar_today", label: "Inscrita desde", value: formatData(usuariosProfile.created_at) },
                         { icon: "history", label: "Antigüedad", value: calcAntigüedad(usuariosProfile.created_at) },
@@ -3454,6 +3496,9 @@ export default function AdminDashboard() {
                       <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: statoInfo(usuariosProfile.stato).bg, color: statoInfo(usuariosProfile.stato).color }}>
                         {statoInfo(usuariosProfile.stato).label}
                       </span>
+                    </div>
+                    <div className="border-t" style={{ borderColor: "#dcc1b9" }}>
+                      <PagoResumen stato={usuariosProfile.stato} matricula={usuariosProfile.matricula} />
                     </div>
                     {usuariosProfile.stripe_subscription_id && SUB_CANCELABLE.has(usuariosProfile.stato) ? (
                       confirmCancelSub ? (
