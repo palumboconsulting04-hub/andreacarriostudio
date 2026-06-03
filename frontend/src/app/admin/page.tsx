@@ -432,18 +432,10 @@ export default function AdminDashboard() {
 
   const loadStats = async () => {
     const todayEs = DOW_ES[new Date().getDay()];
-    const [r1, r3, r5] = await Promise.all([
-      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).in("stato", INSCRITA_STATI_ARR),
-      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
-      supabase
-        .from("iscrizioni")
-        .select("id, nome, cognome, nome_alumna, cognome_alumna, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))")
-        .order("created_at", { ascending: false })
-        .limit(5),
-    ]);
-    setIscrittiCount(r1.count ?? 0);
-    setPendingCount(r3.count ?? 0);
-    setBookings((r5.data as unknown as IscrzioneRow[]) ?? []);
+    const all = await fetch("/api/admin/iscrizioni").then(r => r.json()).then(j => (j.data ?? []) as { stato: string }[]);
+    setIscrittiCount(all.filter(i => INSCRITA_STATI_ARR.includes(i.stato)).length);
+    setPendingCount(all.filter(i => i.stato === "attesa").length);
+    setBookings(all.slice(0, 5) as unknown as IscrzioneRow[]);
     return todayEs;
   };
 
@@ -452,10 +444,7 @@ export default function AdminDashboard() {
     setDrawerView("class");
     setDrawerDetalle(null);
     setDrawerLoading(true);
-    const { data } = await supabase
-      .from("iscrizione_orari")
-      .select("iscrizione_id, iscrizioni(id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, stato)")
-      .eq("orario_id", orario.id);
+    const { data } = await fetch(`/api/admin/iscrizioni?orario_id=${orario.id}`).then(r => r.json());
     setDrawerAlumnos((data as unknown as OrarioAlumno[]) ?? []);
     setDrawerLoading(false);
   };
@@ -483,11 +472,7 @@ export default function AdminDashboard() {
     setDrawerView("student");
     setDrawerLoading(true);
     setDeleteConfirm(false);
-    const { data } = await supabase
-      .from("iscrizioni")
-      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
-      .eq("id", iscrizioneId)
-      .single();
+    const { data } = await fetch(`/api/admin/iscrizioni?id=${iscrizioneId}`).then(r => r.json());
     if (data) {
       const { data: pianoData } = await supabase
         .from("piani")
@@ -504,7 +489,7 @@ export default function AdminDashboard() {
     if (activeSection !== "Finanzas" && activeSection !== "Resumen") return;
     setFinanzasLoading(true);
     Promise.all([
-      supabase.from("iscrizioni").select("created_at, disciplina_id, piano_id, matricula, stato").in("stato", INSCRITA_STATI_ARR),
+      fetch("/api/admin/iscrizioni?inscritas").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
       fetch("/api/admin/costes").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
     ]).then(([{ data: isc }, { data: piani }, { data: costes }]) => {
@@ -560,7 +545,7 @@ export default function AdminDashboard() {
     if (activeSection !== "Usuarios") return;
     setUsuariosLoading(true);
     Promise.all([
-      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").order("created_at", { ascending: false }),
+      fetch("/api/admin/iscrizioni").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
     ]).then(([{ data: isc }, { data: piani }]) => {
       const pm: Record<string, number> = {};
@@ -584,10 +569,7 @@ export default function AdminDashboard() {
   async function fetchVentas() {
     setVentasLoading(true);
     const [{ data: isc }, { data: piani }] = await Promise.all([
-      supabase
-        .from("iscrizioni")
-        .select("id, created_at, stato, disciplina_id, piano_id, nome, cognome, nome_alumna, cognome_alumna, matricula, discipline(nome)")
-        .order("created_at", { ascending: false }),
+      fetch("/api/admin/iscrizioni").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
     ]);
     const pm: Record<string, number> = {};
@@ -789,9 +771,11 @@ export default function AdminDashboard() {
     setKpiLoading(true);
     setKpiStudentProfile(null);
     setKpiOcupacionDisciplina(null);
-    let q = supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").order("created_at", { ascending: false });
-    if (filter) q = q.eq("stato", filter.stato);
-    const [{ data: isc }, { data: piani }] = await Promise.all([q, supabase.from("piani").select("id, disciplina_id, prezzo")]);
+    const url = filter ? `/api/admin/iscrizioni?stato=${encodeURIComponent(filter.stato)}` : "/api/admin/iscrizioni";
+    const [{ data: isc }, { data: piani }] = await Promise.all([
+      fetch(url).then(r => r.json()).then(j => ({ data: j.data ?? [] })),
+      supabase.from("piani").select("id, disciplina_id, prezzo"),
+    ]);
     const pm: Record<string, number> = {};
     for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[]) pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
     setKpiStudents(((isc ?? []) as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
@@ -800,10 +784,7 @@ export default function AdminDashboard() {
 
   const handleKpiStudentClick = async (id: string) => {
     setKpiLoading(true);
-    const { data } = await supabase
-      .from("iscrizioni")
-      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
-      .eq("id", id).single();
+    const { data } = await fetch(`/api/admin/iscrizioni?id=${id}`).then(r => r.json());
     if (data) {
       const { data: pd } = await supabase.from("piani").select("prezzo").eq("id", (data as unknown as IscrizioneDetalle).piano_id).eq("disciplina_id", (data as unknown as IscrizioneDetalle).disciplina_id).single();
       setKpiStudentProfile({ ...(data as unknown as IscrizioneDetalle), prezzo: pd?.prezzo ?? null });
@@ -833,11 +814,7 @@ export default function AdminDashboard() {
       .then(r => r.json())
       .then(j => setAsistenciaResumen(j.resumen ?? null))
       .catch(() => {});
-    const { data } = await supabase
-      .from("iscrizioni")
-      .select("id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, stripe_subscription_id, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))")
-      .eq("id", id)
-      .single();
+    const { data } = await fetch(`/api/admin/iscrizioni?id=${id}`).then(r => r.json());
     if (data) {
       const { data: pd } = await supabase.from("piani").select("prezzo").eq("id", (data as unknown as IscrizioneDetalle).piano_id).eq("disciplina_id", (data as unknown as IscrizioneDetalle).disciplina_id).single();
       setUsuariosProfile({ ...(data as unknown as IscrizioneDetalle), prezzo: pd?.prezzo ?? null });
@@ -932,7 +909,7 @@ export default function AdminDashboard() {
     setKpiStudents([]);
     setKpiLoading(true);
     const [{ data: isc }, { data: piani }] = await Promise.all([
-      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").in("stato", INSCRITA_STATI_ARR).order("created_at", { ascending: false }),
+      fetch("/api/admin/iscrizioni?inscritas").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
     ]);
     const pm: Record<string, number> = {};
@@ -947,7 +924,7 @@ export default function AdminDashboard() {
     setKpiAlumnosDisciplina(null);
     setKpiStudents([]);
     setKpiLoading(true);
-    const { data: isc } = await supabase.from("iscrizioni").select("disciplina_id, discipline(nome)").in("stato", INSCRITA_STATI_ARR);
+    const { data: isc } = await fetch("/api/admin/iscrizioni?inscritas").then(r => r.json());
     const countMap: Record<string, { nombre: string; count: number }> = {};
     for (const i of (isc ?? []) as unknown as { disciplina_id: string; discipline: { nome: string } | null }[]) {
       const did = i.disciplina_id;
@@ -968,33 +945,31 @@ export default function AdminDashboard() {
   const handleKpiDisciplinaClick = async (disc: { disciplina_id: string; nombre: string }) => {
     setKpiAlumnosDisciplina(disc);
     setKpiLoading(true);
-    const [{ data: isc }, { data: piani }] = await Promise.all([
-      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, stato, created_at, discipline(nome)").eq("disciplina_id", disc.disciplina_id).in("stato", INSCRITA_STATI_ARR).order("created_at", { ascending: false }),
+    const [{ data: iscAll }, { data: piani }] = await Promise.all([
+      fetch("/api/admin/iscrizioni?inscritas").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
     ]);
+    const isc = ((iscAll ?? []) as KpiStudentRow[]).filter(i => i.disciplina_id === disc.disciplina_id);
     const pm: Record<string, number> = {};
     for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[]) pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
-    setKpiStudents(((isc ?? []) as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+    setKpiStudents((isc as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
     setKpiLoading(false);
   };
 
   useEffect(() => {
     const todayEs = DOW_ES[new Date().getDay()];
     Promise.all([
-      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).in("stato", INSCRITA_STATI_ARR),
+      fetch("/api/admin/iscrizioni").then(r => r.json()).then(j => (j.data ?? []) as Array<{ id: string; stato: string; created_at: string; disciplina_id: string; piano_id: string; matricula: number; [k: string]: unknown }>),
       supabase.from("orari").select("*", { count: "exact", head: true }).eq("giorno", todayEs).eq("attivo", true),
-      supabase.from("iscrizioni").select("*", { count: "exact", head: true }).eq("stato", "attesa"),
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true),
-      supabase.from("iscrizioni").select("id, nome, cognome, nome_alumna, cognome_alumna, stato, created_at, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio))").order("created_at", { ascending: false }).limit(5),
-      supabase.from("iscrizioni").select("disciplina_id, piano_id, stato, created_at, matricula"),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
-    ]).then(([r1, r2, r3, r4, r5, r6, r7]) => {
-      setIscrittiCount(r1.count ?? 0);
+    ]).then(([allIsc, r2, r4, r7]) => {
+      setIscrittiCount(allIsc.filter(i => INSCRITA_STATI_ARR.includes(i.stato)).length);
       setLezioniCount(r2.count ?? 0);
-      setPendingCount(r3.count ?? 0);
+      setPendingCount(allIsc.filter(i => i.stato === "attesa").length);
       const orariData = (r4.data as unknown as AdminOrario[]) ?? [];
       setOrari(orariData);
-      setBookings((r5.data as unknown as IscrzioneRow[]) ?? []);
+      setBookings(allIsc.slice(0, 5) as unknown as IscrzioneRow[]);
 
       // Build price map: `${piano_id}:${disciplina_id}` → prezzo
       const pm: Record<string, number> = {};
@@ -1005,7 +980,7 @@ export default function AdminDashboard() {
       const tm = now2.getMonth(), ty = now2.getFullYear();
       const curMonthStr = `${ty}-${String(tm + 1).padStart(2, "0")}`;
       let factMes = 0, factAnt = 0, pendAmt = 0;
-      for (const isc of (r6.data ?? []) as { disciplina_id: string; piano_id: string; stato: string; created_at: string; matricula: number }[]) {
+      for (const isc of allIsc) {
         const prezzo = pm[`${isc.piano_id}:${isc.disciplina_id}`] ?? 0;
         const mat = isc.matricula ?? 0;
         if (isc.stato === "attesa") {
@@ -1022,14 +997,14 @@ export default function AdminDashboard() {
       setFacturacionMes(factMes);
       setFacturacionMesAnterior(factAnt);
       setPendingAmount(pendAmt);
-      const nuevasEstesMes = ((r6.data ?? []) as { created_at: string }[]).filter(i => {
+      const nuevasEstesMes = allIsc.filter(i => {
         const d = new Date(i.created_at);
         return d.getMonth() === tm && d.getFullYear() === ty;
       }).length;
       setNuevasInscripcionesMes(nuevasEstesMes);
 
       // Precio medio por alumna (sobre todas las pagato)
-      const pagati = ((r6.data ?? []) as { disciplina_id: string; piano_id: string; stato: string }[]).filter(i => isPaid(i.stato));
+      const pagati = allIsc.filter(i => isPaid(i.stato));
       const totalPagati = pagati.reduce((s, i) => s + (pm[`${i.piano_id}:${i.disciplina_id}`] ?? 0), 0);
       setAvgPricePerStudent(pagati.length > 0 ? totalPagati / pagati.length : 0);
 
