@@ -273,9 +273,11 @@ function PagoResumen({ stato, matricula }: { stato: string; matricula?: number |
           <Icon name="confirmation_number" className="text-sm" style={{ color: "#7d2b13" }} />
           Matrícula{mat > 0 ? ` · ${mat}€` : ""}
         </span>
-        {matPagada
-          ? <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>✓ Pagada</span>
-          : <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>}
+        {stato === "cancelada"
+          ? <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#eceff1", color: "#546e7a" }}>Reembolsada</span>
+          : matPagada
+            ? <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>✓ Pagada</span>
+            : <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-error-container text-on-error-container">Pendiente</span>}
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs flex items-center gap-2" style={{ color: "#89726c" }}>
