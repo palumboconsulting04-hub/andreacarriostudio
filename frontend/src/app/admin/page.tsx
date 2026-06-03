@@ -506,7 +506,7 @@ export default function AdminDashboard() {
     Promise.all([
       supabase.from("iscrizioni").select("created_at, disciplina_id, piano_id, matricula, stato").in("stato", INSCRITA_STATI_ARR),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
-      supabase.from("costes").select("importe_mensual").eq("activo", true),
+      fetch("/api/admin/costes").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
     ]).then(([{ data: isc }, { data: piani }, { data: costes }]) => {
       const pm: Record<string, number> = {};
       for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
@@ -537,7 +537,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeSection !== "Costes") return;
     setCostesLoading(true);
-    supabase.from("costes").select("id, categoria, concepto, importe_mensual, importe_anual, notas").eq("activo", true).order("categoria").then(({ data }) => {
+    fetch("/api/admin/costes").then(r => r.json()).then(({ data }) => {
       setCostesData((data ?? []) as typeof costesData);
       setCostesLoading(false);
     });
@@ -634,24 +634,27 @@ export default function AdminDashboard() {
   };
 
   const handleCosteSave = async (id: string) => {
-    await supabase.from("costes").update({ concepto: costesEditVals.concepto, importe_mensual: costesEditVals.importe_mensual, importe_anual: costesEditVals.importe_anual, notas: costesEditVals.notas || null }).eq("id", id);
+    await fetch("/api/admin/costes", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, concepto: costesEditVals.concepto, importe_mensual: costesEditVals.importe_mensual, importe_anual: costesEditVals.importe_anual, notas: costesEditVals.notas || null }),
+    });
     setCostesData(prev => prev.map(c => c.id === id ? { ...c, ...costesEditVals, notas: costesEditVals.notas || null } : c));
     setCostesEditId(null);
   };
 
   const handleCosteDelete = async (id: string) => {
-    await supabase.from("costes").update({ activo: false }).eq("id", id);
+    await fetch(`/api/admin/costes?id=${id}`, { method: "DELETE" });
     setCostesData(prev => prev.filter(c => c.id !== id));
     setCostesDeleteId(null);
   };
 
   const handleInlineNuevoSave = async (categoria: string) => {
     if (!inlineNuevo.concepto.trim()) return;
-    const { data } = await supabase
-      .from("costes")
-      .insert({ categoria, concepto: inlineNuevo.concepto, importe_mensual: inlineNuevo.importe_mensual, importe_anual: inlineNuevo.importe_anual, notas: inlineNuevo.notas || null, activo: true })
-      .select("id, categoria, concepto, importe_mensual, importe_anual, notas")
-      .single();
+    const res = await fetch("/api/admin/costes", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoria, concepto: inlineNuevo.concepto, importe_mensual: inlineNuevo.importe_mensual, importe_anual: inlineNuevo.importe_anual, notas: inlineNuevo.notas || null }),
+    });
+    const { data } = await res.json();
     if (data) setCostesData(prev => [...prev, data as CosteRow]);
     setAddingToCategoria(null);
     setInlineNuevo({ concepto: "", importe_mensual: 0, importe_anual: 0, notas: "" });
@@ -659,7 +662,11 @@ export default function AdminDashboard() {
 
   const handleNuevoCostoSubmit = async () => {
     if (!nuevoCosto.concepto) return;
-    const { data } = await supabase.from("costes").insert({ categoria: nuevoCosto.categoria, concepto: nuevoCosto.concepto, importe_mensual: nuevoCosto.importe_mensual, importe_anual: nuevoCosto.importe_anual, notas: nuevoCosto.notas || null, activo: true }).select("id, categoria, concepto, importe_mensual, importe_anual, notas").single();
+    const res = await fetch("/api/admin/costes", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoria: nuevoCosto.categoria, concepto: nuevoCosto.concepto, importe_mensual: nuevoCosto.importe_mensual, importe_anual: nuevoCosto.importe_anual, notas: nuevoCosto.notas || null }),
+    });
+    const { data } = await res.json();
     if (data) setCostesData(prev => [...prev, data as { id: string; categoria: string; concepto: string; importe_mensual: number; importe_anual: number; notas: string | null }]);
     setShowNuevoCosto(false);
     setNuevoCosto({ categoria: "Otros", concepto: "", importe_mensual: 0, importe_anual: 0, notas: "" });
