@@ -155,6 +155,14 @@ function bonoEstado(stato: string): { label: string; bg: string; color: string }
   }
 }
 
+// Enlace a WhatsApp a partir de un teléfono. Si son 9 dígitos (móvil español sin
+// prefijo) se antepone el 34; si ya trae prefijo se respeta.
+function whatsappHref(telefono: string): string {
+  const digits = telefono.replace(/\D/g, "");
+  const full = digits.length === 9 ? `34${digits}` : digits;
+  return `https://wa.me/${full}`;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getWeekDates(): Date[] {
@@ -371,6 +379,9 @@ export default function AdminDashboard() {
   const [usuariosData, setUsuariosData] = useState<KpiStudentRow[]>([]);
   const [usuariosLoading, setUsuariosLoading] = useState(false);
   const [usuariosSearch, setUsuariosSearch] = useState("");
+  const [usuariosFiltroDisc, setUsuariosFiltroDisc] = useState("");
+  const [usuariosFiltroStato, setUsuariosFiltroStato] = useState("");
+  const [copiedEmail, setCopiedEmail] = useState(false);
   const [usuariosProfile, setUsuariosProfile] = useState<IscrizioneDetalle | null>(null);
   const [usuariosProfileLoading, setUsuariosProfileLoading] = useState(false);
 
@@ -1136,6 +1147,12 @@ export default function AdminDashboard() {
   const planBreakdownV = Object.values(planMapV).sort((a, b) => b.ingresos - a.ingresos);
   const maxPlan = Math.max(...planBreakdownV.map(p => p.ingresos), 1);
 
+  // Clases de hoy (para el bloque "Para hoy" del Resumen).
+  const todayEs = DOW_ES[new Date().getDay()];
+  const clasesHoy = orari
+    .filter(o => o.giorno === todayEs)
+    .sort((a, b) => a.ora_inizio.localeCompare(b.ora_inizio));
+
   const handleLogout = async () => {
     try { await fetch("/api/admin/logout", { method: "POST" }); } catch {}
     window.location.href = "/admin/login";
@@ -1300,6 +1317,67 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="font-headline-md text-headline-md text-primary mb-1">Resumen del Estudio</h3>
                 <p className="text-sm" style={{ color: "#89726c" }}>{new Date().toLocaleDateString("es-ES", { month: "long", year: "numeric" })}</p>
+              </div>
+
+              {/* Para hoy */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Para hoy</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                  {/* Clases de hoy */}
+                  <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-2 rounded-full bg-secondary-container text-on-secondary-container"><Icon name="calendar_today" className="text-base" /></div>
+                      <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Clases de hoy</p>
+                      <span className="ml-auto text-xs capitalize" style={{ color: "#89726c" }}>{todayEs}</span>
+                    </div>
+                    {loading ? (
+                      <p className="text-sm" style={{ color: "#89726c" }}>Cargando...</p>
+                    ) : clasesHoy.length === 0 ? (
+                      <p className="text-sm" style={{ color: "#89726c" }}>Hoy no hay clases programadas. 🌿</p>
+                    ) : (
+                      <ul className="space-y-1.5">
+                        {clasesHoy.map(o => (
+                          <li key={o.id} className="flex items-center justify-between gap-2 text-sm">
+                            <span style={{ color: "#25190f" }}>
+                              <span className="font-semibold">{o.ora_inizio.substring(0, 5)}</span>
+                              <span style={{ color: "#89726c" }}> · </span>
+                              {o.discipline?.nome ?? o.disciplina_id}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap" style={{ backgroundColor: "#fff3e0", color: "#e65100" }}>
+                              {o.iscrizione_orari?.length ?? 0} {(o.iscrizione_orari?.length ?? 0) === 1 ? "alumna" : "alumnas"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Interesadas sin convertir */}
+                  <button
+                    onClick={() => { setKpiDrawer("pendientes"); fetchKpiStudents({ stato: "attesa" }); }}
+                    className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border text-left hover:shadow-md transition-shadow flex flex-col"
+                    style={{ borderColor: pendingCount > 0 ? "#f5c6a5" : "var(--surface-container-high, #ece0da)" }}
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-2 rounded-full" style={{ backgroundColor: pendingCount > 0 ? "#fde7e7" : "#e8f5e9", color: pendingCount > 0 ? "#b71c1c" : "#2e7d32" }}>
+                        <Icon name={pendingCount > 0 ? "notifications_active" : "task_alt"} className="text-base" />
+                      </div>
+                      <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Interesadas sin convertir</p>
+                    </div>
+                    {loading ? (
+                      <p className="text-sm" style={{ color: "#89726c" }}>Cargando...</p>
+                    ) : pendingCount > 0 ? (
+                      <>
+                        <p className="text-3xl font-bold" style={{ color: "#b71c1c" }}>{pendingCount}</p>
+                        <p className="text-xs mt-1" style={{ color: "#89726c" }}>{pendingAmount}€ potencial · pulsa para verlas y contactarlas →</p>
+                      </>
+                    ) : (
+                      <p className="text-sm" style={{ color: "#2e7d32" }}>Sin contactos pendientes. ¡Todo al día! ✅</p>
+                    )}
+                  </button>
+
+                </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -1472,6 +1550,30 @@ export default function AdminDashboard() {
                   )}
                 </div>
 
+              </div>
+
+              {/* Leyenda de estados */}
+              <div className="rounded-[24px] p-5 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-1.5" style={{ color: "#89726c" }}>
+                  <Icon name="help" className="text-sm" /> Qué significa cada estado
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
+                  {[
+                    { s: "attesa",           desc: "Apuntada, todavía sin pagar." },
+                    { s: "matricula_pagada", desc: "Pagó la matrícula; el bono empieza a cobrarse en septiembre." },
+                    { s: "activa",           desc: "Bono mensual cobrándose con normalidad." },
+                    { s: "pagado",           desc: "Pago confirmado." },
+                    { s: "impago",           desc: "Falló el cobro del bono; requiere atención." },
+                    { s: "cancelada",        desc: "Inscripción dada de baja (con reembolso si lo hubo)." },
+                  ].map(({ s, desc }) => (
+                    <div key={s} className="flex items-start gap-2.5">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap shrink-0" style={{ backgroundColor: statoInfo(s).bg, color: statoInfo(s).color }}>
+                        {statoInfo(s).label}
+                      </span>
+                      <span className="text-xs leading-relaxed" style={{ color: "#56423d" }}>{desc}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
             </section>
@@ -2057,19 +2159,33 @@ export default function AdminDashboard() {
           {/* ── Usuarios ── */}
           {activeSection === "Usuarios" && (() => {
             const q = usuariosSearch.toLowerCase();
+            // Disciplinas presentes en las alumnas, para el selector de filtro.
+            const discOptions = [...new Map(usuariosData.map(u => [u.disciplina_id, u.discipline?.nome ?? u.disciplina_id])).entries()]
+              .sort((a, b) => a[1].localeCompare(b[1]));
+            // Estados realmente presentes en los datos, para no ofrecer filtros vacíos.
+            const statoOptions = [...new Set(usuariosData.map(u => u.stato))].sort();
             const filtered = usuariosData.filter(u => {
+              if (usuariosFiltroDisc && u.disciplina_id !== usuariosFiltroDisc) return false;
+              if (usuariosFiltroStato && u.stato !== usuariosFiltroStato) return false;
               if (!q) return true;
               const name = NINAS_IDS.has(u.disciplina_id) && u.nome_alumna
                 ? `${u.nome_alumna} ${u.cognome_alumna ?? ""}`.toLowerCase()
                 : `${u.nome} ${u.cognome}`.toLowerCase();
               return name.includes(q) || (u.discipline?.nome ?? "").toLowerCase().includes(q);
             });
+            const filtrosActivos = usuariosFiltroDisc !== "" || usuariosFiltroStato !== "" || q !== "";
             return (
               <section className="space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div>
                     <h3 className="font-headline-md text-headline-md text-primary">Usuarios</h3>
-                    <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{usuariosLoading ? "Cargando..." : `${usuariosData.length} alumna${usuariosData.length !== 1 ? "s" : ""} registradas`}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>
+                      {usuariosLoading
+                        ? "Cargando..."
+                        : filtrosActivos
+                          ? `${filtered.length} de ${usuariosData.length} alumna${usuariosData.length !== 1 ? "s" : ""}`
+                          : `${usuariosData.length} alumna${usuariosData.length !== 1 ? "s" : ""} registradas`}
+                    </p>
                   </div>
                   <div className="relative w-full md:w-72">
                     <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none" style={{ color: "#89726c" }} />
@@ -2081,6 +2197,37 @@ export default function AdminDashboard() {
                       style={{ borderColor: "#dcc1b9", color: "#25190f" }}
                     />
                   </div>
+                </div>
+
+                {/* Filtros */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={usuariosFiltroDisc}
+                    onChange={e => setUsuariosFiltroDisc(e.target.value)}
+                    className="border rounded-full px-4 py-2 text-sm focus:outline-none cursor-pointer"
+                    style={{ borderColor: "#dcc1b9", color: usuariosFiltroDisc ? "#25190f" : "#89726c", backgroundColor: usuariosFiltroDisc ? "#fff3e0" : "#fff" }}
+                  >
+                    <option value="">Todas las disciplinas</option>
+                    {discOptions.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
+                  </select>
+                  <select
+                    value={usuariosFiltroStato}
+                    onChange={e => setUsuariosFiltroStato(e.target.value)}
+                    className="border rounded-full px-4 py-2 text-sm focus:outline-none cursor-pointer"
+                    style={{ borderColor: "#dcc1b9", color: usuariosFiltroStato ? "#25190f" : "#89726c", backgroundColor: usuariosFiltroStato ? "#fff3e0" : "#fff" }}
+                  >
+                    <option value="">Todos los estados</option>
+                    {statoOptions.map(s => <option key={s} value={s}>{statoInfo(s).label}</option>)}
+                  </select>
+                  {filtrosActivos && (
+                    <button
+                      onClick={() => { setUsuariosSearch(""); setUsuariosFiltroDisc(""); setUsuariosFiltroStato(""); }}
+                      className="inline-flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold"
+                      style={{ color: "#7d2b13" }}
+                    >
+                      <Icon name="close" className="text-sm" /> Limpiar filtros
+                    </button>
+                  )}
                 </div>
 
                 {usuariosLoading ? (
@@ -2120,9 +2267,9 @@ export default function AdminDashboard() {
                                 <td className="py-3 px-4" style={{ color: "#25190f" }}>{PLAN_LABEL[u.piano_id] ?? u.piano_id}</td>
                                 <td className="py-3 px-4 font-semibold whitespace-nowrap" style={{ color: "#7d2b13" }}>{u.prezzo != null ? `${u.prezzo}€/mes` : "—"}</td>
                                 <td className="py-3 px-4">
-                                  {u.stato === "attesa"
-                                    ? <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-error-container text-on-error-container text-xs font-semibold">Pendiente</span>
-                                    : <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>Pagado</span>}
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap" style={{ backgroundColor: statoInfo(u.stato).bg, color: statoInfo(u.stato).color }}>
+                                    {statoInfo(u.stato).label}
+                                  </span>
                                 </td>
                                 <td className="py-3 px-4 whitespace-nowrap text-xs" style={{ color: "#89726c" }}>
                                   {new Date(u.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
@@ -3441,12 +3588,30 @@ export default function AdminDashboard() {
                     <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Contacto</p>
                     <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
                       <Icon name="mail" className="text-base" style={{ color: "#7d2b13" }} />
-                      <p className="text-sm break-all" style={{ color: "#25190f" }}>{usuariosProfile.email}</p>
+                      <p className="text-sm break-all flex-1" style={{ color: "#25190f" }}>{usuariosProfile.email}</p>
+                      <button
+                        onClick={() => { navigator.clipboard?.writeText(usuariosProfile.email); setCopiedEmail(true); setTimeout(() => setCopiedEmail(false), 1500); }}
+                        className="p-1.5 rounded-lg hover:bg-[#fff1e9] transition-colors shrink-0"
+                        title="Copiar email" aria-label="Copiar email"
+                      >
+                        <Icon name={copiedEmail ? "check" : "content_copy"} className="text-base" style={{ color: copiedEmail ? "#2e7d32" : "#7d2b13" }} />
+                      </button>
+                      <a href={`mailto:${usuariosProfile.email}`} className="p-1.5 rounded-lg hover:bg-[#fff1e9] transition-colors shrink-0" title="Enviar email" aria-label="Enviar email">
+                        <Icon name="send" className="text-base" style={{ color: "#7d2b13" }} />
+                      </a>
                     </div>
                     {usuariosProfile.telefono && (
                       <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
                         <Icon name="phone" className="text-base" style={{ color: "#7d2b13" }} />
-                        <p className="text-sm" style={{ color: "#25190f" }}>{usuariosProfile.telefono}</p>
+                        <p className="text-sm flex-1" style={{ color: "#25190f" }}>{usuariosProfile.telefono}</p>
+                        <a
+                          href={whatsappHref(usuariosProfile.telefono)} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0"
+                          style={{ backgroundColor: "#25d366", color: "#fff" }}
+                          title="Escribir por WhatsApp"
+                        >
+                          <Icon name="chat" className="text-sm" /> WhatsApp
+                        </a>
                       </div>
                     )}
                   </div>
