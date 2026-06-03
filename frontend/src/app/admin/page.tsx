@@ -2240,6 +2240,15 @@ export default function AdminDashboard() {
           {/* ── Asistencia ── */}
           {activeSection === "Asistencia" && (() => {
             const clases = clasesDelDia(asistenciaFecha);
+            // Lunes–Viernes de la semana del día seleccionado, para saltar de día con un toque.
+            const base = new Date(`${asistenciaFecha}T00:00:00`);
+            const dow0 = base.getDay();
+            const monOffset = dow0 === 0 ? -6 : 1 - dow0;
+            const semana = Array.from({ length: 5 }, (_, i) => {
+              const d = new Date(base);
+              d.setDate(base.getDate() + monOffset + i);
+              return d;
+            });
             const presentes = asistenciaRoster.filter(a => a.estado === "presente").length;
             const faltas = asistenciaRoster.filter(a => a.estado === "falta").length;
             const justificadas = asistenciaRoster.filter(a => a.estado === "justificada").length;
@@ -2265,9 +2274,32 @@ export default function AdminDashboard() {
                   />
                 </div>
 
+                {/* Días de la semana (el número = clases ese día) */}
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {semana.map(d => {
+                    const val = d.toLocaleDateString("en-CA");
+                    const n = clasesDelDia(val).length;
+                    const active = val === asistenciaFecha;
+                    return (
+                      <button
+                        key={val}
+                        onClick={() => setAsistenciaFecha(val)}
+                        className="flex flex-col items-center px-3 py-2 rounded-2xl border min-w-[56px] shrink-0 transition-colors"
+                        style={{ backgroundColor: active ? "#7d2b13" : "#fff", borderColor: active ? "#7d2b13" : "#dcc1b9", color: active ? "#fff" : "#25190f" }}
+                      >
+                        <span className="text-[10px] uppercase tracking-wide" style={{ color: active ? "#fff" : "#89726c" }}>{DAYS_SHORT_ES[d.getDay()]}</span>
+                        <span className="text-base font-bold leading-tight">{d.getDate()}</span>
+                        {n > 0
+                          ? <span className="text-[10px] mt-0.5 px-1.5 rounded-full font-semibold" style={{ backgroundColor: active ? "rgba(255,255,255,.25)" : "#fff3e0", color: active ? "#fff" : "#e65100" }}>{n}</span>
+                          : <span className="text-[10px] mt-0.5" style={{ color: active ? "rgba(255,255,255,.55)" : "#cbb8b0" }}>—</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {clases.length === 0 ? (
                   <div className="rounded-[24px] p-8 text-center border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
-                    <p className="text-sm" style={{ color: "#89726c" }}>No hay clases programadas para este día. 🌿</p>
+                    <p className="text-sm" style={{ color: "#89726c" }}>No hay clases este día. Elige arriba un día con número 👆 (ahí están tus clases y alumnas).</p>
                   </div>
                 ) : (
                   <>
