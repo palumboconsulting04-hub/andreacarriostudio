@@ -50,7 +50,8 @@ function inputStyle() {
     border: `1.5px solid ${C.border}`,
     borderRadius: "12px",
     padding: "12px 16px",
-    fontSize: "0.9rem",
+    // 16px evita el auto-zoom de iOS Safari al enfocar el campo en móvil.
+    fontSize: "16px",
     fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif",
     color: C.dark,
     backgroundColor: C.cream,
@@ -72,8 +73,10 @@ export default function PuertasAbiertas() {
   const [enviado, setEnviado] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Solo se piden datos de niña si la madre marca "Sí" explícitamente.
+  // Dentro de cada niña, basta con la edad: el nombre es opcional.
   const ninasOk = traeNina === true
-    ? ninas.every(n => n.nombre.trim() !== "" && n.edad !== "")
+    ? ninas.every(n => n.edad !== "")
     : true;
 
   const formValido =
@@ -82,7 +85,6 @@ export default function PuertasAbiertas() {
     email.trim() !== "" &&
     telefono.trim() !== "" &&
     disciplina !== "" &&
-    traeNina !== null &&
     ninasOk;
 
   const addNina = () => setNinas(p => [...p, { nombre: "", edad: "" }]);
@@ -142,7 +144,7 @@ export default function PuertasAbiertas() {
         </p>
 
         <a
-          href="https://chat.whatsapp.com/GTZt2CDM41kERzY0Iek9kH?mode=gi_t"
+          href="https://chat.whatsapp.com/GvefZIztp0G5Wb3gif5f2g"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-3 px-7 py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity mb-4"
@@ -391,7 +393,7 @@ export default function PuertasAbiertas() {
                       </p>
                       <input
                         style={{ ...inputStyle(), marginBottom: "12px" }}
-                        placeholder="Nombre de tu hija"
+                        placeholder="Nombre de tu hija (opcional)"
                         value={nina.nombre}
                         onChange={e => updateNina(i, "nombre", e.target.value)}
                       />
