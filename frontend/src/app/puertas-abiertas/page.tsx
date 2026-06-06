@@ -232,9 +232,10 @@ export default function PuertasAbiertas() {
           <Image
             src="/logo-email.png"
             alt="Andrea Carrió Studio"
-            width={100}
-            height={100}
-            className="mx-auto mb-8 rounded-full"
+            width={240}
+            height={240}
+            priority
+            className="mx-auto mb-6 w-44 sm:w-56 h-auto"
             style={{ objectFit: "contain" }}
           />
 
@@ -346,8 +347,7 @@ export default function PuertasAbiertas() {
             </p>
             <div className="text-sm leading-relaxed space-y-3" style={{ color: C.brown }}>
               <p>
-                Durante años he sido profesora de ballet en diferentes escuelas de Valencia — entre ellas, esta misma, en la{" "}
-                <strong style={{ color: C.burgundy }}>Calle Motilla del Palancar 34</strong>. La que muchas de vosotras conocéis como la escuela de Maricruz Alcalá.
+                Durante años he sido profesora de ballet en diferentes escuelas de Valencia — entre ellas, esta misma, en la Calle Motilla del Palancar 34. La que muchas de vosotras conocéis como la escuela de Maricruz Alcalá.
               </p>
               <p>Hoy tomo el relevo y la hago completamente mía.</p>
               <p>
