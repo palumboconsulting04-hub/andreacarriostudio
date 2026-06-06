@@ -242,7 +242,7 @@ export default function PuertasAbiertas() {
             className="text-xs uppercase tracking-[0.25em] mb-4"
             style={{ color: C.muted, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
           >
-            Andrea Carrió Studio · Alfauir, Valencia
+            Ballet para niñas · Pilates y Barre Fit para adultas · Valencia
           </p>
 
           <h1
@@ -262,14 +262,14 @@ export default function PuertasAbiertas() {
             className="text-lg sm:text-xl mb-5 leading-snug max-w-md mx-auto"
             style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.burgundy }}
           >
-            Una tarde para descubrir el estudio antes de empezar.
+            Mi escuela de ballet para niñas. Y para ti: Ballet, Pilates y Barre Fit.
           </p>
 
           <p
-            className="text-base sm:text-lg leading-relaxed max-w-md mx-auto"
-            style={{ color: C.brown }}
+            className="text-lg sm:text-xl leading-relaxed max-w-md mx-auto font-medium"
+            style={{ color: C.dark }}
           >
-            Ven el 24 de julio, conoce a Andrea en persona y descubre el estudio desde dentro. Si vienes con tu hija, que ella pruebe su primera clase de ballet. Si vienes para ti, muévete y siéntelo en tu propio cuerpo.
+            Ven el 24 de julio: te enseño el estudio por dentro y nos conocemos en persona. Tu hija prueba su primera clase de ballet, y si vienes para ti, pruebas la disciplina que más te apetezca.
           </p>
 
           <p
@@ -278,6 +278,43 @@ export default function PuertasAbiertas() {
           >
             No hace falta experiencia. Solo ganas.
           </p>
+        </div>
+      </div>
+
+      {/* ── Dónde estamos ── */}
+      <div className="px-4 pt-2 pb-10">
+        <div className="max-w-3xl mx-auto text-center">
+          <p
+            className="text-xs font-semibold uppercase tracking-[0.2em] mb-3"
+            style={{ color: C.muted, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+          >
+            Dónde estamos
+          </p>
+          <h2
+            className="text-3xl sm:text-4xl mb-3"
+            style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.burgundy }}
+          >
+            En el corazón de Valencia
+          </h2>
+          <p className="text-base mb-6" style={{ color: C.dark }}>
+            Carrer de Motilla del Palancar 34 · Zona Alfahuir · 46019 València
+          </p>
+
+          <div
+            className="rounded-3xl overflow-hidden shadow-lg"
+            style={{ border: `1px solid ${C.border}` }}
+          >
+            <iframe
+              title="Ubicación de Andrea Carrió Studio"
+              src="https://www.google.com/maps?q=Carrer+de+Motilla+del+Palancar+34,+46019+Val%C3%A8ncia&z=16&output=embed"
+              width="100%"
+              height="320"
+              style={{ border: 0, display: "block" }}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+            />
+          </div>
         </div>
       </div>
 
@@ -336,25 +373,28 @@ export default function PuertasAbiertas() {
           >
             Reserva tu plaza
           </h2>
-          <p className="text-sm mb-8" style={{ color: C.muted }}>
+          <p className="text-sm mb-2" style={{ color: C.muted }}>
             Es gratuito y sin compromiso. Solo necesito saber que venís.
+          </p>
+          <p className="text-xs mb-8" style={{ color: C.muted }}>
+            Los campos con <span aria-hidden="true" style={{ color: "#c0392b" }}>*</span> son obligatorios.
           </p>
 
           <div className="space-y-8">
 
             {/* ── Datos personales ── */}
             <div>
-              <SectionLabel text="Tus datos" />
+              <SectionLabel text="Tus datos" required />
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <input
                   style={inputStyle()}
-                  placeholder="Nombre"
+                  placeholder="Nombre *"
                   value={nombre}
                   onChange={e => setNombre(e.target.value)}
                 />
                 <input
                   style={inputStyle()}
-                  placeholder="Apellido"
+                  placeholder="Apellido *"
                   value={apellido}
                   onChange={e => setApellido(e.target.value)}
                 />
@@ -362,14 +402,14 @@ export default function PuertasAbiertas() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   style={inputStyle()}
-                  placeholder="Email"
+                  placeholder="Email *"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                 />
                 <input
                   style={inputStyle()}
-                  placeholder="Teléfono"
+                  placeholder="Teléfono *"
                   type="tel"
                   value={telefono}
                   onChange={e => setTelefono(e.target.value)}
@@ -379,7 +419,7 @@ export default function PuertasAbiertas() {
 
             {/* ── Disciplina ── */}
             <div>
-              <SectionLabel text="¿Qué te apetece probar?" />
+              <SectionLabel text="¿Qué te apetece probar?" required />
               <div className="flex flex-wrap gap-2">
                 {DISCIPLINAS.map(d => (
                   <button
@@ -433,6 +473,9 @@ export default function PuertasAbiertas() {
                         value={nina.nombre}
                         onChange={e => updateNina(i, "nombre", e.target.value)}
                       />
+                      <p className="text-xs font-semibold mb-2" style={{ color: C.brown }}>
+                        Edad <span aria-hidden="true" style={{ color: "#c0392b" }}>*</span>
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {EDAD_NINA_OPTIONS.map(edad => (
                           <button
@@ -515,13 +558,16 @@ export default function PuertasAbiertas() {
   );
 }
 
-function SectionLabel({ text, optional }: { text: string; optional?: boolean }) {
+function SectionLabel({ text, optional, required }: { text: string; optional?: boolean; required?: boolean }) {
   return (
     <p
       className="text-xs font-semibold uppercase tracking-[0.12em] mb-3 flex items-center gap-2"
       style={{ color: C.burgundy, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
     >
       {text}
+      {required && (
+        <span aria-hidden="true" style={{ color: "#c0392b" }}>*</span>
+      )}
       {optional && (
         <span
           className="normal-case tracking-normal font-normal text-xs"

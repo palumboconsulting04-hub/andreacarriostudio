@@ -55,7 +55,7 @@ function ModalPrivacidad({ onClose, onAceptar }: { onClose: () => void; onAcepta
           Protección de Datos
         </h2>
         <div className="space-y-4 text-sm leading-relaxed" style={{ color: "#56423d" }}>
-          <div><p className="font-semibold mb-1" style={{ color: "#25190f" }}>Responsable del tratamiento</p><p>Andrea Carrió, titular de Andrea Carrió Studio, C/ Motilla del Palancar 34, Alfauir (Valencia). Contacto: andreacarriostudio@gmail.com</p></div>
+          <div><p className="font-semibold mb-1" style={{ color: "#25190f" }}>Responsable del tratamiento</p><p>Andrea Carrió, titular de Andrea Carrió Studio, C/ Motilla del Palancar 34, Alfahuir (Valencia). Contacto: andreacarriostudio@gmail.com</p></div>
           <div><p className="font-semibold mb-1" style={{ color: "#25190f" }}>Finalidad</p><p>Gestionar la inscripción, impartir las clases, cobrar las cuotas, cumplir las obligaciones fiscales y contables y adaptar la práctica a la información médica facilitada.</p></div>
           <div><p className="font-semibold mb-1" style={{ color: "#25190f" }}>Base jurídica</p><p>Ejecución del contrato de prestación del servicio y cumplimiento de obligaciones legales (RGPD, art. 6.1.b y c). Para datos de salud, su consentimiento explícito (RGPD, art. 9.2.a).</p></div>
           <div><p className="font-semibold mb-1" style={{ color: "#25190f" }}>Conservación</p><p>Durante la relación con el estudio y, una vez finalizada, durante los plazos legalmente exigidos (hasta 6 años a efectos fiscales).</p></div>

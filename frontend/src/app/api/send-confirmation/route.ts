@@ -203,9 +203,9 @@ function buildHtml(data: InscripcionEmailData): string {
           <tr>
             <td style="background:#fff8f5;border-top:1px solid #f0ddd5;padding:28px 32px;text-align:center;">
               <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#25190f;">Andrea Carrió Studio</p>
-              <p style="margin:5px 0 0;font-size:11px;color:#89726c;">C/ Motilla del Palancar 34, Alfauir (Valencia)</p>
+              <p style="margin:5px 0 0;font-size:11px;color:#89726c;">C/ Motilla del Palancar 34, Alfahuir (Valencia)</p>
               <p style="margin:3px 0 0;font-size:11px;color:#89726c;">andreacarriostudio@gmail.com</p>
-              <p style="margin:16px 0 0;font-size:10px;color:#bcb0ab;letter-spacing:1px;">© 2025 ANDREA CARRIÓ STUDIO · ALFAUIR, VALENCIA</p>
+              <p style="margin:16px 0 0;font-size:10px;color:#bcb0ab;letter-spacing:1px;">© 2025 ANDREA CARRIÓ STUDIO · ALFAHUIR, VALENCIA</p>
             </td>
           </tr>
 
