@@ -305,15 +305,17 @@ export default function PuertasAbiertas() {
             className="rounded-3xl overflow-hidden shadow-lg"
             style={{ border: `1px solid ${C.border}` }}
           >
+            {/* pointerEvents:none "congela" el mapa: se ve la ubicación y el pin,
+                pero no se puede arrastrar, hacer zoom ni clicar para salir.
+                Evita el scroll-trap en móvil y los puntos de fuga del iframe. */}
             <iframe
               title="Ubicación de Andrea Carrió Studio"
               src="https://www.google.com/maps?q=Carrer+de+Motilla+del+Palancar+34,+46019+Val%C3%A8ncia&z=16&output=embed"
               width="100%"
               height="320"
-              style={{ border: 0, display: "block" }}
+              style={{ border: 0, display: "block", pointerEvents: "none" }}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
             />
           </div>
         </div>
