@@ -295,10 +295,10 @@ export default function PuertasAbiertas() {
             className="text-3xl sm:text-4xl mb-3"
             style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.burgundy }}
           >
-            En el corazón de Valencia
+            En el corazón de Alfahuir
           </h2>
           <p className="text-base mb-6" style={{ color: C.dark }}>
-            Carrer de Motilla del Palancar 34 · Zona Alfahuir · 46019 València
+            Carrer de Motilla del Palancar 34 · Zona Alfahuir, Valencia · A 5 min del Centro Comercial Arena
           </p>
 
           <div
