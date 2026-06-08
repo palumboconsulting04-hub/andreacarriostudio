@@ -16,8 +16,31 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://andreacarriostudio.vercel.app"),
   title: "Inscripción — Andrea Carrió Studio",
   description: "Inscripción mensual a clases de Pilates, Barre y Ballet Clásico.",
+  openGraph: {
+    title: "Andrea Carrió Studio — Danza y Pilates",
+    description: "Inscripción mensual a clases de Pilates, Barre y Ballet Clásico.",
+    url: "https://andreacarriostudio.vercel.app",
+    siteName: "Andrea Carrió Studio",
+    locale: "es_ES",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Andrea Carrió Studio — Danza y Pilates",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Andrea Carrió Studio — Danza y Pilates",
+    description: "Inscripción mensual a clases de Pilates, Barre y Ballet Clásico.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({
