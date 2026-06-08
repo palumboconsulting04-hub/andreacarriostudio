@@ -18,7 +18,7 @@ export const metadata: Metadata = {
         url: "/og-puertas-abiertas.png",
         width: 1200,
         height: 630,
-        alt: "Jornada de Puertas Abiertas — Andrea Carrió Studio · 24 de julio",
+        alt: "Andrea Carrió Studio",
       },
     ],
   },
