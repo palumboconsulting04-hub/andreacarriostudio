@@ -23,6 +23,25 @@ export async function GET() {
   return NextResponse.json({ data });
 }
 
+// Actualiza el origen de una reserva (etiquetado manual). Solo admin.
+export async function PATCH(req: NextRequest) {
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+  const body = await req.json();
+  const { id, origen } = body;
+  if (!id) {
+    return NextResponse.json({ error: "Falta el id" }, { status: 400 });
+  }
+  // "" o ausencia → null ("Sin dato"). Cualquier otro valor se guarda tal cual.
+  const value = origen ? String(origen) : null;
+  const { error } = await supabaseAdmin.from("puertas_abiertas").update({ origen: value }).eq("id", id);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}
+
 // Borra una reserva por id. Solo admin.
 export async function DELETE(req: NextRequest) {
   if (!(await isAdmin())) {

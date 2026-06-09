@@ -418,6 +418,17 @@ export default function AdminDashboard() {
     setPuertasDeleteId(null);
   };
 
+  // Etiquetado manual del origen de una inscrita (actualización optimista).
+  const updatePuertaOrigen = async (id: string, origen: string) => {
+    const value = origen || null;
+    setPuertasData(prev => prev.map(r => (r.id === id ? { ...r, origen: value } : r)));
+    await fetch("/api/admin/puertas-abiertas", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, origen: value }),
+    });
+  };
+
   // KPI drawer
   const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | "facturacion" | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
@@ -2649,18 +2660,28 @@ export default function AdminDashboard() {
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
                                 {(() => {
-                                  const styles: Record<string, { label: string; bg: string; fg: string }> = {
-                                    ads: { label: "Publicidad", bg: "#e6efff", fg: "#1b4f9c" },
-                                    escuela: { label: "Escuela", bg: "#e7f7ec", fg: "#1f7a3d" },
-                                    directo: { label: "Directo", bg: "#f0eae6", fg: "#6b5a52" },
+                                  const colors: Record<string, { bg: string; fg: string }> = {
+                                    ads: { bg: "#e6efff", fg: "#1b4f9c" },
+                                    escuela: { bg: "#e7f7ec", fg: "#1f7a3d" },
+                                    directo: { bg: "#f0eae6", fg: "#6b5a52" },
+                                    "": { bg: "#f4f0ee", fg: "#a08e86" },
                                   };
-                                  const key = (r.origen || "directo").toLowerCase();
-                                  const s = styles[key] ?? { label: r.origen ?? "Directo", bg: "#f0eae6", fg: "#6b5a52" };
+                                  const key = (r.origen || "").toLowerCase();
+                                  const c = colors[key] ?? colors[""];
                                   return (
-                                    <span className="flex flex-col gap-0.5">
-                                      <span className="inline-flex items-center self-start px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: s.bg, color: s.fg }}>
-                                        {s.label}
-                                      </span>
+                                    <span className="flex flex-col gap-0.5 items-start">
+                                      <select
+                                        value={["ads", "escuela", "directo"].includes(key) ? key : ""}
+                                        onChange={e => updatePuertaOrigen(r.id, e.target.value)}
+                                        className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none"
+                                        style={{ backgroundColor: c.bg, color: c.fg }}
+                                        title="Cambiar el origen de esta inscrita"
+                                      >
+                                        <option value="ads">Publicidad</option>
+                                        <option value="escuela">Escuela</option>
+                                        <option value="directo">Directo</option>
+                                        <option value="">Sin dato</option>
+                                      </select>
                                       {r.utm_campaign ? (
                                         <span className="text-[10px]" style={{ color: "#89726c" }}>{r.utm_campaign}</span>
                                       ) : null}
