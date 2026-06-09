@@ -402,6 +402,10 @@ export default function AdminDashboard() {
     disciplina_adulta: string | null;
     ninas: { nombre: string; edad: string }[];
     alergias: string | null;
+    origen: string | null;
+    utm_source: string | null;
+    utm_campaign: string | null;
+    fbclid: string | null;
   };
   const [puertasData, setPuertasData] = useState<PuertaRow[]>([]);
   const [puertasLoading, setPuertasLoading] = useState(false);
@@ -2587,7 +2591,7 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Nombre", "Contacto", "Quiere probar", "Niñas", "Alergias", "Fecha", ""].map((h, hi) => (
+                            {["Nombre", "Contacto", "Quiere probar", "Niñas", "Alergias", "Origen", "Fecha", ""].map((h, hi) => (
                               <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
@@ -2642,6 +2646,27 @@ export default function AdminDashboard() {
                                 ) : (
                                   <span className="text-xs" style={{ color: "#89726c" }}>Sin alergias</span>
                                 )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {(() => {
+                                  const styles: Record<string, { label: string; bg: string; fg: string }> = {
+                                    ads: { label: "Publicidad", bg: "#e6efff", fg: "#1b4f9c" },
+                                    escuela: { label: "Escuela", bg: "#e7f7ec", fg: "#1f7a3d" },
+                                    directo: { label: "Directo", bg: "#f0eae6", fg: "#6b5a52" },
+                                  };
+                                  const key = (r.origen || "directo").toLowerCase();
+                                  const s = styles[key] ?? { label: r.origen ?? "Directo", bg: "#f0eae6", fg: "#6b5a52" };
+                                  return (
+                                    <span className="flex flex-col gap-0.5">
+                                      <span className="inline-flex items-center self-start px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: s.bg, color: s.fg }}>
+                                        {s.label}
+                                      </span>
+                                      {r.utm_campaign ? (
+                                        <span className="text-[10px]" style={{ color: "#89726c" }}>{r.utm_campaign}</span>
+                                      ) : null}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "#89726c" }}>
                                 {new Date(r.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}

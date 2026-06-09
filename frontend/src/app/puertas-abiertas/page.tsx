@@ -128,6 +128,40 @@ export default function PuertasAbiertas() {
     return () => obs.disconnect();
   }, []);
 
+  // ── Atribución de origen ──
+  // Al cargar, leemos los parámetros de la URL para saber de dónde viene la visita.
+  // - Publicidad (Meta): Facebook añade siempre ?fbclid=... al clic en el anuncio
+  //   (o utm_source=facebook / utm_medium=paid si etiquetamos el enlace).
+  // - Escuela / orgánico: compartimos el enlace con ?origen=escuela.
+  // - Resto: "directo".
+  const atrib = useRef<{
+    origen: string;
+    utm_source: string | null;
+    utm_campaign: string | null;
+    fbclid: string | null;
+  }>({ origen: "directo", utm_source: null, utm_campaign: null, fbclid: null });
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const utm_source = p.get("utm_source");
+    const utm_medium = p.get("utm_medium");
+    const utm_campaign = p.get("utm_campaign");
+    const fbclid = p.get("fbclid");
+    const origenParam = p.get("origen");
+    const src = (utm_source || "").toLowerCase();
+    const med = (utm_medium || "").toLowerCase();
+    let origen = "directo";
+    if (
+      fbclid ||
+      ["facebook", "fb", "ig", "instagram", "meta"].includes(src) ||
+      ["paid", "cpc", "ppc", "paid_social"].includes(med)
+    ) {
+      origen = "ads";
+    } else if (origenParam) {
+      origen = origenParam.toLowerCase();
+    }
+    atrib.current = { origen, utm_source, utm_campaign, fbclid };
+  }, []);
+
   const handleSubmit = async () => {
     if (!formValido || enviando) return;
     setEnviando(true);
@@ -144,6 +178,10 @@ export default function PuertasAbiertas() {
           disciplina_adulta: disciplina,
           ninas: traeNina ? ninas : [],
           alergias: alergias.trim() || null,
+          origen: atrib.current.origen,
+          utm_source: atrib.current.utm_source,
+          utm_campaign: atrib.current.utm_campaign,
+          fbclid: atrib.current.fbclid,
         }),
       });
       if (!res.ok) throw new Error();
