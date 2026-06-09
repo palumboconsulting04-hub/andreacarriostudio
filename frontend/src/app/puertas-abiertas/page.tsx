@@ -327,7 +327,7 @@ export default function PuertasAbiertas() {
             className="text-lg sm:text-xl leading-relaxed max-w-md mx-auto font-medium"
             style={{ color: C.dark }}
           >
-            Descúbrelo en nuestra jornada de puertas abiertas del 24 de julio: tu hija prueba una clase real y tú conoces la escuela y a la profesora. Gratis y sin compromiso.
+            Descúbrelo en mi jornada de puertas abiertas del 24 de julio: tu hija prueba una clase real y me conoces a mí y a la escuela. Gratis y sin compromiso.
           </p>
         </div>
       </div>
