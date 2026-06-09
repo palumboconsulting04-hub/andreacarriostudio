@@ -307,14 +307,14 @@ export default function PuertasAbiertas() {
             className="text-xs uppercase tracking-[0.25em] mb-4"
             style={{ color: C.muted, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
           >
-            Ballet para niñas · Pilates y Barre Fit para adultas · Valencia
+            Nueva escuela de ballet · Valencia (Alfahuir)
           </p>
 
           <h1
             className="text-4xl sm:text-5xl mb-6 leading-tight"
             style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.burgundy }}
           >
-            Jornada de<br />Puertas Abiertas
+            Tu hija aprende, disfruta<br />y crece con el ballet
           </h1>
 
           <div className="flex items-center justify-center gap-3 mb-6">
@@ -324,24 +324,10 @@ export default function PuertasAbiertas() {
           </div>
 
           <p
-            className="text-lg sm:text-xl mb-5 leading-snug max-w-md mx-auto"
-            style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.burgundy }}
-          >
-            Mi escuela de ballet para niñas. Y para ti: Ballet, Pilates y Barre Fit.
-          </p>
-
-          <p
             className="text-lg sm:text-xl leading-relaxed max-w-md mx-auto font-medium"
             style={{ color: C.dark }}
           >
-            Ven el 24 de julio: te enseño el estudio por dentro y nos conocemos en persona. Tu hija prueba su primera clase de ballet, y si vienes para ti, pruebas la disciplina que más te apetezca.
-          </p>
-
-          <p
-            className="text-base sm:text-lg leading-relaxed mt-4 font-semibold"
-            style={{ color: C.burgundy, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
-          >
-            No hace falta experiencia. Solo ganas.
+            Descúbrelo en nuestra jornada de puertas abiertas del 24 de julio: tu hija prueba una clase real y tú conoces la escuela y a la profesora. Gratis y sin compromiso.
           </p>
         </div>
       </div>
