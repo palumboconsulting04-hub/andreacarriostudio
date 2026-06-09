@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Script from "next/script";
 
@@ -101,6 +101,32 @@ export default function PuertasAbiertas() {
   const removeNina = (i: number) => setNinas(p => p.filter((_, idx) => idx !== i));
   const updateNina = (i: number, field: keyof Nina, val: string) =>
     setNinas(p => p.map((n, idx) => idx === i ? { ...n, [field]: val } : n));
+
+  // ── Evento de optimización de Meta ──
+  // Dispara ViewContent (evento estándar) UNA sola vez cuando la persona llega
+  // al formulario, es decir, "visita cualificada": ha leído la landing y baja a
+  // reservar. Es el paso justo antes del Lead y ocurre con suficiente volumen
+  // para salir de la fase de aprendizaje con presupuestos pequeños.
+  const formRef = useRef<HTMLDivElement>(null);
+  const viewContentFired = useRef(false);
+  useEffect(() => {
+    const el = formRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && !viewContentFired.current) {
+          viewContentFired.current = true;
+          window.fbq?.("track", "ViewContent", {
+            content_name: "Formulario Puertas Abiertas",
+          });
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.4 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   const handleSubmit = async () => {
     if (!formValido || enviando) return;
@@ -364,7 +390,7 @@ export default function PuertasAbiertas() {
         </div>{/* /columna Andrea */}
 
         {/* ── Formulario ── */}
-        <div>
+        <div ref={formRef}>
         <div
           className="rounded-3xl p-8 sm:p-10 shadow-lg"
           style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
