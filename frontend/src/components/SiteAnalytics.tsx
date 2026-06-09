@@ -1,19 +1,14 @@
 "use client";
 
 import Script from "next/script";
-import { usePathname } from "next/navigation";
 import CookieBanner from "./CookieBanner";
 
 const GA_ID = "G-58XTS3Y6NB";
 
-// GA4 + banner de cookies en TODA la web EXCEPTO la landing de conversión
-// (/puertas-abiertas): ahí no queremos banner para no añadir fricción a un
-// tráfico de pago. Esa landing ya mide conversiones con el Píxel de Meta y el
-// tráfico con Vercel Analytics (sin cookies, sin banner).
+// GA4 con Consent Mode v2 + banner de cookies en TODA la web (incluida la
+// landing de conversión /puertas-abiertas). GA4 arranca con consentimiento
+// denegado y solo mide/escribe cookies si la visitante acepta en el banner.
 export default function SiteAnalytics() {
-  const pathname = usePathname();
-  if (pathname?.startsWith("/puertas-abiertas")) return null;
-
   return (
     <>
       <Script id="ga4" strategy="afterInteractive">
