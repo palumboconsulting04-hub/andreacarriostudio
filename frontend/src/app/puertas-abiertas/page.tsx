@@ -64,6 +64,20 @@ function inputStyle() {
   };
 }
 
+// Check ✓ reutilizable para las listas de beneficios.
+function Check() {
+  return (
+    <span
+      className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5"
+      style={{ backgroundColor: C.blush }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path d="M5 13l4 4L19 7" stroke={C.burgundy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
 export default function PuertasAbiertas() {
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -280,34 +294,48 @@ export default function PuertasAbiertas() {
           </p>
 
           <h1
-            className="text-4xl sm:text-5xl mb-5 leading-tight"
+            className="text-3xl sm:text-5xl mb-5 leading-tight"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            Tu hija prueba el ballet gratis
+            Descubre si el ballet es para tu hija, sin pagar nada y sin compromiso
           </h1>
 
           <p
-            className="text-lg sm:text-xl leading-relaxed max-w-md mx-auto font-medium mb-7"
+            className="text-base sm:text-lg leading-relaxed max-w-lg mx-auto mb-6"
             style={{ color: C.dark }}
           >
-            Una clase de ballet de verdad, juegos y merienda. Tu hija disfruta, tú me conoces a mí y al estudio. Sin pagar nada y sin compromiso.
+            Una mañana diferente para que tu hija pruebe una clase de ballet de verdad, se divierta, haga nuevas amigas y tú conozcas personalmente a la profesora y el estudio antes de decidir.
           </p>
+
+          <ul className="inline-flex flex-col gap-2 text-left mb-8 mx-auto">
+            {[
+              "Clase de ballet gratuita",
+              "Juegos adaptados a su edad",
+              "Merienda incluida",
+              "Sin compromiso de inscripción",
+            ].map(t => (
+              <li key={t} className="flex items-center gap-2.5">
+                <Check />
+                <span className="text-sm font-medium" style={{ color: C.dark, fontFamily: fSans }}>{t}</span>
+              </li>
+            ))}
+          </ul>
 
           <button
             onClick={scrollToForm}
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.1em" }}
           >
-            Reservar la plaza de mi hija
+            Reserva ahora la plaza de tu hija
           </button>
 
           <p className="text-sm mt-4 font-semibold" style={{ color: C.burgundy }}>
-            ⚠ Solo 10 plazas por horario · 3 turnos · se llenan rápido
+            ⚠ Solo 10 plazas por grupo · Las plazas suelen completarse rápido.
           </p>
         </div>
       </div>
 
-      {/* ── Qué incluye (value stack) ── */}
+      {/* ── Qué vivirá tu hija (value stack) ── */}
       <div className="px-4 py-12">
         <div
           className="max-w-2xl mx-auto rounded-3xl p-7 sm:p-10 shadow-sm"
@@ -317,29 +345,22 @@ export default function PuertasAbiertas() {
             className="text-2xl sm:text-3xl mb-2 text-center"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            Qué vive tu hija ese día
+            ¿Qué vivirá tu hija durante la jornada?
           </h2>
           <p className="text-sm text-center mb-7" style={{ color: C.muted }}>
-            Todo gratis. Sin compromiso de apuntarse a nada.
+            Todo completamente gratis.
           </p>
 
           <ul className="space-y-4">
             {[
-              ["Una clase de ballet real", "Adaptada a su edad y dada por mí, no una demostración. Vivirá una clase de verdad."],
-              ["Juegos y diversión", "Pensados para que se suelte, se ría y se lo pase genial desde el primer minuto."],
-              ["Merienda para las niñas", "Un ratito dulce para que conozcan a otras compañeras y se sientan en casa."],
-              ["Nos conocemos sin compromiso", "Ves el estudio, me conoces a mí y decides con calma. Sin ninguna presión."],
-              ["Matrícula a 35 € en vez de 50 €", "Solo si te apuntas en la jornada, te guardo la matrícula con descuento."],
+              ["Una clase de ballet de verdad", "No es una demostración ni una exhibición. Tu hija participará en una clase real, adaptada a su edad, para que descubra si disfruta del ballet desde el primer momento."],
+              ["Juegos y actividades divertidas", "Dinámicas pensadas para que las niñas se sientan cómodas, ganen confianza y disfruten mientras aprenden."],
+              ["Merienda con sus nuevas compañeras", "Un momento especial para compartir, hacer amigas y sentirse parte del grupo."],
+              ["Tú también podrás conocerlo todo", "Conocerás el estudio, resolverás tus dudas y podrás valorar tranquilamente si este es el lugar adecuado para tu hija."],
+              ["Matrícula con descuento", "Si decides apuntarla ese mismo día, la matrícula será de 35 € en lugar de 50 €."],
             ].map(([t, d]) => (
               <li key={t} className="flex gap-3">
-                <span
-                  className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5"
-                  style={{ backgroundColor: C.blush }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 13l4 4L19 7" stroke={C.burgundy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
+                <Check />
                 <span>
                   <strong style={{ color: C.dark, fontFamily: fSans, fontSize: "0.95rem" }}>{t}.</strong>{" "}
                   <span className="text-sm" style={{ color: C.brown }}>{d}</span>
@@ -353,12 +374,12 @@ export default function PuertasAbiertas() {
             className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.1em" }}
           >
-            Quiero la plaza de mi hija
+            Quiero reservar la plaza de mi hija
           </button>
         </div>
       </div>
 
-      {/* ── Confianza: Soy Andrea ── */}
+      {/* ── Confianza: Hola, soy Andrea ── */}
       <div className="px-4 pb-12">
         <div
           className="max-w-4xl mx-auto rounded-3xl overflow-hidden grid md:grid-cols-2"
@@ -373,21 +394,29 @@ export default function PuertasAbiertas() {
             className="w-full h-full object-cover block"
           />
           <div className="p-7 sm:p-9">
-            <p className="text-xs uppercase tracking-[0.2em] mb-2" style={{ color: C.muted, fontFamily: fSans }}>
-              Soy Andrea
-            </p>
-            <h2 className="text-2xl sm:text-3xl mb-4" style={{ fontFamily: fSerif, color: C.burgundy }}>
-              No dejas a tu hija con una desconocida
+            <h2 className="text-2xl sm:text-3xl mb-2" style={{ fontFamily: fSerif, color: C.burgundy }}>
+              Hola, soy Andrea Carrió
             </h2>
-            <p className="text-sm leading-relaxed mb-4" style={{ color: C.brown }}>
-              Llevo <strong style={{ color: C.dark }}>2 años siendo la profesora de ballet de esta misma escuela</strong> — la que muchas conocéis como la de Maricruz Alcalá, en la Calle Motilla del Palancar 34. Ahora tomo el relevo y la hago completamente mía.
+            <p className="text-sm font-medium mb-4" style={{ color: C.dark, fontFamily: fSans }}>
+              Y quiero que te sientas tranquila desde el primer día.
             </p>
-            <p className="text-sm leading-relaxed mb-6" style={{ color: C.brown }}>
-              Bailo desde los 3 años y llevo 8 años enseñando ballet. La danza es mi vida, y quiero que tu hija la viva con el mismo cariño con el que yo la aprendí.
-            </p>
+            <div className="text-sm leading-relaxed space-y-3 mb-6" style={{ color: C.brown }}>
+              <p>
+                Durante los últimos <strong style={{ color: C.dark }}>2 años he sido la profesora de ballet de esta escuela</strong>, la que muchas familias conocéis como la escuela de Mari Cruz Alcalá, en la Calle Motilla del Palancar 34.
+              </p>
+              <p>
+                Ahora comienzo una nueva etapa al frente del estudio, manteniendo el mismo cariño por las alumnas y la misma pasión por la enseñanza.
+              </p>
+              <p>
+                Bailo desde los 3 años y llevo más de 8 años enseñando ballet a niñas de diferentes edades.
+              </p>
+              <p>
+                Mi objetivo no es solo enseñar pasos de danza. Quiero que cada alumna gane confianza, coordinación, disciplina y disfrute aprendiendo en un entorno cercano y familiar.
+              </p>
+            </div>
 
             <div className="flex flex-wrap gap-2">
-              {["8 años enseñando", "Bailando desde los 3", "2 años en esta escuela"].map(s => (
+              {["Más de 8 años enseñando ballet", "Bailando desde los 3 años", "2 años en esta misma escuela"].map(s => (
                 <span
                   key={s}
                   className="px-3 py-1.5 rounded-full text-xs font-semibold"
@@ -401,18 +430,18 @@ export default function PuertasAbiertas() {
         </div>
       </div>
 
-      {/* ── Cómo es la jornada ── */}
+      {/* ── Así será la jornada ── */}
       <div className="px-4 pb-12">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-2xl sm:text-3xl mb-7 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
-            Cómo es la jornada, paso a paso
+            Así será la jornada
           </h2>
           <div className="space-y-3">
             {[
-              ["Llegáis y os recibo yo", "Os espero en la puerta del estudio y os pongo cómodas."],
-              ["Tu hija hace su clase de ballet", "Una clase real con juegos, a su nivel. Tú puedes verla."],
-              ["Merienda y nos conocemos", "Las niñas meriendan mientras resolvemos tus dudas con calma."],
-              ["Decides con tranquilidad", "Si os encaja, te explico horarios y la matrícula a 35 €. Si no, sin problema."],
+              ["Bienvenida", "Os recibiré personalmente y os enseñaré el estudio."],
+              ["Clase de ballet", "Tu hija participará en una clase adaptada a su edad, con ejercicios, música y juegos."],
+              ["Merienda y tiempo para conocernos", "Mientras las niñas meriendan, podré resolver todas tus dudas sobre las clases y la metodología."],
+              ["Decide con tranquilidad", "Sin presiones. Si os gusta la experiencia, te explicaré los horarios disponibles y podrás aprovechar la matrícula reducida."],
             ].map(([t, d], i) => (
               <div
                 key={t}
@@ -445,22 +474,22 @@ export default function PuertasAbiertas() {
             Reserva la plaza de tu hija
           </h2>
           <p className="text-sm text-center mb-1" style={{ color: C.brown }}>
-            Es gratis y sin compromiso. Tardas 20 segundos.
+            Solo necesitas 20 segundos.
           </p>
           <p className="text-sm text-center mb-7 font-semibold" style={{ color: C.burgundy }}>
-            Solo 10 plazas por horario — resérvala antes de que se llene.
+            Las plazas son limitadas para garantizar una atención personalizada.
           </p>
 
           <div className="space-y-4">
             <input
               style={inputStyle()}
-              placeholder="Tu nombre"
+              placeholder="Nombre de la madre o padre"
               value={nombre}
               onChange={e => setNombre(e.target.value)}
             />
             <input
               style={inputStyle()}
-              placeholder="Tu teléfono (WhatsApp)"
+              placeholder="Teléfono (WhatsApp)"
               type="tel"
               value={telefono}
               onChange={e => setTelefono(e.target.value)}
@@ -494,11 +523,11 @@ export default function PuertasAbiertas() {
                 opacity: enviando ? 0.7 : 1,
               }}
             >
-              {enviando ? "Reservando..." : "Reservar la plaza de mi hija"}
+              {enviando ? "Reservando..." : "Reservar plaza"}
             </button>
 
             <p className="text-xs text-center" style={{ color: C.muted }}>
-              Te escribo por WhatsApp para confirmarte el horario. Sin spam.
+              Te escribiré personalmente por WhatsApp para confirmar el horario. No recibirás publicidad ni mensajes innecesarios.
             </p>
           </div>
         </div>
@@ -508,15 +537,15 @@ export default function PuertasAbiertas() {
       <div className="px-4 pb-12">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-2xl sm:text-3xl mb-6 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
-            Dudas frecuentes
+            Preguntas frecuentes
           </h2>
           <div className="space-y-3">
             {[
-              ["¿Cuánto cuesta?", "Nada. La jornada es totalmente gratis y sin compromiso de apuntarse a nada."],
-              ["¿Qué edad tiene que tener mi hija?", "Desde los 3 años. Hay grupos por edad: 3–6, 7–9 y 10–12 años."],
-              ["¿Y si es tímida o nunca ha bailado?", "Es justo para eso: probar sin presión. Muchas niñas empiezan tímidas y acaban sin querer irse."],
-              ["¿Tengo que apuntarla a algo?", "No. Solo si tú quieres, y entonces te guardo la matrícula a 35 € en vez de 50 €."],
-              ["¿Dónde es?", "En Carrer de Motilla del Palancar 34, zona Alfahuir (Valencia), a 5 min del C.C. Arena."],
+              ["¿Cuánto cuesta asistir?", "Nada. La jornada es completamente gratuita."],
+              ["¿Y si mi hija nunca ha hecho ballet?", "Perfecto. Muchas niñas asistirán por primera vez. No necesita experiencia previa."],
+              ["¿Y si es tímida?", "Las actividades están pensadas para que se sienta cómoda y participe poco a poco, sin presión."],
+              ["¿Estoy obligada a apuntarla después?", "No. Puedes venir, conocer la escuela y decidir tranquilamente."],
+              ["¿Dónde está el estudio?", "Carrer de Motilla del Palancar 34, zona Alfahuir, Valencia. A solo 5 minutos del Centro Comercial Arena."],
             ].map(([q, a]) => (
               <details
                 key={q}
@@ -534,11 +563,25 @@ export default function PuertasAbiertas() {
               </details>
             ))}
           </div>
+        </div>
+      </div>
 
+      {/* ── Plazas limitadas (CTA final) ── */}
+      <div className="px-4 pb-12">
+        <div
+          className="max-w-2xl mx-auto rounded-3xl p-8 sm:p-10 text-center"
+          style={{ backgroundColor: C.burgundy }}
+        >
+          <h2 className="text-2xl sm:text-3xl mb-3" style={{ fontFamily: fSerif, color: C.cream }}>
+            Plazas limitadas
+          </h2>
+          <p className="text-sm sm:text-base mb-7 max-w-md mx-auto" style={{ color: C.blush }}>
+            Solo 10 plazas por grupo para que cada niña reciba atención personalizada. Reserva antes de que se complete su grupo.
+          </p>
           <button
             onClick={scrollToForm}
-            className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.1em" }}
+            className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: C.cream, color: C.burgundy, fontFamily: fSans, letterSpacing: "0.1em" }}
           >
             Reservar la plaza de mi hija
           </button>
