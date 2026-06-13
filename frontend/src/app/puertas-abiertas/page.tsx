@@ -265,7 +265,7 @@ export default function PuertasAbiertas() {
 
       {/* ── Hero ── */}
       <div
-        className="relative overflow-hidden px-6 pt-14 pb-10 sm:pt-20 text-center"
+        className="relative overflow-hidden px-6 pt-5 pb-8 sm:pt-16 sm:pb-10 text-center"
         style={{ background: `linear-gradient(160deg, #fff0eb 0%, ${C.bg} 55%, #f0e0d8 100%)` }}
       >
         <div
@@ -284,32 +284,32 @@ export default function PuertasAbiertas() {
             width={240}
             height={240}
             priority
-            className="mx-auto mb-5 w-36 sm:w-44 h-auto"
+            className="mx-auto mb-3 w-28 sm:w-44 h-auto"
             style={{ objectFit: "contain" }}
           />
 
           <p
-            className="text-xs uppercase tracking-[0.22em] mb-4"
+            className="text-xs uppercase tracking-[0.22em] mb-3"
             style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 600 }}
           >
             Jornada de Puertas Abiertas · 24 de julio · Valencia
           </p>
 
           <h1
-            className="text-3xl sm:text-5xl mb-5 leading-tight"
+            className="text-[1.7rem] sm:text-5xl mb-4 leading-[1.15]"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
             Descubre si el ballet es para tu hija, sin pagar nada y sin compromiso
           </h1>
 
           <p
-            className="text-base sm:text-lg leading-relaxed max-w-lg mx-auto mb-6"
+            className="text-sm sm:text-lg leading-relaxed max-w-lg mx-auto mb-5"
             style={{ color: C.dark }}
           >
             Una mañana diferente para que tu hija pruebe una clase de ballet de verdad, se divierta, haga nuevas amigas y tú conozcas personalmente a la profesora y el estudio antes de decidir.
           </p>
 
-          <ul className="inline-flex flex-col gap-2 text-left mb-8 mx-auto">
+          <ul className="inline-flex flex-col gap-1.5 text-left mb-6 mx-auto">
             {[
               "Clase de ballet gratuita",
               "Juegos adaptados a su edad",
