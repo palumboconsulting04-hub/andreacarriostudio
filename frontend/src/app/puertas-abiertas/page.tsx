@@ -81,6 +81,7 @@ function Check() {
 export default function PuertasAbiertas() {
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [nombreHija, setNombreHija] = useState("");
   const [edad, setEdad] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
@@ -89,6 +90,7 @@ export default function PuertasAbiertas() {
   const formValido =
     nombre.trim() !== "" &&
     telefono.trim() !== "" &&
+    nombreHija.trim() !== "" &&
     edad !== "";
 
   // ── Evento de optimización de Meta ──
@@ -162,7 +164,7 @@ export default function PuertasAbiertas() {
           telefono: telefono.trim(),
           disciplina_adulta: null,
           // El admin cuenta la niña por este array; la edad sirve para asignar horario.
-          ninas: [{ nombre: "", edad }],
+          ninas: [{ nombre: nombreHija.trim(), edad }],
           alergias: null,
           origen: atrib.current.origen,
           utm_source: atrib.current.utm_source,
@@ -493,6 +495,12 @@ export default function PuertasAbiertas() {
               type="tel"
               value={telefono}
               onChange={e => setTelefono(e.target.value)}
+            />
+            <input
+              style={inputStyle()}
+              placeholder="Nombre de tu hija"
+              value={nombreHija}
+              onChange={e => setNombreHija(e.target.value)}
             />
 
             <div>
