@@ -13,15 +13,6 @@ declare global {
   }
 }
 
-type Nina = { nombre: string; edad: string };
-
-const DISCIPLINAS = [
-  { value: "ballet-nina", label: "Ballet Niña" },
-  { value: "ballet-adultas", label: "Ballet Adultas" },
-  { value: "barre", label: "Barre" },
-  { value: "pilates-mat", label: "Pilates Mat" },
-];
-
 const EDAD_NINA_OPTIONS = [
   "Pre-Ballet · 3–6 años",
   "Ballet 1 · 7–9 años",
@@ -39,6 +30,9 @@ const C = {
   border: "#dcc1b9",
 };
 
+const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
+const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
+
 function chip(selected: boolean) {
   return {
     padding: "10px 20px",
@@ -48,7 +42,7 @@ function chip(selected: boolean) {
     color: selected ? C.burgundy : C.brown,
     cursor: "pointer",
     fontSize: "0.875rem",
-    fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif",
+    fontFamily: fSans,
     transition: "all 0.18s ease",
     outline: "none",
     whiteSpace: "nowrap" as const,
@@ -62,7 +56,7 @@ function inputStyle() {
     padding: "12px 16px",
     // 16px evita el auto-zoom de iOS Safari al enfocar el campo en móvil.
     fontSize: "16px",
-    fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif",
+    fontFamily: fSans,
     color: C.dark,
     backgroundColor: C.cream,
     outline: "none",
@@ -72,41 +66,20 @@ function inputStyle() {
 
 export default function PuertasAbiertas() {
   const [nombre, setNombre] = useState("");
-  const [apellido, setApellido] = useState("");
-  const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
-  const [disciplina, setDisciplina] = useState("");
-  const [traeNina, setTraeNina] = useState<boolean | null>(null);
-  const [ninas, setNinas] = useState<Nina[]>([{ nombre: "", edad: "" }]);
-  const [alergias, setAlergias] = useState("");
+  const [edad, setEdad] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Solo se piden datos de niña si la madre marca "Sí" explícitamente.
-  // Dentro de cada niña, basta con la edad: el nombre es opcional.
-  const ninasOk = traeNina === true
-    ? ninas.every(n => n.edad !== "")
-    : true;
-
   const formValido =
     nombre.trim() !== "" &&
-    apellido.trim() !== "" &&
-    email.trim() !== "" &&
     telefono.trim() !== "" &&
-    disciplina !== "" &&
-    ninasOk;
-
-  const addNina = () => setNinas(p => [...p, { nombre: "", edad: "" }]);
-  const removeNina = (i: number) => setNinas(p => p.filter((_, idx) => idx !== i));
-  const updateNina = (i: number, field: keyof Nina, val: string) =>
-    setNinas(p => p.map((n, idx) => idx === i ? { ...n, [field]: val } : n));
+    edad !== "";
 
   // ── Evento de optimización de Meta ──
   // Dispara ViewContent (evento estándar) UNA sola vez cuando la persona llega
-  // al formulario, es decir, "visita cualificada": ha leído la landing y baja a
-  // reservar. Es el paso justo antes del Lead y ocurre con suficiente volumen
-  // para salir de la fase de aprendizaje con presupuestos pequeños.
+  // al formulario: "visita cualificada", el paso justo antes del Lead.
   const formRef = useRef<HTMLDivElement>(null);
   const viewContentFired = useRef(false);
   useEffect(() => {
@@ -128,12 +101,10 @@ export default function PuertasAbiertas() {
     return () => obs.disconnect();
   }, []);
 
+  const scrollToForm = () =>
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   // ── Atribución de origen ──
-  // Al cargar, leemos los parámetros de la URL para saber de dónde viene la visita.
-  // - Publicidad (Meta): Facebook añade siempre ?fbclid=... al clic en el anuncio
-  //   (o utm_source=facebook / utm_medium=paid si etiquetamos el enlace).
-  // - Escuela / orgánico: compartimos el enlace con ?origen=escuela.
-  // - Resto: "directo".
   const atrib = useRef<{
     origen: string;
     utm_source: string | null;
@@ -172,12 +143,13 @@ export default function PuertasAbiertas() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nombre: nombre.trim(),
-          apellido: apellido.trim(),
-          email: email.trim().toLowerCase(),
+          apellido: "",
+          email: "",
           telefono: telefono.trim(),
-          disciplina_adulta: disciplina,
-          ninas: traeNina ? ninas : [],
-          alergias: alergias.trim() || null,
+          disciplina_adulta: null,
+          // El admin cuenta la niña por este array; la edad sirve para asignar horario.
+          ninas: [{ nombre: "", edad }],
+          alergias: null,
           origen: atrib.current.origen,
           utm_source: atrib.current.utm_source,
           utm_campaign: atrib.current.utm_campaign,
@@ -211,12 +183,12 @@ export default function PuertasAbiertas() {
         </div>
         <h2
           className="text-4xl sm:text-5xl mb-5"
-          style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.burgundy }}
+          style={{ fontFamily: fSerif, color: C.burgundy }}
         >
-          ¡Reserva hecha!
+          ¡Plaza reservada!
         </h2>
         <p className="text-base max-w-md leading-relaxed mb-8" style={{ color: C.brown }}>
-          Me alegra mucho que quieras venir. He creado un grupo de WhatsApp donde iré compartiendo todos los detalles de la Jornada de Puertas Abiertas. Únete para no perderte nada.
+          Me alegra muchísimo que tu hija venga a probar. He creado un grupo de WhatsApp donde voy compartiendo todos los detalles de la jornada. Únete para no perderte nada — y así te confirmo tu horario.
         </p>
 
         <a
@@ -224,7 +196,7 @@ export default function PuertasAbiertas() {
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-3 px-7 py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity mb-4"
-          style={{ backgroundColor: "#25D366", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+          style={{ backgroundColor: "#25D366", fontFamily: fSans }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.51 5.26l-.999 3.648 3.477-1.717zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/>
@@ -233,14 +205,14 @@ export default function PuertasAbiertas() {
         </a>
 
         <p className="text-sm max-w-md leading-relaxed mb-10" style={{ color: C.brown }}>
-          ¡Hasta pronto!<br />
+          ¡Hasta el 24 de julio!<br />
           <strong>Andrea</strong>
         </p>
 
         <a
           href="https://andreacarriostudio.es"
           className="text-sm uppercase tracking-widest hover:opacity-70 transition-opacity"
-          style={{ color: C.muted, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+          style={{ color: C.muted, fontFamily: fSans }}
         >
           Ir a la web de Andrea Carrió Studio
         </a>
@@ -277,12 +249,9 @@ export default function PuertasAbiertas() {
 
       {/* ── Hero ── */}
       <div
-        className="relative overflow-hidden px-6 pt-16 pb-8 sm:pt-24 sm:pb-10 text-center"
-        style={{
-          background: `linear-gradient(160deg, #fff0eb 0%, ${C.bg} 55%, #f0e0d8 100%)`,
-        }}
+        className="relative overflow-hidden px-6 pt-14 pb-10 sm:pt-20 text-center"
+        style={{ background: `linear-gradient(160deg, #fff0eb 0%, ${C.bg} 55%, #f0e0d8 100%)` }}
       >
-        {/* Decorative circles */}
         <div
           className="absolute top-0 right-0 w-72 h-72 rounded-full opacity-20 pointer-events-none"
           style={{ backgroundColor: C.blush, transform: "translate(40%, -40%)" }}
@@ -299,70 +268,301 @@ export default function PuertasAbiertas() {
             width={240}
             height={240}
             priority
-            className="mx-auto mb-6 w-44 sm:w-56 h-auto"
+            className="mx-auto mb-5 w-36 sm:w-44 h-auto"
             style={{ objectFit: "contain" }}
           />
 
           <p
-            className="text-xs uppercase tracking-[0.25em] mb-4"
-            style={{ color: C.muted, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+            className="text-xs uppercase tracking-[0.22em] mb-4"
+            style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 600 }}
           >
-            Nueva escuela de ballet · Valencia (Alfahuir)
+            Jornada de Puertas Abiertas · 24 de julio · Valencia
           </p>
 
           <h1
-            className="text-4xl sm:text-5xl mb-6 leading-tight"
-            style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.burgundy }}
+            className="text-4xl sm:text-5xl mb-5 leading-tight"
+            style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            Tu hija aprende, disfruta<br />y crece con el ballet
+            Tu hija prueba el ballet gratis
           </h1>
 
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="h-px flex-1 max-w-[60px]" style={{ backgroundColor: C.border }} />
-            <span className="text-lg" style={{ color: C.blush }}>✦</span>
-            <div className="h-px flex-1 max-w-[60px]" style={{ backgroundColor: C.border }} />
-          </div>
-
           <p
-            className="text-lg sm:text-xl leading-relaxed max-w-md mx-auto font-medium"
+            className="text-lg sm:text-xl leading-relaxed max-w-md mx-auto font-medium mb-7"
             style={{ color: C.dark }}
           >
-            Descúbrelo en mi jornada de puertas abiertas del 24 de julio: tu hija prueba una clase real y me conoces a mí y a la escuela. Gratis y sin compromiso.
+            Una clase de ballet de verdad, juegos y merienda. Tu hija disfruta, tú me conoces a mí y al estudio. Sin pagar nada y sin compromiso.
+          </p>
+
+          <button
+            onClick={scrollToForm}
+            className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.1em" }}
+          >
+            Reservar la plaza de mi hija
+          </button>
+
+          <p className="text-sm mt-4 font-semibold" style={{ color: C.burgundy }}>
+            ⚠ Solo 10 plazas por horario · 3 turnos · se llenan rápido
           </p>
         </div>
       </div>
 
-      {/* ── Dónde estamos ── */}
-      <div className="px-4 pt-2 pb-10">
-        <div className="max-w-3xl mx-auto text-center">
-          <p
-            className="text-xs font-semibold uppercase tracking-[0.2em] mb-3"
-            style={{ color: C.muted, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
-          >
-            Dónde estamos
-          </p>
+      {/* ── Qué incluye (value stack) ── */}
+      <div className="px-4 py-12">
+        <div
+          className="max-w-2xl mx-auto rounded-3xl p-7 sm:p-10 shadow-sm"
+          style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
+        >
           <h2
-            className="text-3xl sm:text-4xl mb-3"
-            style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.burgundy }}
+            className="text-2xl sm:text-3xl mb-2 text-center"
+            style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            En el corazón de Alfahuir
+            Qué vive tu hija ese día
           </h2>
-          <p className="text-base mb-6" style={{ color: C.dark }}>
-            Carrer de Motilla del Palancar 34 · Zona Alfahuir, Valencia · A 5 min del Centro Comercial Arena
+          <p className="text-sm text-center mb-7" style={{ color: C.muted }}>
+            Todo gratis. Sin compromiso de apuntarse a nada.
           </p>
 
-          <div
-            className="rounded-3xl overflow-hidden shadow-lg"
-            style={{ border: `1px solid ${C.border}` }}
+          <ul className="space-y-4">
+            {[
+              ["Una clase de ballet real", "Adaptada a su edad y dada por mí, no una demostración. Vivirá una clase de verdad."],
+              ["Juegos y diversión", "Pensados para que se suelte, se ría y se lo pase genial desde el primer minuto."],
+              ["Merienda para las niñas", "Un ratito dulce para que conozcan a otras compañeras y se sientan en casa."],
+              ["Nos conocemos sin compromiso", "Ves el estudio, me conoces a mí y decides con calma. Sin ninguna presión."],
+              ["Matrícula a 35 € en vez de 50 €", "Solo si te apuntas en la jornada, te guardo la matrícula con descuento."],
+            ].map(([t, d]) => (
+              <li key={t} className="flex gap-3">
+                <span
+                  className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5"
+                  style={{ backgroundColor: C.blush }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 13l4 4L19 7" stroke={C.burgundy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <span>
+                  <strong style={{ color: C.dark, fontFamily: fSans, fontSize: "0.95rem" }}>{t}.</strong>{" "}
+                  <span className="text-sm" style={{ color: C.brown }}>{d}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <button
+            onClick={scrollToForm}
+            className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.1em" }}
           >
-            {/* pointerEvents:none "congela" el mapa: se ve la ubicación y el pin,
-                pero no se puede arrastrar, hacer zoom ni clicar para salir.
-                Evita el scroll-trap en móvil y los puntos de fuga del iframe. */}
+            Quiero la plaza de mi hija
+          </button>
+        </div>
+      </div>
+
+      {/* ── Confianza: Soy Andrea ── */}
+      <div className="px-4 pb-12">
+        <div
+          className="max-w-4xl mx-auto rounded-3xl overflow-hidden grid md:grid-cols-2"
+          style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
+        >
+          <Image
+            src="/andrea.jpg"
+            alt="Andrea Carrió, profesora de ballet"
+            width={1792}
+            height={2400}
+            sizes="(max-width: 768px) 100vw, 400px"
+            className="w-full h-full object-cover block"
+          />
+          <div className="p-7 sm:p-9">
+            <p className="text-xs uppercase tracking-[0.2em] mb-2" style={{ color: C.muted, fontFamily: fSans }}>
+              Soy Andrea
+            </p>
+            <h2 className="text-2xl sm:text-3xl mb-4" style={{ fontFamily: fSerif, color: C.burgundy }}>
+              No dejas a tu hija con una desconocida
+            </h2>
+            <p className="text-sm leading-relaxed mb-4" style={{ color: C.brown }}>
+              Llevo <strong style={{ color: C.dark }}>2 años siendo la profesora de ballet de esta misma escuela</strong> — la que muchas conocéis como la de Maricruz Alcalá, en la Calle Motilla del Palancar 34. Ahora tomo el relevo y la hago completamente mía.
+            </p>
+            <p className="text-sm leading-relaxed mb-6" style={{ color: C.brown }}>
+              Bailo desde los 3 años y llevo 8 años enseñando ballet. La danza es mi vida, y quiero que tu hija la viva con el mismo cariño con el que yo la aprendí.
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              {["8 años enseñando", "Bailando desde los 3", "2 años en esta escuela"].map(s => (
+                <span
+                  key={s}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={{ backgroundColor: C.cream, border: `1px solid ${C.border}`, color: C.burgundy, fontFamily: fSans }}
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Cómo es la jornada ── */}
+      <div className="px-4 pb-12">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl mb-7 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
+            Cómo es la jornada, paso a paso
+          </h2>
+          <div className="space-y-3">
+            {[
+              ["Llegáis y os recibo yo", "Os espero en la puerta del estudio y os pongo cómodas."],
+              ["Tu hija hace su clase de ballet", "Una clase real con juegos, a su nivel. Tú puedes verla."],
+              ["Merienda y nos conocemos", "Las niñas meriendan mientras resolvemos tus dudas con calma."],
+              ["Decides con tranquilidad", "Si os encaja, te explico horarios y la matrícula a 35 €. Si no, sin problema."],
+            ].map(([t, d], i) => (
+              <div
+                key={t}
+                className="flex gap-4 items-start rounded-2xl p-4"
+                style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
+              >
+                <span
+                  className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                  style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans }}
+                >
+                  {i + 1}
+                </span>
+                <span>
+                  <strong style={{ color: C.dark, fontFamily: fSans, fontSize: "0.95rem" }}>{t}.</strong>{" "}
+                  <span className="text-sm" style={{ color: C.brown }}>{d}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Formulario ── */}
+      <div ref={formRef} className="px-4 pb-12 scroll-mt-4">
+        <div
+          className="max-w-xl mx-auto rounded-3xl p-7 sm:p-10 shadow-lg"
+          style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}
+        >
+          <h2 className="text-2xl sm:text-3xl mb-1 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
+            Reserva la plaza de tu hija
+          </h2>
+          <p className="text-sm text-center mb-1" style={{ color: C.brown }}>
+            Es gratis y sin compromiso. Tardas 20 segundos.
+          </p>
+          <p className="text-sm text-center mb-7 font-semibold" style={{ color: C.burgundy }}>
+            Solo 10 plazas por horario — resérvala antes de que se llene.
+          </p>
+
+          <div className="space-y-4">
+            <input
+              style={inputStyle()}
+              placeholder="Tu nombre"
+              value={nombre}
+              onChange={e => setNombre(e.target.value)}
+            />
+            <input
+              style={inputStyle()}
+              placeholder="Tu teléfono (WhatsApp)"
+              type="tel"
+              value={telefono}
+              onChange={e => setTelefono(e.target.value)}
+            />
+
+            <div>
+              <p className="text-sm font-semibold mb-2" style={{ color: C.brown, fontFamily: fSans }}>
+                Edad de tu hija
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {EDAD_NINA_OPTIONS.map(o => (
+                  <button key={o} onClick={() => setEdad(o)} style={chip(edad === o)}>
+                    {o}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
+
+            <button
+              onClick={handleSubmit}
+              disabled={!formValido || enviando}
+              className="w-full py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest transition-all"
+              style={{
+                backgroundColor: formValido ? C.burgundy : C.border,
+                color: "#fff8f5",
+                fontFamily: fSans,
+                letterSpacing: "0.1em",
+                cursor: formValido ? "pointer" : "not-allowed",
+                opacity: enviando ? 0.7 : 1,
+              }}
+            >
+              {enviando ? "Reservando..." : "Reservar la plaza de mi hija"}
+            </button>
+
+            <p className="text-xs text-center" style={{ color: C.muted }}>
+              Te escribo por WhatsApp para confirmarte el horario. Sin spam.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── FAQ ── */}
+      <div className="px-4 pb-12">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl mb-6 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
+            Dudas frecuentes
+          </h2>
+          <div className="space-y-3">
+            {[
+              ["¿Cuánto cuesta?", "Nada. La jornada es totalmente gratis y sin compromiso de apuntarse a nada."],
+              ["¿Qué edad tiene que tener mi hija?", "Desde los 3 años. Hay grupos por edad: 3–6, 7–9 y 10–12 años."],
+              ["¿Y si es tímida o nunca ha bailado?", "Es justo para eso: probar sin presión. Muchas niñas empiezan tímidas y acaban sin querer irse."],
+              ["¿Tengo que apuntarla a algo?", "No. Solo si tú quieres, y entonces te guardo la matrícula a 35 € en vez de 50 €."],
+              ["¿Dónde es?", "En Carrer de Motilla del Palancar 34, zona Alfahuir (Valencia), a 5 min del C.C. Arena."],
+            ].map(([q, a]) => (
+              <details
+                key={q}
+                className="rounded-2xl p-4 sm:px-5"
+                style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
+              >
+                <summary
+                  className="cursor-pointer text-sm font-semibold flex justify-between items-center gap-2"
+                  style={{ color: C.burgundy, fontFamily: fSans, listStyle: "none" }}
+                >
+                  {q}
+                  <span style={{ color: C.muted, fontSize: "0.75rem" }}>▼</span>
+                </summary>
+                <p className="text-sm mt-3 leading-relaxed" style={{ color: C.brown }}>{a}</p>
+              </details>
+            ))}
+          </div>
+
+          <button
+            onClick={scrollToForm}
+            className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.1em" }}
+          >
+            Reservar la plaza de mi hija
+          </button>
+        </div>
+      </div>
+
+      {/* ── Dónde estamos ── */}
+      <div className="px-4 pb-16">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: C.muted, fontFamily: fSans }}>
+            Dónde estamos
+          </p>
+          <h2 className="text-2xl sm:text-3xl mb-2" style={{ fontFamily: fSerif, color: C.burgundy }}>
+            En el corazón de Alfahuir
+          </h2>
+          <p className="text-sm mb-5" style={{ color: C.dark }}>
+            Carrer de Motilla del Palancar 34 · Zona Alfahuir, Valencia · A 5 min del C.C. Arena
+          </p>
+          <div className="rounded-3xl overflow-hidden shadow-lg" style={{ border: `1px solid ${C.border}` }}>
             <iframe
               title="Ubicación de Andrea Carrió Studio"
               src="https://www.google.com/maps?q=Carrer+de+Motilla+del+Palancar+34,+46019+Val%C3%A8ncia&z=16&output=embed"
               width="100%"
-              height="320"
+              height="300"
               style={{ border: 0, display: "block", pointerEvents: "none" }}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
@@ -371,263 +571,6 @@ export default function PuertasAbiertas() {
         </div>
       </div>
 
-      {/* ── Cuerpo: Andrea + Formulario ── */}
-      <div className="max-w-5xl mx-auto px-4 pt-6 pb-20">
-        <div className="grid lg:grid-cols-[0.85fr_1.15fr] gap-6 lg:gap-10 lg:items-start">
-
-        {/* ── Soy Andrea (fija en desktop) ── */}
-        <div className="lg:sticky lg:top-8">
-        <div
-          className="rounded-3xl overflow-hidden flex flex-col text-center sm:text-left"
-          style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
-        >
-          <Image
-            src="/andrea.jpg"
-            alt="Andrea Carrió"
-            width={1792}
-            height={2400}
-            priority
-            sizes="(max-width: 1024px) 100vw, 400px"
-            className="w-full h-auto block"
-          />
-          <div className="p-7 sm:p-8">
-            <p
-              className="text-xs uppercase tracking-[0.2em] mb-1.5"
-              style={{ color: C.muted, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
-            >
-              Soy Andrea
-            </p>
-            <div className="text-sm leading-relaxed space-y-3" style={{ color: C.brown }}>
-              <p>
-                Durante años he sido profesora de ballet en diferentes escuelas de Valencia — entre ellas, esta misma, en la Calle Motilla del Palancar 34. La que muchas de vosotras conocéis como la escuela de Maricruz Alcalá.
-              </p>
-              <p>Hoy tomo el relevo y la hago completamente mía.</p>
-              <p>
-                La danza me acompaña desde que tengo memoria. Es la forma en la que entiendo el cuerpo, el movimiento y la vida. Y ahora quiero volcar todo eso aquí — en este estudio, en este barrio — para crear un espacio donde bailar y moverse sea algo que se disfruta, se siente y se comparte. Un lugar donde enseñar todo lo que sé, con todo el amor que tengo por este oficio.
-              </p>
-              <p>
-                <strong style={{ color: C.burgundy }}>Esto es Andrea Carrió Studio.</strong> Y me alegra mucho que estés aquí.
-              </p>
-            </div>
-          </div>
-        </div>
-        </div>{/* /columna Andrea */}
-
-        {/* ── Formulario ── */}
-        <div ref={formRef}>
-        <div
-          className="rounded-3xl p-8 sm:p-10 shadow-lg"
-          style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
-        >
-          <h2
-            className="text-xl mb-1"
-            style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: C.dark }}
-          >
-            Reserva tu plaza
-          </h2>
-          <p className="text-sm mb-2" style={{ color: C.muted }}>
-            Es gratuito y sin compromiso. Solo necesito saber que venís.
-          </p>
-          <p className="text-xs mb-8" style={{ color: C.muted }}>
-            Los campos con <span aria-hidden="true" style={{ color: "#c0392b" }}>*</span> son obligatorios.
-          </p>
-
-          <div className="space-y-8">
-
-            {/* ── Datos personales ── */}
-            <div>
-              <SectionLabel text="Tus datos" required />
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <input
-                  style={inputStyle()}
-                  placeholder="Nombre *"
-                  value={nombre}
-                  onChange={e => setNombre(e.target.value)}
-                />
-                <input
-                  style={inputStyle()}
-                  placeholder="Apellido *"
-                  value={apellido}
-                  onChange={e => setApellido(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input
-                  style={inputStyle()}
-                  placeholder="Email *"
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
-                <input
-                  style={inputStyle()}
-                  placeholder="Teléfono *"
-                  type="tel"
-                  value={telefono}
-                  onChange={e => setTelefono(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* ── Disciplina ── */}
-            <div>
-              <SectionLabel text="¿Qué te apetece probar?" required />
-              <div className="flex flex-wrap gap-2">
-                {DISCIPLINAS.map(d => (
-                  <button
-                    key={d.value}
-                    onClick={() => setDisciplina(d.value)}
-                    style={chip(disciplina === d.value)}
-                  >
-                    {d.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* ── Niñas ── */}
-            <div>
-              <SectionLabel text="¿La reserva es para tu hija?" />
-              <div className="flex gap-2 mb-4">
-                <button onClick={() => setTraeNina(true)} style={chip(traeNina === true)}>Sí</button>
-                <button
-                  onClick={() => { setTraeNina(false); setNinas([{ nombre: "", edad: "" }]); }}
-                  style={chip(traeNina === false)}
-                >
-                  No
-                </button>
-              </div>
-
-              {traeNina === true && (
-                <div className="space-y-4">
-                  {ninas.map((nina, i) => (
-                    <div
-                      key={i}
-                      className="rounded-2xl p-4 relative"
-                      style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}
-                    >
-                      {ninas.length > 1 && (
-                        <button
-                          onClick={() => removeNina(i)}
-                          className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs hover:opacity-80 transition-opacity"
-                          style={{ backgroundColor: C.border, color: C.brown }}
-                          aria-label="Eliminar"
-                        >
-                          ×
-                        </button>
-                      )}
-                      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: C.muted }}>
-                        {ninas.length > 1 ? `Niña ${i + 1}` : "Datos de tu hija"}
-                      </p>
-                      <input
-                        style={{ ...inputStyle(), marginBottom: "12px" }}
-                        placeholder="Nombre de tu hija (opcional)"
-                        value={nina.nombre}
-                        onChange={e => updateNina(i, "nombre", e.target.value)}
-                      />
-                      <p className="text-xs font-semibold mb-2" style={{ color: C.brown }}>
-                        Edad <span aria-hidden="true" style={{ color: "#c0392b" }}>*</span>
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {EDAD_NINA_OPTIONS.map(edad => (
-                          <button
-                            key={edad}
-                            onClick={() => updateNina(i, "edad", edad)}
-                            style={chip(nina.edad === edad)}
-                          >
-                            {edad}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-
-                  <button
-                    onClick={addNina}
-                    className="flex items-center gap-2 text-sm font-semibold hover:opacity-70 transition-opacity"
-                    style={{ color: C.burgundy, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
-                  >
-                    <span
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-sm"
-                      style={{ backgroundColor: C.blush, color: C.burgundy }}
-                    >
-                      +
-                    </span>
-                    Añadir otra niña
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* ── Alergias ── */}
-            <div>
-              <SectionLabel text="Alergias o intolerancias" optional />
-              <textarea
-                style={{
-                  ...inputStyle(),
-                  resize: "none",
-                  minHeight: "80px",
-                }}
-                placeholder="Por ejemplo: sin gluten, frutos secos... (déjalo en blanco si no hay nada)"
-                value={alergias}
-                onChange={e => setAlergias(e.target.value)}
-              />
-            </div>
-
-            {/* ── Error ── */}
-            {errorMsg && (
-              <p className="text-sm text-red-600">{errorMsg}</p>
-            )}
-
-            {/* ── Submit ── */}
-            <button
-              onClick={handleSubmit}
-              disabled={!formValido || enviando}
-              className="w-full py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest transition-all"
-              style={{
-                backgroundColor: formValido ? C.burgundy : C.border,
-                color: "#fff8f5",
-                fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif",
-                letterSpacing: "0.1em",
-                cursor: formValido ? "pointer" : "not-allowed",
-                opacity: enviando ? 0.7 : 1,
-              }}
-            >
-              {enviando ? "Enviando..." : "Reservar mi plaza"}
-            </button>
-
-            <p className="text-xs text-center" style={{ color: C.muted }}>
-              Solo usamos tus datos para confirmar tu asistencia. Sin spam.
-            </p>
-          </div>
-        </div>
-        </div>{/* /columna formulario */}
-
-        </div>{/* /grid */}
-      </div>{/* /cuerpo */}
-
     </div>
-  );
-}
-
-function SectionLabel({ text, optional, required }: { text: string; optional?: boolean; required?: boolean }) {
-  return (
-    <p
-      className="text-xs font-semibold uppercase tracking-[0.12em] mb-3 flex items-center gap-2"
-      style={{ color: C.burgundy, fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
-    >
-      {text}
-      {required && (
-        <span aria-hidden="true" style={{ color: "#c0392b" }}>*</span>
-      )}
-      {optional && (
-        <span
-          className="normal-case tracking-normal font-normal text-xs"
-          style={{ color: C.muted }}
-        >
-          (opcional)
-        </span>
-      )}
-    </p>
   );
 }
