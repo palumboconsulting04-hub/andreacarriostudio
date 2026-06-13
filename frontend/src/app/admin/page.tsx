@@ -403,6 +403,7 @@ export default function AdminDashboard() {
     ninas: { nombre: string; edad: string }[];
     alergias: string | null;
     origen: string | null;
+    notas_andrea: string | null;
     utm_source: string | null;
     utm_campaign: string | null;
     fbclid: string | null;
@@ -427,6 +428,22 @@ export default function AdminDashboard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, origen: value }),
     });
+  };
+
+  // Notas privadas de Andrea sobre cada inscrita (las apunta al llamarlas por teléfono).
+  // Borrador local mientras se escribe; se guarda al salir del campo (onBlur).
+  const [puertasNotasDraft, setPuertasNotasDraft] = useState<Record<string, string>>({});
+  const [puertasNotasSaved, setPuertasNotasSaved] = useState<string | null>(null);
+  const savePuertaNotas = async (id: string, notas: string) => {
+    const value = notas.trim() || null;
+    setPuertasData(prev => prev.map(r => (r.id === id ? { ...r, notas_andrea: value } : r)));
+    await fetch("/api/admin/puertas-abiertas", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, notas_andrea: value }),
+    });
+    setPuertasNotasSaved(id);
+    setTimeout(() => setPuertasNotasSaved(s => (s === id ? null : s)), 1500);
   };
 
   // KPI drawer
@@ -2602,7 +2619,7 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Nombre", "Contacto", "Quiere probar", "Niñas", "Alergias", "Origen", "Fecha", ""].map((h, hi) => (
+                            {["Nombre", "Contacto", "Quiere probar", "Niñas", "Alergias", "Origen", "Notas Andrea", "Fecha", ""].map((h, hi) => (
                               <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
@@ -2689,7 +2706,25 @@ export default function AdminDashboard() {
                                   );
                                 })()}
                               </td>
-                              <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "#89726c" }}>
+                              <td className="px-4 py-3 align-top">
+                                <div className="relative">
+                                  <textarea
+                                    value={puertasNotasDraft[r.id] ?? r.notas_andrea ?? ""}
+                                    onChange={e => setPuertasNotasDraft(prev => ({ ...prev, [r.id]: e.target.value }))}
+                                    onBlur={e => savePuertaNotas(r.id, e.target.value)}
+                                    rows={2}
+                                    placeholder="Apunta aquí lo que hablaste al llamarla…"
+                                    className="w-[200px] resize-y rounded-lg border px-2.5 py-2 text-xs leading-snug outline-none focus:ring-2"
+                                    style={{ borderColor: "#dcc1b9", backgroundColor: "#fffdfc", color: "#25190f" }}
+                                  />
+                                  {puertasNotasSaved === r.id && (
+                                    <span className="absolute -bottom-4 left-0 text-[10px] flex items-center gap-0.5" style={{ color: "#1f7a3d" }}>
+                                      <Icon name="check" style={{ fontSize: "12px" }} /> Guardado
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-xs whitespace-nowrap align-top" style={{ color: "#89726c" }}>
                                 {new Date(r.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                               </td>
                               <td className="px-4 py-3 text-right whitespace-nowrap">

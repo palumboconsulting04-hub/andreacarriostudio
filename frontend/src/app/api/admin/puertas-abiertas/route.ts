@@ -23,19 +23,24 @@ export async function GET() {
   return NextResponse.json({ data });
 }
 
-// Actualiza el origen de una reserva (etiquetado manual). Solo admin.
+// Actualiza una reserva (etiquetado de origen y/o notas de Andrea). Solo admin.
 export async function PATCH(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   const body = await req.json();
-  const { id, origen } = body;
+  const { id, origen, notas_andrea } = body;
   if (!id) {
     return NextResponse.json({ error: "Falta el id" }, { status: 400 });
   }
+  const updates: { origen?: string | null; notas_andrea?: string | null } = {};
   // "" o ausencia → null ("Sin dato"). Cualquier otro valor se guarda tal cual.
-  const value = origen ? String(origen) : null;
-  const { error } = await supabaseAdmin.from("puertas_abiertas").update({ origen: value }).eq("id", id);
+  if (origen !== undefined) updates.origen = origen ? String(origen) : null;
+  if (notas_andrea !== undefined) updates.notas_andrea = notas_andrea ? String(notas_andrea) : null;
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
+  }
+  const { error } = await supabaseAdmin.from("puertas_abiertas").update(updates).eq("id", id);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
