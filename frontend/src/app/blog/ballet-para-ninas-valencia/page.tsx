@@ -25,11 +25,6 @@ const f = {
 export default function BalletParaNinasPage() {
   return (
     <div style={{ background: c.bg, color: c.text, fontFamily: f.sans }}>
-      <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-        rel="stylesheet"
-      />
-
       {/* Hero */}
       <section
         style={{
