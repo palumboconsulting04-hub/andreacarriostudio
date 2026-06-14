@@ -479,7 +479,10 @@ export default function AdminDashboard() {
     confirmacion: string;
     ya_inscrita?: boolean;
     utm_source: string | null;
+    utm_medium: string | null;
     utm_campaign: string | null;
+    utm_content: string | null;
+    utm_term: string | null;
     fbclid: string | null;
   };
   const [puertasData, setPuertasData] = useState<PuertaRow[]>([]);
@@ -2928,9 +2931,13 @@ export default function AdminDashboard() {
                                         <option value="directo">Directo</option>
                                         <option value="">Sin dato</option>
                                       </select>
-                                      {r.utm_campaign ? (
-                                        <span className="text-[10px]" style={{ color: "#89726c" }}>{r.utm_campaign}</span>
-                                      ) : null}
+                                      {(r.utm_campaign || r.utm_content || r.utm_term) && (
+                                        <span className="flex flex-col gap-0.5 mt-0.5">
+                                          {r.utm_campaign ? <span className="text-[10px]" style={{ color: "#89726c" }}><b>Camp:</b> {r.utm_campaign}</span> : null}
+                                          {r.utm_content ? <span className="text-[10px] font-semibold" style={{ color: "#7d2b13" }}><b>Anuncio:</b> {r.utm_content}</span> : null}
+                                          {r.utm_term ? <span className="text-[10px]" style={{ color: "#89726c" }}><b>Adset:</b> {r.utm_term}</span> : null}
+                                        </span>
+                                      )}
                                     </span>
                                   );
                                 })()}

@@ -124,14 +124,19 @@ export default function PuertasAbiertas() {
   const atrib = useRef<{
     origen: string;
     utm_source: string | null;
+    utm_medium: string | null;
     utm_campaign: string | null;
+    utm_content: string | null;
+    utm_term: string | null;
     fbclid: string | null;
-  }>({ origen: "directo", utm_source: null, utm_campaign: null, fbclid: null });
+  }>({ origen: "directo", utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null, utm_term: null, fbclid: null });
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const utm_source = p.get("utm_source");
     const utm_medium = p.get("utm_medium");
     const utm_campaign = p.get("utm_campaign");
+    const utm_content = p.get("utm_content");
+    const utm_term = p.get("utm_term");
     const fbclid = p.get("fbclid");
     const origenParam = p.get("origen");
     const src = (utm_source || "").toLowerCase();
@@ -146,7 +151,7 @@ export default function PuertasAbiertas() {
     } else if (origenParam) {
       origen = origenParam.toLowerCase();
     }
-    atrib.current = { origen, utm_source, utm_campaign, fbclid };
+    atrib.current = { origen, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid };
   }, []);
 
   const handleSubmit = async () => {
@@ -168,7 +173,10 @@ export default function PuertasAbiertas() {
           alergias: null,
           origen: atrib.current.origen,
           utm_source: atrib.current.utm_source,
+          utm_medium: atrib.current.utm_medium,
           utm_campaign: atrib.current.utm_campaign,
+          utm_content: atrib.current.utm_content,
+          utm_term: atrib.current.utm_term,
           fbclid: atrib.current.fbclid,
         }),
       });

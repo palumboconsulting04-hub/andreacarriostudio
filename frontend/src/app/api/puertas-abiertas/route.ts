@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nombre, apellido, email, telefono, disciplina_adulta, ninas, alergias, origen, utm_source, utm_campaign, fbclid } = body;
+    const { nombre, apellido, email, telefono, disciplina_adulta, ninas, alergias, origen, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid } = body;
 
     // El formulario corto de la landing solo pide nombre + teléfono (el contacto
     // con la madre es por WhatsApp). apellido/email son NOT NULL en la BD, así que
@@ -27,7 +27,10 @@ export async function POST(req: NextRequest) {
     const atribRow = {
       origen: origen || "directo",
       utm_source: utm_source || null,
+      utm_medium: utm_medium || null,
       utm_campaign: utm_campaign || null,
+      utm_content: utm_content || null,
+      utm_term: utm_term || null,
       fbclid: fbclid || null,
     };
 
