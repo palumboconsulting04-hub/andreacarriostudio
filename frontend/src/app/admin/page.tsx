@@ -517,25 +517,6 @@ export default function AdminDashboard() {
     setDrawerLoading(false);
   };
 
-  const handleCambiarStato = async (nuevoStato: string) => {
-    if (!drawerDetalle) return;
-    const res = await fetch("/api/admin/iscrizione-stato", {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: drawerDetalle.id, stato: nuevoStato }),
-    });
-    if (res.ok) {
-      ajustarMetrics(drawerDetalle, drawerDetalle.stato, nuevoStato);
-      setDrawerDetalle((prev) => prev ? { ...prev, stato: nuevoStato } : prev);
-      setDrawerAlumnos((prev) =>
-        prev.map((a) =>
-          a.iscrizione_id === drawerDetalle.id && a.iscrizioni
-            ? { ...a, iscrizioni: { ...a.iscrizioni, stato: nuevoStato } }
-            : a
-        )
-      );
-    }
-  };
-
   const handleAlumnoClick = async (iscrizioneId: string) => {
     setDrawerView("student");
     setDrawerLoading(true);
@@ -856,19 +837,6 @@ export default function AdminDashboard() {
     setKpiLoading(false);
   };
 
-  const handleCambiarStatoKpi = async (nuevoStato: string) => {
-    if (!kpiStudentProfile) return;
-    const res = await fetch("/api/admin/iscrizione-stato", {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: kpiStudentProfile.id, stato: nuevoStato }),
-    });
-    if (res.ok) {
-      ajustarMetrics(kpiStudentProfile, kpiStudentProfile.stato, nuevoStato);
-      setKpiStudentProfile((p) => p ? { ...p, stato: nuevoStato } : p);
-      setKpiStudents((prev) => prev.map((s) => s.id === kpiStudentProfile.id ? { ...s, stato: nuevoStato } : s));
-    }
-  };
-
   const handleUsuarioClick = async (id: string) => {
     setUsuariosProfileLoading(true);
     setUsuariosProfile(null);
@@ -924,19 +892,6 @@ export default function AdminDashboard() {
     }
     setCancelandoSub(false);
     setConfirmCancelSub(false);
-  };
-
-  const handleCambiarStatoUsuario = async (nuevoStato: string) => {
-    if (!usuariosProfile) return;
-    const res = await fetch("/api/admin/iscrizione-stato", {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: usuariosProfile.id, stato: nuevoStato }),
-    });
-    if (res.ok) {
-      ajustarMetrics(usuariosProfile, usuariosProfile.stato, nuevoStato);
-      setUsuariosProfile(p => p ? { ...p, stato: nuevoStato } : p);
-      setUsuariosData(prev => prev.map(u => u.id === usuariosProfile.id ? { ...u, stato: nuevoStato } : u));
-    }
   };
 
   const handleEliminarUsuario = async () => {
@@ -3199,11 +3154,6 @@ export default function AdminDashboard() {
                   <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
                     <p className="text-sm font-medium px-4 pt-4" style={{ color: "#25190f" }}>Estado de pago</p>
                     <PagoResumen stato={kpiStudentProfile.stato} matricula={kpiStudentProfile.matricula} />
-                    {kpiStudentProfile.stato === "attesa" ? (
-                      <button onClick={() => handleCambiarStatoKpi("pagato")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#7d2b13", color: "#fff" }}>Marcar como pagado</button>
-                    ) : (
-                      <button onClick={() => handleCambiarStatoKpi("attesa")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#89726c" }}>Deshacer pago</button>
-                    )}
                   </div>
                 </div>
 
@@ -3512,23 +3462,6 @@ export default function AdminDashboard() {
                   <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
                     <p className="text-sm font-medium px-4 pt-4" style={{ color: "#25190f" }}>Estado de pago</p>
                     <PagoResumen stato={drawerDetalle.stato} matricula={drawerDetalle.matricula} />
-                    {drawerDetalle.stato === "attesa" ? (
-                      <button
-                        onClick={() => handleCambiarStato("pagato")}
-                        className="w-full py-3 text-sm font-semibold tracking-wide border-t transition-colors"
-                        style={{ borderColor: "#dcc1b9", backgroundColor: "#7d2b13", color: "#ffffff" }}
-                      >
-                        Marcar como pagado
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleCambiarStato("attesa")}
-                        className="w-full py-3 text-sm font-semibold tracking-wide border-t transition-colors"
-                        style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#89726c" }}
-                      >
-                        Deshacer pago
-                      </button>
-                    )}
                   </div>
 
                   {/* Eliminar inscripción */}
@@ -4160,23 +4093,6 @@ export default function AdminDashboard() {
                       )
                     )}
 
-                    {/* ── Nota interna: solo etiqueta, NO toca Stripe ── */}
-                    {(usuariosProfile.stato === "attesa" || usuariosProfile.stato === "pagato" || usuariosProfile.stato === "pagado") && (
-                      <div className="border-t px-4 py-3" style={{ borderColor: "#dcc1b9", backgroundColor: "#fbfaf9" }}>
-                        <p className="text-[11px] mb-2 flex items-center gap-1" style={{ color: "#89726c" }}>
-                          <Icon name="sticky_note_2" style={{ fontSize: "13px" }} /> Nota interna · no cobra ni devuelve dinero, solo cambia esta etiqueta
-                        </p>
-                        {usuariosProfile.stato === "attesa" ? (
-                          <button onClick={() => handleCambiarStatoUsuario("pagato")} className="w-full py-2.5 rounded-lg text-sm font-semibold border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#7d2b13" }}>
-                            Marcar como pagada (etiqueta)
-                          </button>
-                        ) : (
-                          <button onClick={() => handleCambiarStatoUsuario("attesa")} className="w-full py-2.5 rounded-lg text-sm font-semibold border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#89726c" }}>
-                            Marcar como pendiente (etiqueta)
-                          </button>
-                        )}
-                      </div>
-                    )}
                   </div>
 
                   {/* Eliminar */}
