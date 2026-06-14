@@ -560,6 +560,7 @@ export default function AdminDashboard() {
   const emptyNewRenov = { nombre: "", apellidos: "", fecha_nacimiento: "", grupo: "Pre-Ballet", telefono: "", email: "", nota: "" };
   const [newRenov, setNewRenov] = useState(emptyNewRenov);
   const [renovDeleteId, setRenovDeleteId] = useState<string | null>(null);
+  const [renovEditId, setRenovEditId] = useState<string | null>(null);
 
   type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas";
   const updateRenov = async (id: string, campo: RenovCampo, value: string) => {
@@ -3065,9 +3066,8 @@ export default function AdminDashboard() {
               { value: "bizum", label: "Bizum" },
               { value: "web", label: "Web" },
             ];
-            // Edición "invisible": se ve como texto normal y solo aparece un recuadro
-            // al pasar el ratón o al hacer clic. Mantiene el aspecto de antes.
-            const editCls = "bg-transparent border border-transparent rounded px-1 -mx-1 w-full outline-none hover:bg-[#fff3ee] focus:bg-white focus:border-[#dcc1b9] transition-colors";
+            // Input contenido para el MODO edición de una fila (no descuadra la tabla).
+            const editInput = { border: "1px solid #dcc1b9", borderRadius: "8px", padding: "5px 8px", fontSize: "13px", backgroundColor: "#fff", color: "#25190f", outline: "none", display: "block" } as const;
             const ecInfo = (v: string) => EC_OPT.find(o => o.value === v) ?? EC_OPT[0];
             const epInfo = (v: string) => EP_OPT.find(o => o.value === v) ?? EP_OPT[0];
 
@@ -3227,26 +3227,50 @@ export default function AdminDashboard() {
                             const noRen = r.estado_contacto === "no_renueva";
                             return (
                               <tr key={r.id} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
-                                <td className="px-4 py-3 align-top font-medium whitespace-nowrap" style={{ color: "#25190f" }}>
-                                  <input defaultValue={r.nombre} onBlur={e => { if (e.target.value.trim() !== r.nombre) updateRenov(r.id, "nombre", e.target.value.trim()); }} placeholder="Nombre" className={editCls} style={{ minWidth: "90px", fontWeight: 500 }} />
-                                  <input defaultValue={r.apellidos ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.apellidos ?? "")) updateRenov(r.id, "apellidos", e.target.value.trim()); }} placeholder="Apellidos" className={editCls} style={{ minWidth: "90px", fontWeight: 500 }} />
-                                </td>
-                                <td className="px-4 py-3 align-top whitespace-nowrap" style={{ color: "#56423d" }}>
-                                  <span className="text-sm">{calcEdad(r.fecha_nacimiento) != null ? `${calcEdad(r.fecha_nacimiento)} años` : "—"}</span>
-                                  <input type="date" defaultValue={r.fecha_nacimiento ? r.fecha_nacimiento.substring(0, 10) : ""} onBlur={e => { const v = e.target.value; if (v !== (r.fecha_nacimiento ? r.fecha_nacimiento.substring(0, 10) : "")) updateRenov(r.id, "fecha_nacimiento", v); }} className={`${editCls} block mt-0.5 text-[11px]`} style={{ color: "#b0a39e", width: "130px" }} title="Fecha de nacimiento (calcula la edad)" />
-                                </td>
-                                <td className="px-4 py-3 align-top whitespace-nowrap">
-                                  <select value={r.grupo} onChange={e => updateRenov(r.id, "grupo", e.target.value)} className="text-xs font-medium rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>
-                                    {GRUPOS.map(g => <option key={g} value={g}>{g}</option>)}
-                                  </select>
-                                </td>
-                                <td className="px-4 py-3 align-top whitespace-nowrap">
-                                  <input defaultValue={r.telefono ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.telefono ?? "")) updateRenov(r.id, "telefono", e.target.value.trim()); }} placeholder="Teléfono" className={editCls} style={{ color: "#25190f", minWidth: "110px" }} />
-                                  <input defaultValue={r.email ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.email ?? "")) updateRenov(r.id, "email", e.target.value.trim()); }} placeholder="Email" className={`${editCls} text-xs`} style={{ color: "#89726c", minWidth: "140px" }} />
-                                </td>
-                                <td className="px-4 py-3 align-top max-w-[200px]">
-                                  <input defaultValue={r.nota ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.nota ?? "")) updateRenov(r.id, "nota", e.target.value.trim()); }} placeholder="—" className={`${editCls} text-xs`} style={{ color: "#56423d", minWidth: "150px" }} />
-                                </td>
+                                {renovEditId === r.id ? (
+                                  <>
+                                    <td className="px-4 py-3 align-top whitespace-nowrap">
+                                      <input defaultValue={r.nombre} onBlur={e => { if (e.target.value.trim() !== r.nombre) updateRenov(r.id, "nombre", e.target.value.trim()); }} placeholder="Nombre" style={{ ...editInput, width: "120px", marginBottom: "4px" }} />
+                                      <input defaultValue={r.apellidos ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.apellidos ?? "")) updateRenov(r.id, "apellidos", e.target.value.trim()); }} placeholder="Apellidos" style={{ ...editInput, width: "120px" }} />
+                                    </td>
+                                    <td className="px-4 py-3 align-top whitespace-nowrap">
+                                      <input type="date" defaultValue={r.fecha_nacimiento ? r.fecha_nacimiento.substring(0, 10) : ""} onBlur={e => { const v = e.target.value; if (v !== (r.fecha_nacimiento ? r.fecha_nacimiento.substring(0, 10) : "")) updateRenov(r.id, "fecha_nacimiento", v); }} style={{ ...editInput, width: "140px" }} title="Fecha de nacimiento" />
+                                      <span className="block text-[11px] mt-1" style={{ color: "#89726c" }}>{calcEdad(r.fecha_nacimiento) != null ? `${calcEdad(r.fecha_nacimiento)} años` : "—"}</span>
+                                    </td>
+                                    <td className="px-4 py-3 align-top whitespace-nowrap">
+                                      <select value={r.grupo} onChange={e => updateRenov(r.id, "grupo", e.target.value)} style={{ ...editInput, cursor: "pointer" }}>
+                                        {GRUPOS.map(g => <option key={g} value={g}>{g}</option>)}
+                                      </select>
+                                    </td>
+                                    <td className="px-4 py-3 align-top whitespace-nowrap">
+                                      <input defaultValue={r.telefono ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.telefono ?? "")) updateRenov(r.id, "telefono", e.target.value.trim()); }} placeholder="Teléfono" style={{ ...editInput, width: "140px", marginBottom: "4px" }} />
+                                      <input defaultValue={r.email ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.email ?? "")) updateRenov(r.id, "email", e.target.value.trim()); }} placeholder="Email" style={{ ...editInput, width: "180px" }} />
+                                    </td>
+                                    <td className="px-4 py-3 align-top">
+                                      <input defaultValue={r.nota ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.nota ?? "")) updateRenov(r.id, "nota", e.target.value.trim()); }} placeholder="Nota familia…" style={{ ...editInput, width: "200px" }} />
+                                    </td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td className="px-4 py-3 font-medium whitespace-nowrap" style={{ color: "#25190f" }}>{r.nombre} {r.apellidos}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap" style={{ color: "#56423d" }}>{calcEdad(r.fecha_nacimiento) != null ? `${calcEdad(r.fecha_nacimiento)} años` : "—"}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>{r.grupo}</span>
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <p style={{ color: "#25190f" }}>{r.telefono}</p>
+                                      <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{r.email}</p>
+                                    </td>
+                                    <td className="px-4 py-3 max-w-[200px]">
+                                      {r.nota ? (
+                                        <span className="flex items-start gap-1.5">
+                                          <Icon name="info" className="text-xs mt-0.5 flex-shrink-0" style={{ color: "#e65100" }} />
+                                          <span className="text-xs leading-snug" style={{ color: "#56423d" }}>{r.nota}</span>
+                                        </span>
+                                      ) : <span className="text-xs" style={{ color: "#89726c" }}>—</span>}
+                                    </td>
+                                  </>
+                                )}
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   {(() => { const c = ecInfo(r.estado_contacto); return (
                                     <select value={c.value} onChange={e => updateRenov(r.id, "estado_contacto", e.target.value)} className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none" style={{ backgroundColor: c.bg, color: c.fg }}>
@@ -3284,10 +3308,19 @@ export default function AdminDashboard() {
                                       <button onClick={() => deleteRenov(r.id)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#b3261e", color: "#fff" }}>Sí</button>
                                       <button onClick={() => setRenovDeleteId(null)} className="px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: "#f0ddd5", color: "#56423d" }}>No</button>
                                     </span>
-                                  ) : (
-                                    <button onClick={() => setRenovDeleteId(r.id)} className="p-1.5 rounded-lg hover:bg-[#fbe9e7] transition-colors" aria-label="Borrar alumna" title="Borrar alumna">
-                                      <Icon name="delete" className="text-base" style={{ color: "#b3261e" }} />
+                                  ) : renovEditId === r.id ? (
+                                    <button onClick={() => setRenovEditId(null)} className="px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                                      <Icon name="check" style={{ fontSize: "14px" }} /> Listo
                                     </button>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1">
+                                      <button onClick={() => setRenovEditId(r.id)} className="p-1.5 rounded-lg hover:bg-[#fff0eb] transition-colors" aria-label="Editar datos" title="Editar datos">
+                                        <Icon name="edit" className="text-base" style={{ color: "#7d2b13" }} />
+                                      </button>
+                                      <button onClick={() => setRenovDeleteId(r.id)} className="p-1.5 rounded-lg hover:bg-[#fbe9e7] transition-colors" aria-label="Borrar alumna" title="Borrar alumna">
+                                        <Icon name="delete" className="text-base" style={{ color: "#b3261e" }} />
+                                      </button>
+                                    </span>
                                   )}
                                 </td>
                               </tr>
