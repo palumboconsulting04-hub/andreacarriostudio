@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
@@ -239,31 +240,68 @@ function Icon({ name, className = "", style }: { name: string; className?: strin
 }
 
 // Icono ⓘ que, al pulsarlo, muestra una explicación corta de la métrica.
+// Icono ⓘ que, al pulsarlo, muestra una explicación corta. El bocadillo se
+// renderiza en un portal con posición fija calculada respecto al icono, para
+// que nunca lo recorte un contenedor con overflow ni se salga de la pantalla.
 function InfoTip({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const toggle = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (open) { setOpen(false); return; }
+    const r = ref.current?.getBoundingClientRect();
+    if (r) {
+      const margin = 12;
+      const width = Math.min(300, window.innerWidth - margin * 2);
+      let left = r.left + r.width / 2 - width / 2;
+      left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+      const top = r.bottom + 8;
+      setPos({ top, left, width });
+    }
+    setOpen(true);
+  };
+
+  // Si se hace scroll o cambia el tamaño, cerramos (la posición fija quedaría
+  // desfasada respecto al icono).
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
   return (
-    <span className="relative inline-flex align-middle">
+    <span ref={ref} className="inline-flex align-middle">
       <span
         role="button"
         tabIndex={0}
         aria-label="Información"
-        onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen((o) => !o); }}
+        onClick={toggle}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggle(e); }}
         className="inline-flex items-center justify-center cursor-help"
         style={{ color: "#b0a39e" }}
       >
-        <Icon name="info" style={{ fontSize: "15px" }} />
+        <Icon name="info" style={{ fontSize: "16px" }} />
       </span>
-      {open && (
+      {open && pos && typeof document !== "undefined" && createPortal(
         <>
-          <span className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpen(false); }} />
-          <span
+          <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
+          <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute z-50 left-0 top-6 w-52 p-3 rounded-xl text-xs font-normal normal-case tracking-normal leading-snug shadow-lg"
-            style={{ backgroundColor: "#25190f", color: "#fff8f5" }}
+            className="fixed p-3.5 rounded-xl text-[13px] font-normal normal-case tracking-normal leading-relaxed shadow-2xl"
+            style={{ top: pos.top, left: pos.left, width: pos.width, backgroundColor: "#25190f", color: "#fff8f5", zIndex: 9999 }}
           >
             {text}
-          </span>
-        </>
+          </div>
+        </>,
+        document.body,
       )}
     </span>
   );
