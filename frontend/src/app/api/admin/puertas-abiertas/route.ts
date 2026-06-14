@@ -49,20 +49,26 @@ export async function GET() {
   return NextResponse.json({ data: enriched });
 }
 
-// Actualiza una reserva (etiquetado de origen y/o notas de Andrea). Solo admin.
+// Valores permitidos para los seguimientos manuales.
+const LLAMADA_VALIDA = new Set(["sin_llamar", "realizada", "no_contesta", "no_disponible"]);
+const CONFIRMACION_VALIDA = new Set(["pendiente", "confirma", "no_viene"]);
+
+// Actualiza una reserva (origen, notas, estado de llamada y confirmación). Solo admin.
 export async function PATCH(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   const body = await req.json();
-  const { id, origen, notas_andrea } = body;
+  const { id, origen, notas_andrea, llamada, confirmacion } = body;
   if (!id) {
     return NextResponse.json({ error: "Falta el id" }, { status: 400 });
   }
-  const updates: { origen?: string | null; notas_andrea?: string | null } = {};
+  const updates: { origen?: string | null; notas_andrea?: string | null; llamada?: string; confirmacion?: string } = {};
   // "" o ausencia → null ("Sin dato"). Cualquier otro valor se guarda tal cual.
   if (origen !== undefined) updates.origen = origen ? String(origen) : null;
   if (notas_andrea !== undefined) updates.notas_andrea = notas_andrea ? String(notas_andrea) : null;
+  if (llamada !== undefined && LLAMADA_VALIDA.has(String(llamada))) updates.llamada = String(llamada);
+  if (confirmacion !== undefined && CONFIRMACION_VALIDA.has(String(confirmacion))) updates.confirmacion = String(confirmacion);
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
   }

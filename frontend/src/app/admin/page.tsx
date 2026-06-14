@@ -475,6 +475,8 @@ export default function AdminDashboard() {
     alergias: string | null;
     origen: string | null;
     notas_andrea: string | null;
+    llamada: string;
+    confirmacion: string;
     ya_inscrita?: boolean;
     utm_source: string | null;
     utm_campaign: string | null;
@@ -484,13 +486,25 @@ export default function AdminDashboard() {
   const [puertasLoading, setPuertasLoading] = useState(false);
   const [puertasSearch, setPuertasSearch] = useState("");
   const [puertasDeleteId, setPuertasDeleteId] = useState<string | null>(null);
-  // Por defecto ocultamos los leads que ya se han inscrito (están en contactos).
-  const [puertasMostrarInscritas, setPuertasMostrarInscritas] = useState(false);
+  // Filtro por disciplina/grupo de edad (vacío = todas).
+  const [puertasFiltroDisc, setPuertasFiltroDisc] = useState("");
+  // Panel de resumen por edad (para el cierre de campaña).
+  const [puertasResumenOpen, setPuertasResumenOpen] = useState(false);
 
   const handleDeletePuerta = async (id: string) => {
     const res = await fetch(`/api/admin/puertas-abiertas?id=${id}`, { method: "DELETE" });
     if (res.ok) setPuertasData(prev => prev.filter(r => r.id !== id));
     setPuertasDeleteId(null);
+  };
+
+  // Actualiza el estado de llamada o confirmación de un lead (optimista).
+  const updatePuertaSeguimiento = async (id: string, campo: "llamada" | "confirmacion", value: string) => {
+    setPuertasData(prev => prev.map(r => (r.id === id ? { ...r, [campo]: value } : r)));
+    await fetch("/api/admin/puertas-abiertas", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, [campo]: value }),
+    });
   };
 
   // Etiquetado manual del origen de una inscrita (actualización optimista).
@@ -2584,6 +2598,21 @@ export default function AdminDashboard() {
               "barre": "Barre",
               "pilates-mat": "Pilates Mat",
             };
+            // Estado de la llamada de Andrea tras la inscripción.
+            const LLAMADA_OPT: { value: string; label: string; bg: string; fg: string }[] = [
+              { value: "sin_llamar",    label: "Sin llamar",        bg: "#f0eae6", fg: "#6b5a52" },
+              { value: "realizada",     label: "Llamada realizada", bg: "#e7f7ec", fg: "#1f7a3d" },
+              { value: "no_contesta",   label: "No contesta",       bg: "#fff3e0", fg: "#e65100" },
+              { value: "no_disponible", label: "No disponible",     bg: "#fde7e7", fg: "#b71c1c" },
+            ];
+            // Confirmación de asistencia a la jornada (tras la llamada).
+            const CONFIRM_OPT: { value: string; label: string; bg: string; fg: string }[] = [
+              { value: "pendiente", label: "Pendiente",           bg: "#f0eae6", fg: "#6b5a52" },
+              { value: "confirma",  label: "Confirma asistencia", bg: "#e7f7ec", fg: "#1f7a3d" },
+              { value: "no_viene",  label: "No viene",            bg: "#fde7e7", fg: "#b71c1c" },
+            ];
+            const llamadaInfo = (v: string) => LLAMADA_OPT.find(o => o.value === v) ?? LLAMADA_OPT[0];
+            const confirmInfo = (v: string) => CONFIRM_OPT.find(o => o.value === v) ?? CONFIRM_OPT[0];
             // Construye un enlace wa.me normalizando el teléfono a formato internacional
             // español (sin +, espacios ni símbolos) y con un mensaje ya redactado.
             const waLink = (r: PuertaRow) => {
@@ -2598,27 +2627,39 @@ export default function AdminDashboard() {
               return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
             };
             const q = puertasSearch.toLowerCase();
-            // Quien ya está en contactos (ya pasó por la inscripción) se oculta por
-            // defecto: la lista muestra solo a quien aún NO se ha inscrito.
-            const pendientes = puertasData.filter(r => !r.ya_inscrita);
-            const yaInscritasCount = puertasData.length - pendientes.length;
-            const visibles = puertasMostrarInscritas ? puertasData : pendientes;
-            const filtered = visibles.filter(r =>
-              !q ||
-              `${r.nombre} ${r.apellido}`.toLowerCase().includes(q) ||
-              r.email.toLowerCase().includes(q) ||
-              r.telefono.includes(q)
+            // Disciplinas de un lead: la edad de cada niña + la disciplina adulta si la hay.
+            const rowDiscs = (r: PuertaRow): string[] => {
+              const out: string[] = [];
+              for (const n of r.ninas ?? []) if (n.edad) out.push(n.edad);
+              if (r.disciplina_adulta) out.push(DISC_LABEL[r.disciplina_adulta] ?? r.disciplina_adulta);
+              return out;
+            };
+            const allDiscs = Array.from(new Set(puertasData.flatMap(rowDiscs))).sort();
+            const filtered = puertasData.filter(r =>
+              (!q ||
+                `${r.nombre} ${r.apellido}`.toLowerCase().includes(q) ||
+                r.email.toLowerCase().includes(q) ||
+                r.telefono.includes(q)) &&
+              (!puertasFiltroDisc || rowDiscs(r).includes(puertasFiltroDisc))
             );
-            const conAlergias = visibles.filter(r => r.alergias).length;
-            const conNinas = visibles.filter(r => r.ninas?.length > 0).length;
+            const porLlamar = puertasData.filter(r => r.llamada === "sin_llamar").length;
+            const confirmadas = puertasData.filter(r => r.confirmacion === "confirma").length;
+            // Resumen por grupo de edad (todas las niñas de todos los leads).
+            const resumenEdad: Record<string, number> = {};
+            for (const r of puertasData) for (const n of r.ninas ?? []) {
+              const k = n.edad || "Sin especificar";
+              resumenEdad[k] = (resumenEdad[k] ?? 0) + 1;
+            }
+            const resumenEdadArr = Object.entries(resumenEdad).sort((a, b) => b[1] - a[1]);
+            const totalNinas = resumenEdadArr.reduce((s, [, v]) => s + v, 0);
+            const maxEdad = Math.max(1, ...resumenEdadArr.map(([, v]) => v));
             return (
               <section className="space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h3 className="font-headline-md text-headline-md text-primary">Puertas Abiertas</h3>
                     <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
-                      {puertasData.length} {puertasData.length === 1 ? "reserva" : "reservas"} recibidas
-                      {yaInscritasCount > 0 && ` · ${yaInscritasCount} ya inscrita${yaInscritasCount === 1 ? "" : "s"}`}
+                      {puertasData.length} {puertasData.length === 1 ? "reserva" : "reservas"} · {totalNinas} niña{totalNinas === 1 ? "" : "s"}
                     </p>
                   </div>
                   <a
@@ -2635,9 +2676,9 @@ export default function AdminDashboard() {
                 {/* KPIs rápidos */}
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: puertasMostrarInscritas ? "Total leads" : "Sin inscribir aún", value: visibles.length, icon: "groups" },
-                    { label: "Con alergias", value: conAlergias, icon: "medical_information" },
-                    { label: "Traen niña", value: conNinas, icon: "child_care" },
+                    { label: "Total reservas", value: puertasData.length, icon: "groups" },
+                    { label: "Por llamar", value: porLlamar, icon: "phone_missed" },
+                    { label: "Confirmadas", value: confirmadas, icon: "event_available" },
                   ].map(k => (
                     <div key={k.label} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
                       <Icon name={k.icon} className="text-xl mb-1" style={{ color: "#7d2b13" }} />
@@ -2647,7 +2688,7 @@ export default function AdminDashboard() {
                   ))}
                 </div>
 
-                {/* Buscador + filtro de inscritas */}
+                {/* Buscador + filtro por disciplina + resumen */}
                 <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                   <div className="relative flex-1">
                     <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "#89726c" }} />
@@ -2659,22 +2700,56 @@ export default function AdminDashboard() {
                       style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}
                     />
                   </div>
-                  {yaInscritasCount > 0 && (
-                    <button
-                      onClick={() => setPuertasMostrarInscritas(v => !v)}
-                      className="flex items-center justify-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl border transition-colors whitespace-nowrap"
-                      style={
-                        puertasMostrarInscritas
-                          ? { backgroundColor: "#7d2b13", borderColor: "#7d2b13", color: "#fff8f5" }
-                          : { backgroundColor: "#fff8f5", borderColor: "#dcc1b9", color: "#7d2b13" }
-                      }
-                      title="Mostrar también a quien ya se ha inscrito"
-                    >
-                      <Icon name={puertasMostrarInscritas ? "visibility" : "visibility_off"} className="text-sm" />
-                      {puertasMostrarInscritas ? "Ocultar inscritas" : `Mostrar inscritas (${yaInscritasCount})`}
-                    </button>
-                  )}
+                  <select
+                    value={puertasFiltroDisc}
+                    onChange={e => setPuertasFiltroDisc(e.target.value)}
+                    className="px-3 py-2.5 rounded-xl border text-sm cursor-pointer"
+                    style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}
+                    title="Filtrar por disciplina / grupo de edad"
+                  >
+                    <option value="">Todas las disciplinas</option>
+                    {allDiscs.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <button
+                    onClick={() => setPuertasResumenOpen(v => !v)}
+                    className="flex items-center justify-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl border transition-colors whitespace-nowrap"
+                    style={
+                      puertasResumenOpen
+                        ? { backgroundColor: "#7d2b13", borderColor: "#7d2b13", color: "#fff8f5" }
+                        : { backgroundColor: "#fff8f5", borderColor: "#dcc1b9", color: "#7d2b13" }
+                    }
+                    title="Resumen de alumnas por edad"
+                  >
+                    <Icon name="bar_chart" className="text-sm" />
+                    Resumen por edad
+                  </button>
                 </div>
+
+                {/* Resumen por edad (cierre de campaña) */}
+                {puertasResumenOpen && (
+                  <div className="rounded-2xl p-5 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Alumnas por edad</p>
+                      <p className="text-xs" style={{ color: "#89726c" }}>{totalNinas} niña{totalNinas === 1 ? "" : "s"} en total</p>
+                    </div>
+                    {resumenEdadArr.length === 0 ? (
+                      <p className="text-sm text-center py-4" style={{ color: "#89726c" }}>Aún no hay niñas registradas.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {resumenEdadArr.map(([edad, n]) => (
+                          <div key={edad} className="flex items-center gap-3">
+                            <span className="text-xs w-40 shrink-0 text-right" style={{ color: "#56423d" }}>{edad}</span>
+                            <div className="flex-1 h-6 rounded-full overflow-hidden" style={{ backgroundColor: "#f0ddd5" }}>
+                              <div className="h-full rounded-full flex items-center justify-end px-2" style={{ width: `${Math.max(8, (n / maxEdad) * 100)}%`, backgroundColor: "#7d2b13" }}>
+                                <span className="text-[11px] font-bold text-white">{n}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Tabla */}
                 <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
@@ -2692,7 +2767,7 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Nombre", "Contacto", "Quiere probar", "Niñas", "Alergias", "Origen", "Notas Andrea", "Fecha", ""].map((h, hi) => (
+                            {["Nombre", "Contacto", "Quiere probar", "Niñas", "Alergias", "Origen", "Llamada", "Confirmación", "Notas Andrea", "Fecha", ""].map((h, hi) => (
                               <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
@@ -2785,6 +2860,38 @@ export default function AdminDashboard() {
                                         <span className="text-[10px]" style={{ color: "#89726c" }}>{r.utm_campaign}</span>
                                       ) : null}
                                     </span>
+                                  );
+                                })()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {(() => {
+                                  const c = llamadaInfo(r.llamada);
+                                  return (
+                                    <select
+                                      value={c.value}
+                                      onChange={e => updatePuertaSeguimiento(r.id, "llamada", e.target.value)}
+                                      className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none"
+                                      style={{ backgroundColor: c.bg, color: c.fg }}
+                                      title="Estado de la llamada"
+                                    >
+                                      {LLAMADA_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                  );
+                                })()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {(() => {
+                                  const c = confirmInfo(r.confirmacion);
+                                  return (
+                                    <select
+                                      value={c.value}
+                                      onChange={e => updatePuertaSeguimiento(r.id, "confirmacion", e.target.value)}
+                                      className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none"
+                                      style={{ backgroundColor: c.bg, color: c.fg }}
+                                      title="¿Viene a la jornada?"
+                                    >
+                                      {CONFIRM_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
                                   );
                                 })()}
                               </td>
