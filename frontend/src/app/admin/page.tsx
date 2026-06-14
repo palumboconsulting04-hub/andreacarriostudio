@@ -3065,10 +3065,9 @@ export default function AdminDashboard() {
               { value: "bizum", label: "Bizum" },
               { value: "web", label: "Web" },
             ];
-            const inEdit = {
-              border: "1px solid #e7d8d1", borderRadius: "8px", padding: "5px 8px",
-              fontSize: "13px", color: "#25190f", backgroundColor: "#fffdfc", outline: "none", width: "100%",
-            } as const;
+            // Edición "invisible": se ve como texto normal y solo aparece un recuadro
+            // al pasar el ratón o al hacer clic. Mantiene el aspecto de antes.
+            const editCls = "bg-transparent border border-transparent rounded px-1 -mx-1 w-full outline-none hover:bg-[#fff3ee] focus:bg-white focus:border-[#dcc1b9] transition-colors";
             const ecInfo = (v: string) => EC_OPT.find(o => o.value === v) ?? EC_OPT[0];
             const epInfo = (v: string) => EP_OPT.find(o => o.value === v) ?? EP_OPT[0];
 
@@ -3228,25 +3227,25 @@ export default function AdminDashboard() {
                             const noRen = r.estado_contacto === "no_renueva";
                             return (
                               <tr key={r.id} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
-                                <td className="px-4 py-3 align-top">
-                                  <input defaultValue={r.nombre} onBlur={e => { if (e.target.value.trim() !== r.nombre) updateRenov(r.id, "nombre", e.target.value.trim()); }} placeholder="Nombre" style={{ ...inEdit, marginBottom: "4px", minWidth: "120px", fontWeight: 600 }} />
-                                  <input defaultValue={r.apellidos ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.apellidos ?? "")) updateRenov(r.id, "apellidos", e.target.value.trim()); }} placeholder="Apellidos" style={{ ...inEdit, minWidth: "120px" }} />
+                                <td className="px-4 py-3 align-top font-medium whitespace-nowrap" style={{ color: "#25190f" }}>
+                                  <input defaultValue={r.nombre} onBlur={e => { if (e.target.value.trim() !== r.nombre) updateRenov(r.id, "nombre", e.target.value.trim()); }} placeholder="Nombre" className={editCls} style={{ minWidth: "90px", fontWeight: 500 }} />
+                                  <input defaultValue={r.apellidos ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.apellidos ?? "")) updateRenov(r.id, "apellidos", e.target.value.trim()); }} placeholder="Apellidos" className={editCls} style={{ minWidth: "90px", fontWeight: 500 }} />
+                                </td>
+                                <td className="px-4 py-3 align-top whitespace-nowrap" style={{ color: "#56423d" }}>
+                                  <span className="text-sm">{calcEdad(r.fecha_nacimiento) != null ? `${calcEdad(r.fecha_nacimiento)} años` : "—"}</span>
+                                  <input type="date" defaultValue={r.fecha_nacimiento ? r.fecha_nacimiento.substring(0, 10) : ""} onBlur={e => { const v = e.target.value; if (v !== (r.fecha_nacimiento ? r.fecha_nacimiento.substring(0, 10) : "")) updateRenov(r.id, "fecha_nacimiento", v); }} className={`${editCls} block mt-0.5 text-[11px]`} style={{ color: "#b0a39e", width: "130px" }} title="Fecha de nacimiento (calcula la edad)" />
                                 </td>
                                 <td className="px-4 py-3 align-top whitespace-nowrap">
-                                  <input type="date" defaultValue={r.fecha_nacimiento ? r.fecha_nacimiento.substring(0, 10) : ""} onBlur={e => { const v = e.target.value; if (v !== (r.fecha_nacimiento ? r.fecha_nacimiento.substring(0, 10) : "")) updateRenov(r.id, "fecha_nacimiento", v); }} style={{ ...inEdit, width: "140px" }} />
-                                  <span className="block text-[11px] mt-1 font-semibold" style={{ color: "#7d2b13" }}>{calcEdad(r.fecha_nacimiento) != null ? `${calcEdad(r.fecha_nacimiento)} años` : "edad —"}</span>
-                                </td>
-                                <td className="px-4 py-3 align-top whitespace-nowrap">
-                                  <select value={r.grupo} onChange={e => updateRenov(r.id, "grupo", e.target.value)} className="text-xs font-semibold rounded-full px-2.5 py-1.5 cursor-pointer outline-none border-0 appearance-none" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>
+                                  <select value={r.grupo} onChange={e => updateRenov(r.id, "grupo", e.target.value)} className="text-xs font-medium rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>
                                     {GRUPOS.map(g => <option key={g} value={g}>{g}</option>)}
                                   </select>
                                 </td>
-                                <td className="px-4 py-3 align-top">
-                                  <input defaultValue={r.telefono ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.telefono ?? "")) updateRenov(r.id, "telefono", e.target.value.trim()); }} placeholder="Teléfono" style={{ ...inEdit, marginBottom: "4px", minWidth: "130px" }} />
-                                  <input defaultValue={r.email ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.email ?? "")) updateRenov(r.id, "email", e.target.value.trim()); }} placeholder="Email" style={{ ...inEdit, minWidth: "160px" }} />
+                                <td className="px-4 py-3 align-top whitespace-nowrap">
+                                  <input defaultValue={r.telefono ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.telefono ?? "")) updateRenov(r.id, "telefono", e.target.value.trim()); }} placeholder="Teléfono" className={editCls} style={{ color: "#25190f", minWidth: "110px" }} />
+                                  <input defaultValue={r.email ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.email ?? "")) updateRenov(r.id, "email", e.target.value.trim()); }} placeholder="Email" className={`${editCls} text-xs`} style={{ color: "#89726c", minWidth: "140px" }} />
                                 </td>
-                                <td className="px-4 py-3 align-top">
-                                  <input defaultValue={r.nota ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.nota ?? "")) updateRenov(r.id, "nota", e.target.value.trim()); }} placeholder="Nota familia…" style={{ ...inEdit, minWidth: "170px" }} />
+                                <td className="px-4 py-3 align-top max-w-[200px]">
+                                  <input defaultValue={r.nota ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.nota ?? "")) updateRenov(r.id, "nota", e.target.value.trim()); }} placeholder="—" className={`${editCls} text-xs`} style={{ color: "#56423d", minWidth: "150px" }} />
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   {(() => { const c = ecInfo(r.estado_contacto); return (
