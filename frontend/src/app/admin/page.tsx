@@ -534,6 +534,39 @@ export default function AdminDashboard() {
     setTimeout(() => setPuertasNotasSaved(s => (s === id ? null : s)), 1500);
   };
 
+  // ── Renovaciones 2026-2027 ──
+  type RenovacionRow = {
+    id: string;
+    nombre: string;
+    apellidos: string;
+    fecha_nacimiento: string;
+    grupo: string;
+    telefono: string | null;
+    email: string | null;
+    nota: string | null;
+    estado_contacto: string;
+    estado_pago: string;
+    metodo_pago: string;
+    notas: string;
+    updated_at: string;
+  };
+  const [renovData, setRenovData] = useState<RenovacionRow[]>([]);
+  const [renovLoading, setRenovLoading] = useState(false);
+  const [renovSearch, setRenovSearch] = useState("");
+  const [renovFiltroGrupo, setRenovFiltroGrupo] = useState("");
+  const [renovFiltroEstado, setRenovFiltroEstado] = useState("");
+  const [renovNotasDraft, setRenovNotasDraft] = useState<Record<string, string>>({});
+
+  const updateRenov = async (id: string, campo: "estado_contacto" | "estado_pago" | "metodo_pago" | "notas", value: string) => {
+    const ahora = new Date().toISOString();
+    setRenovData(prev => prev.map(r => (r.id === id ? { ...r, [campo]: value, updated_at: ahora } : r)));
+    await fetch("/api/admin/renovaciones", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, [campo]: value }),
+    });
+  };
+
   // KPI drawer
   const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | "facturacion" | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
@@ -665,6 +698,16 @@ export default function AdminDashboard() {
       .then(({ data }) => setPuertasData((data ?? []) as PuertaRow[]))
       .catch(() => setPuertasData([]))
       .finally(() => setPuertasLoading(false));
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeSection !== "Renovaciones") return;
+    setRenovLoading(true);
+    fetch("/api/admin/renovaciones")
+      .then(r => r.json())
+      .then(({ data }) => setRenovData((data ?? []) as RenovacionRow[]))
+      .catch(() => setRenovData([]))
+      .finally(() => setRenovLoading(false));
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchVentas() {
@@ -1310,6 +1353,7 @@ export default function AdminDashboard() {
     { icon: "checklist", label: "Asistencia" },
     { icon: "group", label: "Usuarios" },
     { icon: "celebration", label: "Puertas Abiertas" },
+    { icon: "autorenew", label: "Renovaciones" },
     { icon: "receipt_long", label: "Costes" },
     { icon: "trending_up", label: "Ventas" },
     { icon: "account_balance", label: "Finanzas" },
@@ -2947,6 +2991,214 @@ export default function AdminDashboard() {
                               </td>
                             </tr>
                           ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* ── Renovaciones 2026-2027 ── */}
+          {activeSection === "Renovaciones" && (() => {
+            const GRUPOS = ["Pre-Ballet", "Ballet 1", "Ballet 2"];
+            const calcEdad = (f: string) => {
+              const b = new Date(f); const now = new Date();
+              let a = now.getFullYear() - b.getFullYear();
+              const m = now.getMonth() - b.getMonth();
+              if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
+              return a;
+            };
+            const EC_OPT: { value: string; label: string; bg: string; fg: string }[] = [
+              { value: "sin_llamar",   label: "Sin llamar",   bg: "#f0eae6", fg: "#6b5a52" },
+              { value: "no_contesta",  label: "No contesta",  bg: "#fff3e0", fg: "#e65100" },
+              { value: "interesada",   label: "Interesada",   bg: "#e6efff", fg: "#1b4f9c" },
+              { value: "se_lo_piensa", label: "Se lo piensa", bg: "#fdf6e3", fg: "#9a7b0a" },
+              { value: "no_renueva",   label: "No renueva",   bg: "#fde7e7", fg: "#b71c1c" },
+            ];
+            const EP_OPT: { value: string; label: string; bg: string; fg: string }[] = [
+              { value: "pendiente", label: "Pendiente",     bg: "#f0eae6", fg: "#6b5a52" },
+              { value: "pagado",    label: "Pagado",        bg: "#e7f7ec", fg: "#1f7a3d" },
+              { value: "parcial",   label: "Pago parcial",  bg: "#fff3e0", fg: "#e65100" },
+            ];
+            const MP_OPT = [
+              { value: "", label: "—" },
+              { value: "banco", label: "Banco" },
+              { value: "efectivo", label: "Efectivo" },
+              { value: "caja", label: "Caja" },
+            ];
+            const ecInfo = (v: string) => EC_OPT.find(o => o.value === v) ?? EC_OPT[0];
+            const epInfo = (v: string) => EP_OPT.find(o => o.value === v) ?? EP_OPT[0];
+
+            const total = renovData.length;
+            const renovadas = renovData.filter(r => r.estado_pago === "pagado").length;
+            const interesadasPend = renovData.filter(r => r.estado_contacto === "interesada" && r.estado_pago !== "pagado").length;
+            const seLoPiensan = renovData.filter(r => r.estado_contacto === "se_lo_piensa").length;
+            const noRenuevan = renovData.filter(r => r.estado_contacto === "no_renueva").length;
+            const sinContactar = renovData.filter(r => r.estado_contacto === "sin_llamar").length;
+            const pct = total > 0 ? Math.round((renovadas / total) * 100) : 0;
+            const porGrupo = GRUPOS.map(g => ({
+              grupo: g,
+              total: renovData.filter(r => r.grupo === g).length,
+              renovadas: renovData.filter(r => r.grupo === g && r.estado_pago === "pagado").length,
+            }));
+
+            const q = renovSearch.toLowerCase();
+            const filtered = renovData.filter(r =>
+              (!q || `${r.nombre} ${r.apellidos}`.toLowerCase().includes(q)) &&
+              (!renovFiltroGrupo || r.grupo === renovFiltroGrupo) &&
+              (!renovFiltroEstado || r.estado_contacto === renovFiltroEstado)
+            );
+
+            const mini = [
+              { label: "Interesadas sin pagar", value: interesadasPend, color: "#1b4f9c" },
+              { label: "Se lo piensan", value: seLoPiensan, color: "#9a7b0a" },
+              { label: "No renuevan", value: noRenuevan, color: "#b71c1c" },
+              { label: "Sin contactar", value: sinContactar, color: "#6b5a52" },
+            ];
+
+            return (
+              <section className="space-y-5">
+                <div>
+                  <h3 className="font-headline-md text-headline-md text-primary">Renovaciones 2026-2027</h3>
+                  <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
+                    Seguimiento de renovación de matrícula de las {total} alumnas del curso pasado
+                  </p>
+                </div>
+
+                {/* Dashboard */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {/* Tarjeta principal: renovadas + % */}
+                  <div className="rounded-2xl p-5 sm:row-span-1 flex flex-col justify-center" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                    <p className="text-xs uppercase tracking-widest" style={{ color: "#ffdbd1" }}>Renovadas</p>
+                    <p className="text-4xl font-bold mt-1">{renovLoading ? "—" : renovadas}<span className="text-xl font-medium" style={{ color: "#ffdbd1" }}> / {total}</span></p>
+                    <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.25)" }}>
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: "#ffdbd1" }} />
+                    </div>
+                    <p className="text-sm mt-2 font-semibold">{pct}% de renovación</p>
+                  </div>
+                  {/* Mini-tarjetas */}
+                  <div className="sm:col-span-2 grid grid-cols-2 gap-3">
+                    {mini.map(m => (
+                      <div key={m.label} className="rounded-2xl p-4 flex flex-col justify-center" style={{ backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
+                        <p className="text-2xl font-bold" style={{ color: m.color }}>{renovLoading ? "—" : m.value}</p>
+                        <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{m.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Desglose por grupo */}
+                <div className="rounded-2xl p-4 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>Renovadas por grupo</p>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    {porGrupo.map(g => (
+                      <div key={g.grupo} className="flex items-center gap-3">
+                        <span className="text-sm w-24 shrink-0" style={{ color: "#56423d" }}>{g.grupo}</span>
+                        <div className="flex-1 h-5 rounded-full overflow-hidden" style={{ backgroundColor: "#f0ddd5" }}>
+                          <div className="h-full rounded-full" style={{ width: `${g.total > 0 ? (g.renovadas / g.total) * 100 : 0}%`, backgroundColor: "#7d2b13" }} />
+                        </div>
+                        <span className="text-sm font-bold w-12 text-right" style={{ color: "#7d2b13" }}>{g.renovadas}/{g.total}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Filtros */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <div className="relative flex-1">
+                    <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "#89726c" }} />
+                    <input
+                      value={renovSearch}
+                      onChange={e => setRenovSearch(e.target.value)}
+                      placeholder="Buscar por nombre..."
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm"
+                      style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}
+                    />
+                  </div>
+                  <select value={renovFiltroGrupo} onChange={e => setRenovFiltroGrupo(e.target.value)} className="px-3 py-2.5 rounded-xl border text-sm cursor-pointer" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}>
+                    <option value="">Todos los grupos</option>
+                    {GRUPOS.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                  <select value={renovFiltroEstado} onChange={e => setRenovFiltroEstado(e.target.value)} className="px-3 py-2.5 rounded-xl border text-sm cursor-pointer" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}>
+                    <option value="">Cualquier estado</option>
+                    {EC_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+
+                {/* Tabla */}
+                <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                  {renovLoading ? (
+                    <div className="p-8 text-center text-sm" style={{ color: "#89726c" }}>Cargando...</div>
+                  ) : filtered.length === 0 ? (
+                    <div className="p-8 text-center text-sm" style={{ color: "#89726c" }}>Sin resultados para esos filtros.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr style={{ backgroundColor: "#fff0eb" }}>
+                            {["Alumna", "Edad", "Grupo", "Contacto", "Nota familia", "Estado contacto", "Pago", "Método", "Notas", "Últ. act."].map((h, hi) => (
+                              <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: "#89726c" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((r, i) => {
+                            const noRen = r.estado_contacto === "no_renueva";
+                            return (
+                              <tr key={r.id} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                                <td className="px-4 py-3 font-medium whitespace-nowrap" style={{ color: "#25190f" }}>{r.nombre} {r.apellidos}</td>
+                                <td className="px-4 py-3 whitespace-nowrap" style={{ color: "#56423d" }}>{calcEdad(r.fecha_nacimiento)} años</td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>{r.grupo}</span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <p style={{ color: "#25190f" }}>{r.telefono}</p>
+                                  <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{r.email}</p>
+                                </td>
+                                <td className="px-4 py-3 max-w-[200px]">
+                                  {r.nota ? (
+                                    <span className="flex items-start gap-1.5">
+                                      <Icon name="info" className="text-xs mt-0.5 flex-shrink-0" style={{ color: "#e65100" }} />
+                                      <span className="text-xs leading-snug" style={{ color: "#56423d" }}>{r.nota}</span>
+                                    </span>
+                                  ) : <span className="text-xs" style={{ color: "#89726c" }}>—</span>}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {(() => { const c = ecInfo(r.estado_contacto); return (
+                                    <select value={c.value} onChange={e => updateRenov(r.id, "estado_contacto", e.target.value)} className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none" style={{ backgroundColor: c.bg, color: c.fg }}>
+                                      {EC_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                  ); })()}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap" style={{ opacity: noRen ? 0.4 : 1 }}>
+                                  {(() => { const c = epInfo(r.estado_pago); return (
+                                    <select value={c.value} onChange={e => updateRenov(r.id, "estado_pago", e.target.value)} className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none" style={{ backgroundColor: c.bg, color: c.fg }} title={noRen ? "No renueva (N/A)" : ""}>
+                                      {EP_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                  ); })()}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap" style={{ opacity: noRen ? 0.4 : 1 }}>
+                                  <select value={r.metodo_pago} onChange={e => updateRenov(r.id, "metodo_pago", e.target.value)} className="text-xs rounded-lg px-2 py-1 cursor-pointer outline-none border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fffdfc", color: "#56423d" }}>
+                                    {MP_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                  </select>
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  <textarea
+                                    value={renovNotasDraft[r.id] ?? r.notas ?? ""}
+                                    onChange={e => setRenovNotasDraft(prev => ({ ...prev, [r.id]: e.target.value }))}
+                                    onBlur={e => updateRenov(r.id, "notas", e.target.value.trim())}
+                                    rows={2}
+                                    placeholder="Lo que diga…"
+                                    className="w-[180px] resize-y rounded-lg border px-2.5 py-2 text-xs leading-snug outline-none focus:ring-2"
+                                    style={{ borderColor: "#dcc1b9", backgroundColor: "#fffdfc", color: "#25190f" }}
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-xs whitespace-nowrap align-top" style={{ color: "#89726c" }}>{formatData(r.updated_at)}</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
