@@ -298,6 +298,39 @@ function PagoResumen({ stato, matricula }: { stato: string; matricula?: number |
   );
 }
 
+// Formato de fecha corta a partir de un timestamp Unix (segundos) de Stripe.
+function fechaStripe(ts: number | null): string {
+  if (!ts) return "—";
+  return new Date(ts * 1000).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// Etiqueta/color del estado del PaymentIntent de la matrícula en Stripe.
+function piInfo(s: string): { label: string; bg: string; color: string } {
+  switch (s) {
+    case "succeeded":               return { label: "Cobrada", bg: "#e8f5e9", color: "#2e7d32" };
+    case "processing":              return { label: "Procesando", bg: "#fff3e0", color: "#e65100" };
+    case "requires_payment_method":
+    case "requires_confirmation":
+    case "requires_action":         return { label: "Sin cobrar", bg: "#fde7e7", color: "#b71c1c" };
+    case "canceled":                return { label: "Cancelada", bg: "#eceff1", color: "#546e7a" };
+    default:                        return { label: s, bg: "#eceff1", color: "#546e7a" };
+  }
+}
+
+// Etiqueta/color del estado de la suscripción del bono en Stripe.
+function subInfo(s: string): { label: string; bg: string; color: string } {
+  switch (s) {
+    case "trialing":            return { label: "Programado", bg: "#fff3e0", color: "#e65100" };
+    case "active":              return { label: "Activo (cobrándose)", bg: "#e8f5e9", color: "#2e7d32" };
+    case "past_due":
+    case "unpaid":              return { label: "Impago", bg: "#fde7e7", color: "#b71c1c" };
+    case "canceled":            return { label: "Cancelada", bg: "#eceff1", color: "#546e7a" };
+    case "incomplete":          return { label: "Pago incompleto", bg: "#fff3e0", color: "#e65100" };
+    case "incomplete_expired":  return { label: "Caducada", bg: "#eceff1", color: "#546e7a" };
+    default:                    return { label: s, bg: "#eceff1", color: "#546e7a" };
+  }
+}
+
 // Sep=1, Oct=2, Nov=3, Dec=4, Jan=5, Feb=6, Mar=7, Apr=8, May=9, Jun=10, Jul/Aug=1
 function getSchoolYearMonth(): number {
   const m = new Date().getMonth();
@@ -841,6 +874,7 @@ export default function AdminDashboard() {
     setUsuariosProfile(null);
     setConfirmCancelSub(false);
     setAsistenciaResumen(null);
+    setStripeStatus(null);
     fetch(`/api/admin/asistencia?iscrizione_id=${id}`)
       .then(r => r.json())
       .then(j => setAsistenciaResumen(j.resumen ?? null))
@@ -851,6 +885,26 @@ export default function AdminDashboard() {
       setUsuariosProfile({ ...(data as unknown as IscrizioneDetalle), prezzo: pd?.prezzo ?? null });
     }
     setUsuariosProfileLoading(false);
+  };
+
+  // ── Estado real en Stripe (bajo demanda) ──
+  type StripeStatus = {
+    matricula: { status: string; amount: number; currency: string; date: number } | null;
+    bono: { status: string; amount: number | null; currency: string | null; interval: string | null; nextCharge: number | null; cancelAtPeriodEnd: boolean } | null;
+    error?: string;
+  };
+  const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
+  const [stripeStatusLoading, setStripeStatusLoading] = useState(false);
+  const comprobarStripe = async () => {
+    if (!usuariosProfile) return;
+    setStripeStatusLoading(true);
+    try {
+      const { data } = await fetch(`/api/admin/stripe-status?iscrizioneId=${usuariosProfile.id}`).then(r => r.json());
+      setStripeStatus((data as StripeStatus) ?? { matricula: null, bono: null, error: "Sin datos" });
+    } catch {
+      setStripeStatus({ matricula: null, bono: null, error: "No se pudo conectar con Stripe" });
+    }
+    setStripeStatusLoading(false);
   };
 
   // ── Cancelar suscripción del bono (la madre se da de baja) ──
@@ -4026,30 +4080,103 @@ export default function AdminDashboard() {
                     <div className="border-t" style={{ borderColor: "#dcc1b9" }}>
                       <PagoResumen stato={usuariosProfile.stato} matricula={usuariosProfile.matricula} />
                     </div>
-                    {usuariosProfile.stripe_subscription_id && SUB_CANCELABLE.has(usuariosProfile.stato) ? (
+
+                    {/* ── Estado REAL en Stripe (bajo demanda) ── */}
+                    <div className="border-t px-4 py-3" style={{ borderColor: "#dcc1b9" }}>
+                      <button
+                        onClick={comprobarStripe}
+                        disabled={stripeStatusLoading}
+                        className="w-full py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
+                        style={{ backgroundColor: "#635bff", color: "#fff", opacity: stripeStatusLoading ? 0.7 : 1 }}
+                      >
+                        <Icon name="bolt" className="text-sm" />
+                        {stripeStatusLoading ? "Consultando Stripe…" : "Comprobar en Stripe"}
+                      </button>
+
+                      {stripeStatus && (
+                        stripeStatus.error ? (
+                          <p className="text-xs mt-3 px-3 py-2 rounded-lg" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>
+                            ⚠ {stripeStatus.error}
+                          </p>
+                        ) : (
+                          <div className="mt-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg" style={{ backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
+                              <span className="text-xs" style={{ color: "#56423d" }}>
+                                Matrícula{stripeStatus.matricula ? ` · ${stripeStatus.matricula.amount}${stripeStatus.matricula.currency}` : ""}
+                              </span>
+                              {stripeStatus.matricula ? (
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap" style={{ backgroundColor: piInfo(stripeStatus.matricula.status).bg, color: piInfo(stripeStatus.matricula.status).color }}>
+                                  {piInfo(stripeStatus.matricula.status).label}{stripeStatus.matricula.status === "succeeded" ? ` · ${fechaStripe(stripeStatus.matricula.date)}` : ""}
+                                </span>
+                              ) : (
+                                <span className="text-[11px]" style={{ color: "#89726c" }}>Sin pago en Stripe</span>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg" style={{ backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
+                              <span className="text-xs" style={{ color: "#56423d" }}>
+                                Bono mensual{stripeStatus.bono?.amount != null ? ` · ${stripeStatus.bono.amount}${stripeStatus.bono.currency}/mes` : ""}
+                              </span>
+                              {stripeStatus.bono ? (
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap" style={{ backgroundColor: subInfo(stripeStatus.bono.status).bg, color: subInfo(stripeStatus.bono.status).color }}>
+                                  {subInfo(stripeStatus.bono.status).label}
+                                </span>
+                              ) : (
+                                <span className="text-[11px]" style={{ color: "#89726c" }}>Sin suscripción</span>
+                              )}
+                            </div>
+                            {stripeStatus.bono?.nextCharge && stripeStatus.bono.status !== "canceled" && (
+                              <p className="text-[11px] px-1" style={{ color: "#89726c" }}>
+                                {stripeStatus.bono.status === "trialing" ? "Primer cobro: " : "Próximo cobro: "}
+                                <strong style={{ color: "#56423d" }}>{fechaStripe(stripeStatus.bono.nextCharge)}</strong>
+                                {stripeStatus.bono.cancelAtPeriodEnd ? " · se cancelará al final del periodo" : ""}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    {/* ── Acción Stripe: cancelar el bono (dinero real) ── */}
+                    {usuariosProfile.stripe_subscription_id && SUB_CANCELABLE.has(usuariosProfile.stato) && (
                       confirmCancelSub ? (
-                        <div className="flex border-t" style={{ borderColor: "#dcc1b9" }}>
-                          <button onClick={handleCancelarSuscripcion} disabled={cancelandoSub} className="flex-1 py-3 text-sm font-semibold" style={{ backgroundColor: "#b71c1c", color: "#fff" }}>
-                            {cancelandoSub ? "Cancelando..." : "Sí, dar de baja"}
-                          </button>
-                          <button onClick={() => setConfirmCancelSub(false)} className="flex-1 py-3 text-sm" style={{ backgroundColor: "#fff1e9", color: "#89726c" }}>
-                            No
-                          </button>
+                        <div className="border-t px-4 py-3" style={{ borderColor: "#dcc1b9" }}>
+                          <p className="text-xs mb-2" style={{ color: "#b71c1c" }}>
+                            Esto cancela el cobro mensual en Stripe (deja de pagar). No devuelve dinero. ¿Seguro?
+                          </p>
+                          <div className="flex gap-2">
+                            <button onClick={handleCancelarSuscripcion} disabled={cancelandoSub} className="flex-1 py-2.5 rounded-lg text-sm font-semibold" style={{ backgroundColor: "#b71c1c", color: "#fff" }}>
+                              {cancelandoSub ? "Cancelando…" : "Sí, dar de baja el bono"}
+                            </button>
+                            <button onClick={() => setConfirmCancelSub(false)} className="flex-1 py-2.5 rounded-lg text-sm" style={{ backgroundColor: "#fff1e9", color: "#89726c" }}>
+                              No
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <button onClick={() => setConfirmCancelSub(true)} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#b71c1c" }}>
-                          Cancelar suscripción del bono
+                        <button onClick={() => setConfirmCancelSub(true)} className="w-full py-3 text-sm font-semibold border-t flex items-center justify-center gap-2" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#b71c1c" }}>
+                          <Icon name="warning" className="text-sm" />
+                          Cancelar el bono en Stripe (deja de cobrar)
                         </button>
                       )
-                    ) : usuariosProfile.stato === "attesa" ? (
-                      <button onClick={() => handleCambiarStatoUsuario("pagato")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#7d2b13", color: "#fff" }}>
-                        Marcar como pagado
-                      </button>
-                    ) : (usuariosProfile.stato === "pagato" || usuariosProfile.stato === "pagado") ? (
-                      <button onClick={() => handleCambiarStatoUsuario("attesa")} className="w-full py-3 text-sm font-semibold border-t" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#89726c" }}>
-                        Deshacer pago
-                      </button>
-                    ) : null}
+                    )}
+
+                    {/* ── Nota interna: solo etiqueta, NO toca Stripe ── */}
+                    {(usuariosProfile.stato === "attesa" || usuariosProfile.stato === "pagato" || usuariosProfile.stato === "pagado") && (
+                      <div className="border-t px-4 py-3" style={{ borderColor: "#dcc1b9", backgroundColor: "#fbfaf9" }}>
+                        <p className="text-[11px] mb-2 flex items-center gap-1" style={{ color: "#89726c" }}>
+                          <Icon name="sticky_note_2" style={{ fontSize: "13px" }} /> Nota interna · no cobra ni devuelve dinero, solo cambia esta etiqueta
+                        </p>
+                        {usuariosProfile.stato === "attesa" ? (
+                          <button onClick={() => handleCambiarStatoUsuario("pagato")} className="w-full py-2.5 rounded-lg text-sm font-semibold border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#7d2b13" }}>
+                            Marcar como pagada (etiqueta)
+                          </button>
+                        ) : (
+                          <button onClick={() => handleCambiarStatoUsuario("attesa")} className="w-full py-2.5 rounded-lg text-sm font-semibold border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#89726c" }}>
+                            Marcar como pendiente (etiqueta)
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Eliminar */}
