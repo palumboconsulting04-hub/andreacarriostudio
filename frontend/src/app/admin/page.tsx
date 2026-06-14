@@ -2996,6 +2996,13 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
+
+                {!puertasLoading && filtered.length > 0 && (
+                  <p className="text-sm font-semibold text-right" style={{ color: "#7d2b13" }}>
+                    {filtered.length} {filtered.length === 1 ? "reserva" : "reservas"}
+                    {puertasFiltroDisc ? ` en ${puertasFiltroDisc}` : ""}
+                  </p>
+                )}
               </section>
             );
           })()}
