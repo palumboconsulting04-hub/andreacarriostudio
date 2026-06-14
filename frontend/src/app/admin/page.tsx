@@ -404,6 +404,7 @@ export default function AdminDashboard() {
     alergias: string | null;
     origen: string | null;
     notas_andrea: string | null;
+    ya_inscrita?: boolean;
     utm_source: string | null;
     utm_campaign: string | null;
     fbclid: string | null;
@@ -412,6 +413,8 @@ export default function AdminDashboard() {
   const [puertasLoading, setPuertasLoading] = useState(false);
   const [puertasSearch, setPuertasSearch] = useState("");
   const [puertasDeleteId, setPuertasDeleteId] = useState<string | null>(null);
+  // Por defecto ocultamos los leads que ya se han inscrito (están en contactos).
+  const [puertasMostrarInscritas, setPuertasMostrarInscritas] = useState(false);
 
   const handleDeletePuerta = async (id: string) => {
     const res = await fetch(`/api/admin/puertas-abiertas?id=${id}`, { method: "DELETE" });
@@ -2548,14 +2551,19 @@ export default function AdminDashboard() {
               return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
             };
             const q = puertasSearch.toLowerCase();
-            const filtered = puertasData.filter(r =>
+            // Quien ya está en contactos (ya pasó por la inscripción) se oculta por
+            // defecto: la lista muestra solo a quien aún NO se ha inscrito.
+            const pendientes = puertasData.filter(r => !r.ya_inscrita);
+            const yaInscritasCount = puertasData.length - pendientes.length;
+            const visibles = puertasMostrarInscritas ? puertasData : pendientes;
+            const filtered = visibles.filter(r =>
               !q ||
               `${r.nombre} ${r.apellido}`.toLowerCase().includes(q) ||
               r.email.toLowerCase().includes(q) ||
               r.telefono.includes(q)
             );
-            const conAlergias = puertasData.filter(r => r.alergias).length;
-            const conNinas = puertasData.filter(r => r.ninas?.length > 0).length;
+            const conAlergias = visibles.filter(r => r.alergias).length;
+            const conNinas = visibles.filter(r => r.ninas?.length > 0).length;
             return (
               <section className="space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -2563,6 +2571,7 @@ export default function AdminDashboard() {
                     <h3 className="font-headline-md text-headline-md text-primary">Puertas Abiertas</h3>
                     <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
                       {puertasData.length} {puertasData.length === 1 ? "reserva" : "reservas"} recibidas
+                      {yaInscritasCount > 0 && ` · ${yaInscritasCount} ya inscrita${yaInscritasCount === 1 ? "" : "s"}`}
                     </p>
                   </div>
                   <a
@@ -2579,7 +2588,7 @@ export default function AdminDashboard() {
                 {/* KPIs rápidos */}
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: "Total inscritas", value: puertasData.length, icon: "groups" },
+                    { label: puertasMostrarInscritas ? "Total leads" : "Sin inscribir aún", value: visibles.length, icon: "groups" },
                     { label: "Con alergias", value: conAlergias, icon: "medical_information" },
                     { label: "Traen niña", value: conNinas, icon: "child_care" },
                   ].map(k => (
@@ -2591,16 +2600,33 @@ export default function AdminDashboard() {
                   ))}
                 </div>
 
-                {/* Buscador */}
-                <div className="relative">
-                  <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "#89726c" }} />
-                  <input
-                    value={puertasSearch}
-                    onChange={e => setPuertasSearch(e.target.value)}
-                    placeholder="Buscar por nombre, email o teléfono..."
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm"
-                    style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}
-                  />
+                {/* Buscador + filtro de inscritas */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <div className="relative flex-1">
+                    <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "#89726c" }} />
+                    <input
+                      value={puertasSearch}
+                      onChange={e => setPuertasSearch(e.target.value)}
+                      placeholder="Buscar por nombre, email o teléfono..."
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm"
+                      style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}
+                    />
+                  </div>
+                  {yaInscritasCount > 0 && (
+                    <button
+                      onClick={() => setPuertasMostrarInscritas(v => !v)}
+                      className="flex items-center justify-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl border transition-colors whitespace-nowrap"
+                      style={
+                        puertasMostrarInscritas
+                          ? { backgroundColor: "#7d2b13", borderColor: "#7d2b13", color: "#fff8f5" }
+                          : { backgroundColor: "#fff8f5", borderColor: "#dcc1b9", color: "#7d2b13" }
+                      }
+                      title="Mostrar también a quien ya se ha inscrito"
+                    >
+                      <Icon name={puertasMostrarInscritas ? "visibility" : "visibility_off"} className="text-sm" />
+                      {puertasMostrarInscritas ? "Ocultar inscritas" : `Mostrar inscritas (${yaInscritasCount})`}
+                    </button>
+                  )}
                 </div>
 
                 {/* Tabla */}
@@ -2629,6 +2655,15 @@ export default function AdminDashboard() {
                             <tr key={r.id} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
                               <td className="px-4 py-3 font-medium" style={{ color: "#25190f" }}>
                                 {r.nombre} {r.apellido}
+                                {r.ya_inscrita && (
+                                  <span
+                                    className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold align-middle"
+                                    style={{ backgroundColor: "#e7f7ec", color: "#1f7a3d" }}
+                                    title="Ya está en contactos (se ha inscrito)"
+                                  >
+                                    <Icon name="check_circle" style={{ fontSize: "12px" }} /> Ya inscrita
+                                  </span>
+                                )}
                               </td>
                               <td className="px-4 py-3">
                                 <p style={{ color: "#25190f" }}>{r.email}</p>

@@ -8,7 +8,17 @@ async function isAdmin(): Promise<boolean> {
   return !!session && session.value === process.env.ADMIN_SESSION_SECRET;
 }
 
+// Normaliza un teléfono a solo dígitos en formato español para poder comparar.
+function normTel(t: string | null | undefined): string {
+  let d = (t || "").replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.length === 9) d = "34" + d;
+  return d;
+}
+
 // Lista todas las reservas de Puertas Abiertas. Solo admin.
+// Marca cada lead con `ya_inscrita` si su email o teléfono coincide con un
+// contacto (alguien que ya pasó por la inscripción), para poder ocultarlos.
 export async function GET() {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -20,7 +30,23 @@ export async function GET() {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ data });
+
+  const { data: contatti } = await supabaseAdmin.from("contatti").select("email, telefono");
+  const emails = new Set(
+    (contatti ?? []).map(c => (c.email || "").toLowerCase().trim()).filter(Boolean),
+  );
+  const phones = new Set(
+    (contatti ?? []).map(c => normTel(c.telefono)).filter(Boolean),
+  );
+
+  const enriched = (data ?? []).map(r => ({
+    ...r,
+    ya_inscrita:
+      (!!r.email && emails.has(r.email.toLowerCase().trim())) ||
+      (!!r.telefono && phones.has(normTel(r.telefono))),
+  }));
+
+  return NextResponse.json({ data: enriched });
 }
 
 // Actualiza una reserva (etiquetado de origen y/o notas de Andrea). Solo admin.
