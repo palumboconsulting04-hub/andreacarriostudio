@@ -4016,15 +4016,18 @@ export default function AdminDashboard() {
 
                     {/* ── Estado REAL en Stripe (bajo demanda) ── */}
                     <div className="border-t px-4 py-3" style={{ borderColor: "#dcc1b9" }}>
-                      <button
-                        onClick={comprobarStripe}
-                        disabled={stripeStatusLoading}
-                        className="w-full py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
-                        style={{ backgroundColor: "#635bff", color: "#fff", opacity: stripeStatusLoading ? 0.7 : 1 }}
-                      >
-                        <Icon name="bolt" className="text-sm" />
-                        {stripeStatusLoading ? "Consultando Stripe…" : "Comprobar en Stripe"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <InfoTip text="Solo CONSULTA el estado en Stripe (si la matrícula se cobró y cómo va el bono). NO cobra, NO cancela, NO modifica nada. Es seguro: púlsalo las veces que quieras." />
+                        <button
+                          onClick={comprobarStripe}
+                          disabled={stripeStatusLoading}
+                          className="flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
+                          style={{ backgroundColor: "#635bff", color: "#fff", opacity: stripeStatusLoading ? 0.7 : 1 }}
+                        >
+                          <Icon name="bolt" className="text-sm" />
+                          {stripeStatusLoading ? "Consultando Stripe…" : "Comprobar en Stripe"}
+                        </button>
+                      </div>
 
                       {stripeStatus && (
                         stripeStatus.error ? (
@@ -4086,23 +4089,29 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       ) : (
-                        <button onClick={() => setConfirmCancelSub(true)} className="w-full py-3 text-sm font-semibold border-t flex items-center justify-center gap-2" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#b71c1c" }}>
-                          <Icon name="warning" className="text-sm" />
-                          Cancelar el bono en Stripe (deja de cobrar)
-                        </button>
+                        <div className="flex items-center gap-2 border-t px-4 py-3" style={{ borderColor: "#dcc1b9" }}>
+                          <InfoTip text="SÍ toca dinero: CANCELA la suscripción en Stripe, así la alumna DEJA de pagar el bono cada mes. NO devuelve dinero ya cobrado. NO borra a la alumna del sistema. Te pide confirmación antes." />
+                          <button onClick={() => setConfirmCancelSub(true)} className="flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2" style={{ backgroundColor: "#fff1e9", color: "#b71c1c" }}>
+                            <Icon name="warning" className="text-sm" />
+                            Cancelar el bono en Stripe (deja de cobrar)
+                          </button>
+                        </div>
                       )
                     )}
 
                   </div>
 
                   {/* Eliminar */}
-                  <button
-                    onClick={handleEliminarUsuario}
-                    className="w-full py-3 rounded-xl text-sm font-semibold border transition-colors hover:bg-red-50"
-                    style={{ borderColor: "#ffcdd2", color: "#b71c1c" }}
-                  >
-                    Eliminar alumna
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <InfoTip text="Borra a la alumna del sistema Y CANCELA su cobro mensual en Stripe (deja de pagar). NO devuelve dinero ya cobrado. Es IRREVERSIBLE: no se puede deshacer." />
+                    <button
+                      onClick={handleEliminarUsuario}
+                      className="flex-1 py-3 rounded-xl text-sm font-semibold border transition-colors hover:bg-red-50"
+                      style={{ borderColor: "#ffcdd2", color: "#b71c1c" }}
+                    >
+                      Eliminar alumna
+                    </button>
+                  </div>
 
                 </div>
               ) : null}
