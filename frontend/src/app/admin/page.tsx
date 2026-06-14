@@ -3211,6 +3211,14 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
+
+                {!renovLoading && filtered.length > 0 && (
+                  <p className="text-sm font-semibold text-right" style={{ color: "#7d2b13" }}>
+                    {filtered.length} {filtered.length === 1 ? "alumna" : "alumnas"}
+                    {renovFiltroGrupo ? ` en ${renovFiltroGrupo}` : ""}
+                    {renovFiltroEstado ? ` · ${(EC_OPT.find(o => o.value === renovFiltroEstado)?.label ?? "")}` : ""}
+                  </p>
+                )}
               </section>
             );
           })()}
