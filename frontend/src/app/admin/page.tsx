@@ -556,8 +556,13 @@ export default function AdminDashboard() {
   const [renovFiltroGrupo, setRenovFiltroGrupo] = useState("");
   const [renovFiltroEstado, setRenovFiltroEstado] = useState("");
   const [renovNotasDraft, setRenovNotasDraft] = useState<Record<string, string>>({});
+  const [showAddRenov, setShowAddRenov] = useState(false);
+  const emptyNewRenov = { nombre: "", apellidos: "", fecha_nacimiento: "", grupo: "Pre-Ballet", telefono: "", email: "", nota: "" };
+  const [newRenov, setNewRenov] = useState(emptyNewRenov);
+  const [renovDeleteId, setRenovDeleteId] = useState<string | null>(null);
 
-  const updateRenov = async (id: string, campo: "estado_contacto" | "estado_pago" | "metodo_pago" | "notas", value: string) => {
+  type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas";
+  const updateRenov = async (id: string, campo: RenovCampo, value: string) => {
     const ahora = new Date().toISOString();
     setRenovData(prev => prev.map(r => (r.id === id ? { ...r, [campo]: value, updated_at: ahora } : r)));
     await fetch("/api/admin/renovaciones", {
@@ -565,6 +570,28 @@ export default function AdminDashboard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, [campo]: value }),
     });
+  };
+
+  const addRenov = async () => {
+    if (!newRenov.nombre.trim()) return;
+    const res = await fetch("/api/admin/renovaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newRenov),
+    });
+    const { data } = await res.json();
+    if (data) {
+      setRenovData(prev => [...prev, data as RenovacionRow].sort((a, b) =>
+        a.grupo.localeCompare(b.grupo) || (a.apellidos || "").localeCompare(b.apellidos || "")));
+    }
+    setNewRenov(emptyNewRenov);
+    setShowAddRenov(false);
+  };
+
+  const deleteRenov = async (id: string) => {
+    const res = await fetch(`/api/admin/renovaciones?id=${id}`, { method: "DELETE" });
+    if (res.ok) setRenovData(prev => prev.filter(r => r.id !== id));
+    setRenovDeleteId(null);
   };
 
   // KPI drawer
@@ -3010,8 +3037,11 @@ export default function AdminDashboard() {
           {/* ── Renovaciones 2026-2027 ── */}
           {activeSection === "Renovaciones" && (() => {
             const GRUPOS = ["Pre-Ballet", "Ballet 1", "Ballet 2"];
-            const calcEdad = (f: string) => {
-              const b = new Date(f); const now = new Date();
+            const calcEdad = (f: string | null): number | null => {
+              if (!f) return null;
+              const b = new Date(f);
+              if (isNaN(b.getTime())) return null;
+              const now = new Date();
               let a = now.getFullYear() - b.getFullYear();
               const m = now.getMonth() - b.getMonth();
               if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
@@ -3031,10 +3061,14 @@ export default function AdminDashboard() {
             ];
             const MP_OPT = [
               { value: "", label: "—" },
-              { value: "banco", label: "Banco" },
               { value: "efectivo", label: "Efectivo" },
-              { value: "caja", label: "Caja" },
+              { value: "bizum", label: "Bizum" },
+              { value: "web", label: "Web" },
             ];
+            const inEdit = {
+              border: "1px solid #e7d8d1", borderRadius: "8px", padding: "5px 8px",
+              fontSize: "13px", color: "#25190f", backgroundColor: "#fffdfc", outline: "none", width: "100%",
+            } as const;
             const ecInfo = (v: string) => EC_OPT.find(o => o.value === v) ?? EC_OPT[0];
             const epInfo = (v: string) => EP_OPT.find(o => o.value === v) ?? EP_OPT[0];
 
@@ -3067,12 +3101,51 @@ export default function AdminDashboard() {
 
             return (
               <section className="space-y-5">
-                <div>
-                  <h3 className="font-headline-md text-headline-md text-primary">Renovaciones 2026-2027</h3>
-                  <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
-                    Seguimiento de renovación de matrícula de las {total} alumnas del curso pasado
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-headline-md text-headline-md text-primary">Renovaciones 2026-2027</h3>
+                    <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
+                      Seguimiento de renovación de matrícula de las {total} alumnas del curso pasado
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowAddRenov(v => !v)}
+                    className="flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full transition-colors whitespace-nowrap"
+                    style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}
+                  >
+                    <Icon name="person_add" className="text-sm" />
+                    Añadir alumna
+                  </button>
                 </div>
+
+                {/* Formulario para añadir alumna a mano */}
+                {showAddRenov && (
+                  <div className="rounded-2xl p-5 border" style={{ borderColor: "#7d2b13", backgroundColor: "#fff8f5" }}>
+                    <p className="text-sm font-semibold mb-3" style={{ color: "#7d2b13" }}>Nueva alumna</p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <input value={newRenov.nombre} onChange={e => setNewRenov(p => ({ ...p, nombre: e.target.value }))} placeholder="Nombre *" className="px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }} />
+                      <input value={newRenov.apellidos} onChange={e => setNewRenov(p => ({ ...p, apellidos: e.target.value }))} placeholder="Apellidos" className="px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }} />
+                      <label className="text-sm flex items-center gap-2" style={{ color: "#89726c" }}>
+                        <span className="whitespace-nowrap">Nacimiento</span>
+                        <input type="date" value={newRenov.fecha_nacimiento} onChange={e => setNewRenov(p => ({ ...p, fecha_nacimiento: e.target.value }))} className="px-3 py-2 rounded-lg border text-sm flex-1" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }} />
+                      </label>
+                      <select value={newRenov.grupo} onChange={e => setNewRenov(p => ({ ...p, grupo: e.target.value }))} className="px-3 py-2 rounded-lg border text-sm cursor-pointer" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }}>
+                        {GRUPOS.map(g => <option key={g} value={g}>{g}</option>)}
+                      </select>
+                      <input value={newRenov.telefono} onChange={e => setNewRenov(p => ({ ...p, telefono: e.target.value }))} placeholder="Teléfono" className="px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }} />
+                      <input value={newRenov.email} onChange={e => setNewRenov(p => ({ ...p, email: e.target.value }))} placeholder="Email" className="px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }} />
+                      <input value={newRenov.nota} onChange={e => setNewRenov(p => ({ ...p, nota: e.target.value }))} placeholder="Nota familia (opcional)" className="px-3 py-2 rounded-lg border text-sm sm:col-span-2" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }} />
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <button onClick={addRenov} disabled={!newRenov.nombre.trim()} className="px-5 py-2 rounded-lg text-sm font-semibold" style={{ backgroundColor: newRenov.nombre.trim() ? "#7d2b13" : "#dcc1b9", color: "#fff8f5", cursor: newRenov.nombre.trim() ? "pointer" : "not-allowed" }}>
+                        Añadir
+                      </button>
+                      <button onClick={() => { setShowAddRenov(false); setNewRenov(emptyNewRenov); }} className="px-5 py-2 rounded-lg text-sm" style={{ backgroundColor: "#fff1e9", color: "#89726c" }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Dashboard */}
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -3145,7 +3218,7 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Alumna", "Edad", "Grupo", "Contacto", "Nota familia", "Estado contacto", "Pago", "Método", "Notas", "Últ. act."].map((h, hi) => (
+                            {["Alumna", "Edad", "Grupo", "Contacto", "Nota familia", "Estado contacto", "Pago", "Método", "Notas", "Últ. act.", ""].map((h, hi) => (
                               <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
@@ -3155,22 +3228,25 @@ export default function AdminDashboard() {
                             const noRen = r.estado_contacto === "no_renueva";
                             return (
                               <tr key={r.id} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
-                                <td className="px-4 py-3 font-medium whitespace-nowrap" style={{ color: "#25190f" }}>{r.nombre} {r.apellidos}</td>
-                                <td className="px-4 py-3 whitespace-nowrap" style={{ color: "#56423d" }}>{calcEdad(r.fecha_nacimiento)} años</td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>{r.grupo}</span>
+                                <td className="px-4 py-3 align-top">
+                                  <input defaultValue={r.nombre} onBlur={e => { if (e.target.value.trim() !== r.nombre) updateRenov(r.id, "nombre", e.target.value.trim()); }} placeholder="Nombre" style={{ ...inEdit, marginBottom: "4px", minWidth: "120px", fontWeight: 600 }} />
+                                  <input defaultValue={r.apellidos ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.apellidos ?? "")) updateRenov(r.id, "apellidos", e.target.value.trim()); }} placeholder="Apellidos" style={{ ...inEdit, minWidth: "120px" }} />
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <p style={{ color: "#25190f" }}>{r.telefono}</p>
-                                  <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{r.email}</p>
+                                <td className="px-4 py-3 align-top whitespace-nowrap">
+                                  <input type="date" defaultValue={r.fecha_nacimiento ? r.fecha_nacimiento.substring(0, 10) : ""} onBlur={e => { const v = e.target.value; if (v !== (r.fecha_nacimiento ? r.fecha_nacimiento.substring(0, 10) : "")) updateRenov(r.id, "fecha_nacimiento", v); }} style={{ ...inEdit, width: "140px" }} />
+                                  <span className="block text-[11px] mt-1 font-semibold" style={{ color: "#7d2b13" }}>{calcEdad(r.fecha_nacimiento) != null ? `${calcEdad(r.fecha_nacimiento)} años` : "edad —"}</span>
                                 </td>
-                                <td className="px-4 py-3 max-w-[200px]">
-                                  {r.nota ? (
-                                    <span className="flex items-start gap-1.5">
-                                      <Icon name="info" className="text-xs mt-0.5 flex-shrink-0" style={{ color: "#e65100" }} />
-                                      <span className="text-xs leading-snug" style={{ color: "#56423d" }}>{r.nota}</span>
-                                    </span>
-                                  ) : <span className="text-xs" style={{ color: "#89726c" }}>—</span>}
+                                <td className="px-4 py-3 align-top whitespace-nowrap">
+                                  <select value={r.grupo} onChange={e => updateRenov(r.id, "grupo", e.target.value)} className="text-xs font-semibold rounded-full px-2.5 py-1.5 cursor-pointer outline-none border-0 appearance-none" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>
+                                    {GRUPOS.map(g => <option key={g} value={g}>{g}</option>)}
+                                  </select>
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  <input defaultValue={r.telefono ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.telefono ?? "")) updateRenov(r.id, "telefono", e.target.value.trim()); }} placeholder="Teléfono" style={{ ...inEdit, marginBottom: "4px", minWidth: "130px" }} />
+                                  <input defaultValue={r.email ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.email ?? "")) updateRenov(r.id, "email", e.target.value.trim()); }} placeholder="Email" style={{ ...inEdit, minWidth: "160px" }} />
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  <input defaultValue={r.nota ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.nota ?? "")) updateRenov(r.id, "nota", e.target.value.trim()); }} placeholder="Nota familia…" style={{ ...inEdit, minWidth: "170px" }} />
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   {(() => { const c = ecInfo(r.estado_contacto); return (
@@ -3203,13 +3279,25 @@ export default function AdminDashboard() {
                                   />
                                 </td>
                                 <td className="px-4 py-3 text-xs whitespace-nowrap align-top" style={{ color: "#89726c" }}>{formatData(r.updated_at)}</td>
+                                <td className="px-4 py-3 text-right whitespace-nowrap align-top">
+                                  {renovDeleteId === r.id ? (
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <button onClick={() => deleteRenov(r.id)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#b3261e", color: "#fff" }}>Sí</button>
+                                      <button onClick={() => setRenovDeleteId(null)} className="px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: "#f0ddd5", color: "#56423d" }}>No</button>
+                                    </span>
+                                  ) : (
+                                    <button onClick={() => setRenovDeleteId(r.id)} className="p-1.5 rounded-lg hover:bg-[#fbe9e7] transition-colors" aria-label="Borrar alumna" title="Borrar alumna">
+                                      <Icon name="delete" className="text-base" style={{ color: "#b3261e" }} />
+                                    </button>
+                                  )}
+                                </td>
                               </tr>
                             );
                           })}
                         </tbody>
                         <tfoot>
                           <tr style={{ backgroundColor: "#fff0eb", borderTop: "2px solid #dcc1b9" }}>
-                            <td colSpan={10} className="px-4 py-3 text-sm font-bold" style={{ color: "#7d2b13" }}>
+                            <td colSpan={11} className="px-4 py-3 text-sm font-bold" style={{ color: "#7d2b13" }}>
                               Total: {filtered.length} {filtered.length === 1 ? "alumna" : "alumnas"}
                               {renovFiltroGrupo ? ` · ${renovFiltroGrupo}` : ""}
                               {renovFiltroEstado ? ` · ${EC_OPT.find(o => o.value === renovFiltroEstado)?.label ?? ""}` : ""}
