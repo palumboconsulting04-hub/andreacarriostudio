@@ -3207,18 +3207,19 @@ export default function AdminDashboard() {
                             );
                           })}
                         </tbody>
+                        <tfoot>
+                          <tr style={{ backgroundColor: "#fff0eb", borderTop: "2px solid #dcc1b9" }}>
+                            <td colSpan={10} className="px-4 py-3 text-sm font-bold" style={{ color: "#7d2b13" }}>
+                              Total: {filtered.length} {filtered.length === 1 ? "alumna" : "alumnas"}
+                              {renovFiltroGrupo ? ` · ${renovFiltroGrupo}` : ""}
+                              {renovFiltroEstado ? ` · ${EC_OPT.find(o => o.value === renovFiltroEstado)?.label ?? ""}` : ""}
+                            </td>
+                          </tr>
+                        </tfoot>
                       </table>
                     </div>
                   )}
                 </div>
-
-                {!renovLoading && filtered.length > 0 && (
-                  <p className="text-sm font-semibold text-right" style={{ color: "#7d2b13" }}>
-                    {filtered.length} {filtered.length === 1 ? "alumna" : "alumnas"}
-                    {renovFiltroGrupo ? ` en ${renovFiltroGrupo}` : ""}
-                    {renovFiltroEstado ? ` · ${(EC_OPT.find(o => o.value === renovFiltroEstado)?.label ?? "")}` : ""}
-                  </p>
-                )}
               </section>
             );
           })()}
