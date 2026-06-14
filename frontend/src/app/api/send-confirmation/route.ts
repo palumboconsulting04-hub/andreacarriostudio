@@ -99,7 +99,7 @@ function buildHtml(data: InscripcionEmailData): string {
                         <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:6px;">${totalMensual}€/mes</td>
                       </tr>
                       <tr>
-                        <td style="font-size:13px;color:#56423d;padding-bottom:10px;">Matrícula <span style="font-size:11px;color:#89726c;">(pago único)</span></td>
+                        <td style="font-size:13px;color:#56423d;padding-bottom:10px;">Matrícula <span style="font-size:11px;color:#89726c;">(pago anual)</span></td>
                         <td style="font-size:13px;color:#25190f;font-weight:600;text-align:right;padding-bottom:10px;">${matricula}€</td>
                       </tr>
                       ` : ""}
