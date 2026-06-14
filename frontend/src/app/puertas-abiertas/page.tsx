@@ -159,6 +159,14 @@ export default function PuertasAbiertas() {
     setEnviando(true);
     setErrorMsg("");
     try {
+      // event_id compartido entre el Pixel (navegador) y la Conversions API
+      // (servidor) para que Meta deduplique y no cuente la conversión dos veces.
+      const eventId = (typeof crypto !== "undefined" && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const getCookie = (n: string) =>
+        document.cookie.split("; ").find(c => c.startsWith(n + "="))?.split("=")[1] || null;
+
       const res = await fetch("/api/puertas-abiertas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -178,12 +186,15 @@ export default function PuertasAbiertas() {
           utm_content: atrib.current.utm_content,
           utm_term: atrib.current.utm_term,
           fbclid: atrib.current.fbclid,
+          eventId,
+          fbc: getCookie("_fbc"),
+          fbp: getCookie("_fbp"),
         }),
       });
       if (!res.ok) throw new Error();
       setEnviado(true);
-      // Conversión: la madre ha reservado su plaza con éxito.
-      window.fbq?.("track", "Lead");
+      // Conversión: la madre ha reservado su plaza con éxito. Mismo eventID que CAPI.
+      window.fbq?.("track", "Lead", {}, { eventID: eventId });
     } catch {
       setErrorMsg("Ha habido un problema al enviar. Inténtalo de nuevo.");
     } finally {
