@@ -8,6 +8,7 @@ import Paso3Horarios from "@/components/inscripcion/Paso3Horarios";
 import Paso4Pago from "@/components/inscripcion/Paso4Pago";
 import Paso4CrossSell from "@/components/inscripcion/Paso4CrossSell";
 import Paso5Gracias from "@/components/inscripcion/Paso5Gracias";
+import FooterLegal from "@/components/FooterLegal";
 import type { InscripcionState, BozzaIscrizione, Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId } from "@/components/inscripcion/types";
 import { fetchDiscipline, fetchPiani, fetchOrari } from "@/lib/queries";
 
@@ -224,22 +225,7 @@ export default function Home() {
           >
             Andrea Carrió Studio — Alfahuir, Valencia
           </p>
-          <div className="flex justify-center gap-6">
-            {["Privacidad", "Términos", "Contacto"].map((link) => (
-              <a
-                key={link}
-                href="#"
-                className="text-xs tracking-widest uppercase transition-colors hover:opacity-80"
-                style={{
-                  color: "#89726c",
-                  fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif",
-                  letterSpacing: "0.1em",
-                }}
-              >
-                {link}
-              </a>
-            ))}
-          </div>
+          <FooterLegal />
         </div>
       </footer>
     </div>
