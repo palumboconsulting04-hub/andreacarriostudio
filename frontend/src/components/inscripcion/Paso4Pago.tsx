@@ -625,7 +625,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
                       value={couponInput}
                       onChange={(e) => { setCouponInput(e.target.value); setCouponError(null); }}
                       placeholder="Código de descuento"
-                      className="flex-1 rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                      className="flex-1 min-w-0 rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
                       style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", color: "#25190f", fontSize: "16px", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "#7d2b13")}
                       onBlur={(e) => (e.currentTarget.style.borderColor = "#dcc1b9")}
@@ -634,7 +634,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
                       type="button"
                       onClick={handleAplicarCoupon}
                       disabled={couponInput.trim() === ""}
-                      className="px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide uppercase transition-colors"
+                      className="shrink-0 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-widest uppercase transition-colors"
                       style={{
                         backgroundColor: couponInput.trim() === "" ? "#dcc1b9" : "#7d2b13",
                         color: "#ffffff",
