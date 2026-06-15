@@ -18,7 +18,7 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("profilo_marketing")
     .select(
-      "id, created_at, come_ci_hai_conosciuto, motivazione, fascia_eta, esperienza_previa, eta_figlia, esperienza_previa_figlia, obiettivo_figlia, iscrizioni(nome, cognome, nome_alumna, cognome_alumna, disciplina_id, discipline(nome))",
+      "id, created_at, come_ci_hai_conosciuto, red_social, motivazione, fascia_eta, esperienza_previa, eta_figlia, esperienza_previa_figlia, obiettivo_figlia, iscrizioni(nome, cognome, nome_alumna, cognome_alumna, disciplina_id, discipline(nome))",
     )
     .order("created_at", { ascending: false });
   if (error) {

@@ -14,6 +14,12 @@ const COMO_OPTIONS = [
   { value: "conosco_andrea", label: "Ya conozco a Andrea" },
 ];
 
+const RED_SOCIAL_OPTIONS = [
+  { value: "instagram", label: "Instagram" },
+  { value: "facebook", label: "Facebook" },
+  { value: "ambas", label: "Las dos por igual" },
+];
+
 const MOTIVACION_OPTIONS = [
   { value: "nueva_rutina", label: "Quiero crear una nueva rutina" },
   { value: "vuelta_deporte", label: "Vuelvo al deporte" },
@@ -58,6 +64,7 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Pro
   const esNinas = DISCIPLINAS_NINAS.has(disciplinaId);
 
   const [como, setComo] = useState("");
+  const [redSocial, setRedSocial] = useState("");
   const [motivacion, setMotivacion] = useState("");
   const [edad, setEdad] = useState("");
   const [expPrevia, setExpPrevia] = useState<boolean | null>(null);
@@ -65,23 +72,23 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Pro
   const [expFiglia, setExpFiglia] = useState<boolean | null>(null);
   const [objetivo, setObjetivo] = useState("");
 
-  const formValido = esNinas
-    ? como !== "" && edadFiglia !== "" && expFiglia !== null && objetivo !== ""
-    : como !== "" && motivacion !== "" && edad !== "" && expPrevia !== null;
-
+  // Todas las preguntas son opcionales: solo se guarda lo que la persona haya
+  // respondido. El cuestionario completo ya es opcional, así que el botón
+  // "Enviar" está siempre activo.
   const handleSubmit = async () => {
-    if (!formValido) return;
     setEnviando(true);
     try {
-      const profilo: ProfiloMarketing = { iscrizione_id: iscrizioneId, come_ci_hai_conosciuto: como };
+      const profilo: ProfiloMarketing = { iscrizione_id: iscrizioneId };
+      if (como) profilo.come_ci_hai_conosciuto = como;
+      if (redSocial) profilo.red_social = redSocial;
       if (esNinas) {
-        profilo.eta_figlia = edadFiglia;
-        profilo.esperienza_previa_figlia = expFiglia!;
-        profilo.obiettivo_figlia = objetivo;
+        if (edadFiglia) profilo.eta_figlia = edadFiglia;
+        if (expFiglia !== null) profilo.esperienza_previa_figlia = expFiglia;
+        if (objetivo) profilo.obiettivo_figlia = objetivo;
       } else {
-        profilo.motivazione = motivacion;
-        profilo.fascia_eta = edad;
-        profilo.esperienza_previa = expPrevia!;
+        if (motivacion) profilo.motivazione = motivacion;
+        if (edad) profilo.fascia_eta = edad;
+        if (expPrevia !== null) profilo.esperienza_previa = expPrevia;
       }
       await submitProfiloMarketing(profilo);
       setStep("done");
@@ -182,6 +189,18 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Pro
             </div>
           </div>
 
+          {/* Red social favorita */}
+          <div>
+            {sectionTitle("¿Qué red social usas más?")}
+            <div className="flex flex-wrap gap-2">
+              {RED_SOCIAL_OPTIONS.map((o) => (
+                <button key={o.value} onClick={() => setRedSocial(o.value)} style={chipStyle(redSocial === o.value)}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {esNinas ? (
             <>
               {/* Edad de la hija */}
@@ -256,14 +275,14 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Pro
 
           <button
             onClick={handleSubmit}
-            disabled={!formValido || enviando}
+            disabled={enviando}
             className="w-full py-3 rounded-2xl text-sm font-semibold tracking-widest uppercase transition-opacity"
             style={{
-              backgroundColor: formValido ? "#7d2b13" : "#dcc1b9",
+              backgroundColor: "#7d2b13",
               color: "#fff8f5",
               fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif",
               letterSpacing: "0.1em",
-              cursor: formValido ? "pointer" : "not-allowed",
+              cursor: enviando ? "not-allowed" : "pointer",
               opacity: enviando ? 0.7 : 1,
             }}
           >

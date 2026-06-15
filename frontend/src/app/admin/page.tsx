@@ -570,6 +570,7 @@ export default function AdminDashboard() {
     id: string;
     created_at: string;
     come_ci_hai_conosciuto: string;
+    red_social: string | null;
     motivazione: string | null;
     fascia_eta: string | null;
     esperienza_previa: boolean | null;
@@ -3411,6 +3412,11 @@ export default function AdminDashboard() {
               "3-4": "3 – 4 años", "5-6": "5 – 6 años", "7-9": "7 – 9 años", "10-12": "10 – 12 años",
               "18-30": "18 – 30", "31-45": "31 – 45", "46-60": "46 – 60", "60+": "Más de 60",
             };
+            const RED_LABEL: Record<string, string> = {
+              instagram: "Instagram",
+              facebook: "Facebook",
+              ambas: "Las dos por igual",
+            };
             const lbl = (m: Record<string, string>, v: string | null) => (v ? (m[v] ?? v) : "—");
             // Resumen de canal de captación (lo más valioso para marketing).
             const canal: Record<string, number> = {};
@@ -3420,6 +3426,14 @@ export default function AdminDashboard() {
             }
             const canalArr = Object.entries(canal).sort((a, b) => b[1] - a[1]);
             const maxCanal = Math.max(1, ...canalArr.map(([, v]) => v));
+            // Resumen de red social (dónde conviene anunciarse). Solo cuenta quien respondió.
+            const red: Record<string, number> = {};
+            for (const r of marketingData) {
+              if (!r.red_social) continue;
+              red[r.red_social] = (red[r.red_social] ?? 0) + 1;
+            }
+            const redArr = Object.entries(red).sort((a, b) => b[1] - a[1]);
+            const maxRed = Math.max(1, ...redArr.map(([, v]) => v));
             return (
               <section className="space-y-5">
                 <div>
@@ -3429,21 +3443,44 @@ export default function AdminDashboard() {
                   </p>
                 </div>
 
-                {/* Resumen: cómo nos conocen */}
+                {/* Resúmenes: cómo nos conocen + dónde anunciarse */}
                 {marketingData.length > 0 && (
-                  <div className="rounded-2xl p-5 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
-                    <p className="text-sm font-semibold mb-4" style={{ color: "#7d2b13" }}>¿Cómo nos han conocido?</p>
-                    <div className="space-y-3">
-                      {canalArr.map(([k, n]) => (
-                        <div key={k} className="flex items-center gap-3">
-                          <span className="text-xs w-44 shrink-0 text-right" style={{ color: "#56423d" }}>{COMO_LABEL[k] ?? "Sin dato"}</span>
-                          <div className="flex-1 h-6 rounded-full overflow-hidden" style={{ backgroundColor: "#f0ddd5" }}>
-                            <div className="h-full rounded-full flex items-center justify-end px-2" style={{ width: `${Math.max(8, (n / maxCanal) * 100)}%`, backgroundColor: "#7d2b13" }}>
-                              <span className="text-[11px] font-bold text-white">{n}</span>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="rounded-2xl p-5 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                      <p className="text-sm font-semibold mb-4" style={{ color: "#7d2b13" }}>¿Cómo nos han conocido?</p>
+                      <div className="space-y-3">
+                        {canalArr.map(([k, n]) => (
+                          <div key={k} className="flex items-center gap-3">
+                            <span className="text-xs w-44 shrink-0 text-right" style={{ color: "#56423d" }}>{COMO_LABEL[k] ?? "Sin dato"}</span>
+                            <div className="flex-1 h-6 rounded-full overflow-hidden" style={{ backgroundColor: "#f0ddd5" }}>
+                              <div className="h-full rounded-full flex items-center justify-end px-2" style={{ width: `${Math.max(8, (n / maxCanal) * 100)}%`, backgroundColor: "#7d2b13" }}>
+                                <span className="text-[11px] font-bold text-white">{n}</span>
+                              </div>
                             </div>
                           </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl p-5 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                      <p className="text-sm font-semibold mb-1" style={{ color: "#7d2b13" }}>¿Dónde anunciarse?</p>
+                      <p className="text-xs mb-4" style={{ color: "#89726c" }}>Red social que más usan tus clientas</p>
+                      {redArr.length === 0 ? (
+                        <p className="text-sm text-center py-4" style={{ color: "#89726c" }}>Nadie ha respondido aún esta pregunta.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {redArr.map(([k, n]) => (
+                            <div key={k} className="flex items-center gap-3">
+                              <span className="text-xs w-44 shrink-0 text-right" style={{ color: "#56423d" }}>{RED_LABEL[k] ?? k}</span>
+                              <div className="flex-1 h-6 rounded-full overflow-hidden" style={{ backgroundColor: "#f0ddd5" }}>
+                                <div className="h-full rounded-full flex items-center justify-end px-2" style={{ width: `${Math.max(8, (n / maxRed) * 100)}%`, backgroundColor: "#7d2b13" }}>
+                                  <span className="text-[11px] font-bold text-white">{n}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 )}
@@ -3464,7 +3501,7 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Inscrita", "Disciplina", "Cómo nos conoció", "Perfil", "Fecha"].map((h, hi) => (
+                            {["Inscrita", "Disciplina", "Cómo nos conoció", "Red social", "Perfil", "Fecha"].map((h, hi) => (
                               <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
@@ -3491,6 +3528,7 @@ export default function AdminDashboard() {
                                 </td>
                                 <td className="px-4 py-3 align-top" style={{ color: "#56423d" }}>{isc?.discipline?.nome ?? "—"}</td>
                                 <td className="px-4 py-3 align-top" style={{ color: "#56423d" }}>{lbl(COMO_LABEL, r.come_ci_hai_conosciuto)}</td>
+                                <td className="px-4 py-3 align-top" style={{ color: "#56423d" }}>{lbl(RED_LABEL, r.red_social)}</td>
                                 <td className="px-4 py-3 align-top" style={{ color: "#56423d" }}>
                                   {perfil.map((p, pi) => <span key={pi} className="block text-xs leading-relaxed">{p}</span>)}
                                 </td>

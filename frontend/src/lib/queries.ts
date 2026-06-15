@@ -104,7 +104,8 @@ export async function fetchOrari(disciplinaId: string): Promise<HorarioSlot[]> {
 
 export interface ProfiloMarketing {
   iscrizione_id: string;
-  come_ci_hai_conosciuto: string;
+  come_ci_hai_conosciuto?: string;
+  red_social?: string;
   // Adulti
   motivazione?: string;
   fascia_eta?: string;
