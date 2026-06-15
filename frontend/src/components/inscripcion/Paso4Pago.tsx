@@ -634,7 +634,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
                       type="button"
                       onClick={handleAplicarCoupon}
                       disabled={couponInput.trim() === ""}
-                      className="px-4 py-2.5 rounded-xl text-xs font-semibold tracking-widest uppercase transition-colors"
+                      className="px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide uppercase transition-colors"
                       style={{
                         backgroundColor: couponInput.trim() === "" ? "#dcc1b9" : "#7d2b13",
                         color: "#ffffff",
