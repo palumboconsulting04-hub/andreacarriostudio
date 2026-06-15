@@ -565,6 +565,29 @@ export default function AdminDashboard() {
   const [renovDeleteId, setRenovDeleteId] = useState<string | null>(null);
   const [renovEditId, setRenovEditId] = useState<string | null>(null);
 
+  // ── Marketing (cuestionario post-compra) ──
+  type MarketingRow = {
+    id: string;
+    created_at: string;
+    come_ci_hai_conosciuto: string;
+    motivazione: string | null;
+    fascia_eta: string | null;
+    esperienza_previa: boolean | null;
+    eta_figlia: string | null;
+    esperienza_previa_figlia: boolean | null;
+    obiettivo_figlia: string | null;
+    iscrizioni: {
+      nome: string;
+      cognome: string;
+      nome_alumna: string | null;
+      cognome_alumna: string | null;
+      disciplina_id: string | null;
+      discipline: { nome: string } | null;
+    } | null;
+  };
+  const [marketingData, setMarketingData] = useState<MarketingRow[]>([]);
+  const [marketingLoading, setMarketingLoading] = useState(false);
+
   type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas";
   const updateRenov = async (id: string, campo: RenovCampo, value: string) => {
     const ahora = new Date().toISOString();
@@ -739,6 +762,16 @@ export default function AdminDashboard() {
       .then(({ data }) => setRenovData((data ?? []) as RenovacionRow[]))
       .catch(() => setRenovData([]))
       .finally(() => setRenovLoading(false));
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeSection !== "Marketing") return;
+    setMarketingLoading(true);
+    fetch("/api/admin/marketing")
+      .then(r => r.json())
+      .then(({ data }) => setMarketingData((data ?? []) as MarketingRow[]))
+      .catch(() => setMarketingData([]))
+      .finally(() => setMarketingLoading(false));
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchVentas() {
@@ -1385,6 +1418,7 @@ export default function AdminDashboard() {
     { icon: "group", label: "Usuarios" },
     { icon: "celebration", label: "Puertas Abiertas" },
     { icon: "autorenew", label: "Renovaciones" },
+    { icon: "insights", label: "Marketing" },
     { icon: "receipt_long", label: "Costes" },
     { icon: "trending_up", label: "Ventas" },
     { icon: "account_balance", label: "Finanzas" },
@@ -3343,6 +3377,130 @@ export default function AdminDashboard() {
                             </td>
                           </tr>
                         </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* ── Marketing (cuestionario post-compra) ── */}
+          {activeSection === "Marketing" && (() => {
+            const COMO_LABEL: Record<string, string> = {
+              social: "Anuncio en redes sociales",
+              google: "Google",
+              flyer: "Flyer",
+              boca_a_boca: "Boca a boca",
+              conosco_andrea: "Ya conoce a Andrea",
+            };
+            const MOTIV_LABEL: Record<string, string> = {
+              nueva_rutina: "Crear una nueva rutina",
+              vuelta_deporte: "Vuelve al deporte",
+              recomendacion_medica: "Recomendación médica",
+              recomendacion_amiga: "Se lo recomendaron",
+              siempre_quise: "Siempre quiso probarlo",
+            };
+            const OBJ_LABEL: Record<string, string> = {
+              disciplina: "Disciplina y constancia",
+              expresion: "Expresión artística",
+              actividad_fisica: "Actividad física saludable",
+              socializar: "Socializar y divertirse",
+            };
+            const EDAD_LABEL: Record<string, string> = {
+              "3-4": "3 – 4 años", "5-6": "5 – 6 años", "7-9": "7 – 9 años", "10-12": "10 – 12 años",
+              "18-30": "18 – 30", "31-45": "31 – 45", "46-60": "46 – 60", "60+": "Más de 60",
+            };
+            const lbl = (m: Record<string, string>, v: string | null) => (v ? (m[v] ?? v) : "—");
+            // Resumen de canal de captación (lo más valioso para marketing).
+            const canal: Record<string, number> = {};
+            for (const r of marketingData) {
+              const k = r.come_ci_hai_conosciuto || "sin_dato";
+              canal[k] = (canal[k] ?? 0) + 1;
+            }
+            const canalArr = Object.entries(canal).sort((a, b) => b[1] - a[1]);
+            const maxCanal = Math.max(1, ...canalArr.map(([, v]) => v));
+            return (
+              <section className="space-y-5">
+                <div>
+                  <h3 className="font-headline-md text-headline-md text-primary">Marketing</h3>
+                  <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
+                    {marketingData.length} respuesta{marketingData.length === 1 ? "" : "s"} del cuestionario tras la compra
+                  </p>
+                </div>
+
+                {/* Resumen: cómo nos conocen */}
+                {marketingData.length > 0 && (
+                  <div className="rounded-2xl p-5 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                    <p className="text-sm font-semibold mb-4" style={{ color: "#7d2b13" }}>¿Cómo nos han conocido?</p>
+                    <div className="space-y-3">
+                      {canalArr.map(([k, n]) => (
+                        <div key={k} className="flex items-center gap-3">
+                          <span className="text-xs w-44 shrink-0 text-right" style={{ color: "#56423d" }}>{COMO_LABEL[k] ?? "Sin dato"}</span>
+                          <div className="flex-1 h-6 rounded-full overflow-hidden" style={{ backgroundColor: "#f0ddd5" }}>
+                            <div className="h-full rounded-full flex items-center justify-end px-2" style={{ width: `${Math.max(8, (n / maxCanal) * 100)}%`, backgroundColor: "#7d2b13" }}>
+                              <span className="text-[11px] font-bold text-white">{n}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tabla de respuestas */}
+                <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                  {marketingLoading ? (
+                    <div className="p-8 text-center text-sm" style={{ color: "#89726c" }}>Cargando...</div>
+                  ) : marketingData.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Icon name="insights" className="text-4xl mb-3" style={{ color: "#dcc1b9" }} />
+                      <p className="text-sm" style={{ color: "#89726c" }}>
+                        Todavía no hay respuestas. El cuestionario es opcional y aparece tras el pago; aquí verás las respuestas en cuanto alguien lo rellene.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr style={{ backgroundColor: "#fff0eb" }}>
+                            {["Inscrita", "Disciplina", "Cómo nos conoció", "Perfil", "Fecha"].map((h, hi) => (
+                              <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {marketingData.map((r, i) => {
+                            const isc = r.iscrizioni;
+                            const esNina = !!(isc?.nome_alumna && isc.nome_alumna.trim());
+                            const quien = esNina
+                              ? `${isc!.nome_alumna} ${isc!.cognome_alumna ?? ""}`.trim()
+                              : isc ? `${isc.nome} ${isc.cognome}`.trim() : "—";
+                            const perfil = r.eta_figlia
+                              ? [`Hija: ${lbl(EDAD_LABEL, r.eta_figlia)}`,
+                                 `Danza antes: ${r.esperienza_previa_figlia === null ? "—" : r.esperienza_previa_figlia ? "Sí" : "No"}`,
+                                 `Objetivo: ${lbl(OBJ_LABEL, r.obiettivo_figlia)}`]
+                              : [`Motivación: ${lbl(MOTIV_LABEL, r.motivazione)}`,
+                                 `Edad: ${lbl(EDAD_LABEL, r.fascia_eta)}`,
+                                 `Experiencia: ${r.esperienza_previa === null ? "—" : r.esperienza_previa ? "Sí" : "No"}`];
+                            return (
+                              <tr key={r.id} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                                <td className="px-4 py-3 font-medium align-top" style={{ color: "#25190f" }}>
+                                  {quien}
+                                  {esNina && <span className="block text-[11px] font-normal" style={{ color: "#89726c" }}>Niña</span>}
+                                </td>
+                                <td className="px-4 py-3 align-top" style={{ color: "#56423d" }}>{isc?.discipline?.nome ?? "—"}</td>
+                                <td className="px-4 py-3 align-top" style={{ color: "#56423d" }}>{lbl(COMO_LABEL, r.come_ci_hai_conosciuto)}</td>
+                                <td className="px-4 py-3 align-top" style={{ color: "#56423d" }}>
+                                  {perfil.map((p, pi) => <span key={pi} className="block text-xs leading-relaxed">{p}</span>)}
+                                </td>
+                                <td className="px-4 py-3 align-top whitespace-nowrap" style={{ color: "#89726c" }}>
+                                  {new Date(r.created_at).toLocaleDateString("es-ES")}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
                       </table>
                     </div>
                   )}
