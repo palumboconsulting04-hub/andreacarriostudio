@@ -120,6 +120,22 @@ export default function PuertasAbiertas() {
   const scrollToForm = () =>
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
+  // ── Lead de botón (FASE temporal de volumen para Meta) ──
+  // Dispara un Lead al pulsar cualquiera de los 3 botones de reserva, etiquetado
+  // con content_name para poder distinguirlo del Lead real (envío del formulario)
+  // mediante una Conversión personalizada en Meta. Cada botón dispara como máximo
+  // una vez por visita (evita inflar con doble-clics). Sin CAPI: solo navegador.
+  // PARA QUITAR cuando haya estabilidad algorítmica: borrar este bloque y volver a
+  // poner onClick={scrollToForm} en los 3 botones.
+  const botonLeadFired = useRef<Set<string>>(new Set());
+  const handleReservaClick = (origen: string) => {
+    if (!botonLeadFired.current.has(origen)) {
+      botonLeadFired.current.add(origen);
+      window.fbq?.("track", "Lead", { content_name: `Click reserva: ${origen}` });
+    }
+    scrollToForm();
+  };
+
   // ── Atribución de origen ──
   const atrib = useRef<{
     origen: string;
@@ -343,7 +359,7 @@ export default function PuertasAbiertas() {
           </ul>
 
           <button
-            onClick={scrollToForm}
+            onClick={() => handleReservaClick("hero")}
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.1em" }}
           >
@@ -391,7 +407,7 @@ export default function PuertasAbiertas() {
           </ul>
 
           <button
-            onClick={scrollToForm}
+            onClick={() => handleReservaClick("value")}
             className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.1em" }}
           >
@@ -606,7 +622,7 @@ export default function PuertasAbiertas() {
             Solo 10 plazas por grupo para que cada niña reciba atención personalizada. Reserva antes de que se complete su grupo.
           </p>
           <button
-            onClick={scrollToForm}
+            onClick={() => handleReservaClick("cta_final")}
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.cream, color: C.burgundy, fontFamily: fSans, letterSpacing: "0.1em" }}
           >
