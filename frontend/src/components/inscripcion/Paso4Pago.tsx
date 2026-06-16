@@ -71,6 +71,33 @@ function ModalPrivacidad({ onClose, onAceptar }: { onClose: () => void; onAcepta
   );
 }
 
+// Aviso cuando se detecta una posible inscripción duplicada (mismo email + misma
+// clase en las últimas 48h). No bloquea: la madre decide si continúa.
+function ModalDuplicado({ disciplinas, onCancelar, onContinuar }: { disciplinas: string[]; onCancelar: () => void; onContinuar: () => void }) {
+  const clase = disciplinas.length > 0 ? disciplinas.join(", ") : "esta clase";
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(37,25,15,0.6)" }}>
+      <div className="relative w-full max-w-md rounded-3xl p-8" style={{ backgroundColor: "#fff8f5", boxShadow: "0 8px 40px rgba(37,25,15,0.2)" }}>
+        <h2 className="text-2xl mb-4" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>
+          Un momento 🤍
+        </h2>
+        <p className="text-sm leading-relaxed mb-2" style={{ color: "#56423d" }}>
+          Me consta que ya hiciste esta inscripción para <strong>{clase}</strong> hace unos minutos y el pago se completó correctamente.
+        </p>
+        <p className="text-sm leading-relaxed mb-6" style={{ color: "#56423d" }}>
+          Si tu primer pago salió bien, <strong>no hace falta pagar otra vez</strong>. Si tienes dudas, escríbeme y lo reviso enseguida.
+        </p>
+        <button onClick={onCancelar} className="w-full py-3 rounded-full text-sm font-semibold tracking-widest uppercase mb-2" style={{ backgroundColor: "#7d2b13", color: "#ffffff" }}>
+          No pagar otra vez
+        </button>
+        <button onClick={onContinuar} className="w-full py-2 text-xs tracking-widest uppercase hover:opacity-70" style={{ color: "#89726c" }}>
+          Continuar igualmente
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // --- Stripe payment fase (inside Elements provider) ---
 
 interface SavedPagoData {
@@ -274,6 +301,7 @@ function StripePaymentFase({
 export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmado, existingContattoId }: Props) {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicadoAviso, setDuplicadoAviso] = useState<string[] | null>(null);
   const [rgpdAceptado, setRgpdAceptado] = useState(false);
   const [autorizaCobro, setAutorizaCobro] = useState(false);
   const [modalPrivacidad, setModalPrivacidad] = useState(false);
@@ -400,14 +428,31 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
     return { cId, firstId };
   };
 
-  const handleConfirmar = async () => {
+  const handleConfirmar = async (forzar = false) => {
     if (!puedeConfirmar || enviando) return;
     setEnviando(true);
     setError(null);
 
     try {
       if (estado.metodoPago === "tarjeta") {
-        // 1. Cobrar la matrícula hoy y guardar la tarjeta (el servidor re-valida el cupón).
+        // 0. Guardia anti-duplicado: si ya pagó esta misma clase hace un rato,
+        //    avisamos antes de cobrar otra vez (salvo que ya haya confirmado seguir).
+        if (!forzar) {
+          const items = bozze.map(b => ({ disciplina_id: b.disciplinaId, piano_id: b.planId }));
+          const dupRes = await fetch("/api/check-duplicado", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: estado.email, items }),
+          });
+          const dup = await dupRes.json().catch(() => ({ duplicate: false }));
+          if (dup.duplicate) {
+            setDuplicadoAviso(dup.disciplinas ?? []);
+            setEnviando(false);
+            return;
+          }
+        }
+
+        // 1. Cobrar la matrícula hoy y guardar la tarjeta.
         //    Al confirmarse el pago, el webhook crea la suscripción del bono (1 sept).
         const res = await fetch("/api/create-subscription", {
           method: "POST",
@@ -664,6 +709,14 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
 
             {modalPrivacidad && <ModalPrivacidad onClose={() => setModalPrivacidad(false)} onAceptar={() => setRgpdAceptado(true)} />}
 
+            {duplicadoAviso && (
+              <ModalDuplicado
+                disciplinas={duplicadoAviso}
+                onCancelar={() => setDuplicadoAviso(null)}
+                onContinuar={() => { setDuplicadoAviso(null); handleConfirmar(true); }}
+              />
+            )}
+
             <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
               <input type="checkbox" checked={rgpdAceptado} onChange={(e) => setRgpdAceptado(e.target.checked)} className="mt-0.5 shrink-0 accent-[#7d2b13]" />
               <span className="text-xs leading-snug" style={{ color: "#56423d" }}>
@@ -686,7 +739,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
             {error && <p className="text-xs text-red-600 text-center mb-3">{error}</p>}
 
             <button
-              onClick={handleConfirmar}
+              onClick={() => handleConfirmar()}
               disabled={!puedeConfirmar || enviando}
               className="w-full py-4 rounded-full text-sm tracking-widest uppercase font-semibold transition-colors"
               style={{
