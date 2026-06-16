@@ -10,12 +10,17 @@ import { findCoupon, applyCoupon } from "@/lib/coupons";
 // crea la suscripción mensual con la tarjeta guardada, programada para el 1 de sept.
 export async function POST(req: NextRequest) {
   try {
-    const { matriculaEur, email, nombre, description, couponCode } = (await req.json()) as {
+    const { matriculaEur, email, nombre, description, couponCode, metaEventId, metaFbc, metaFbp, purchaseValue } = (await req.json()) as {
       matriculaEur: number;
       email: string;
       nombre?: string;
       description?: string;
       couponCode?: string;
+      // Datos de Meta para enviar el Purchase por la Conversions API desde el webhook.
+      metaEventId?: string;
+      metaFbc?: string;
+      metaFbp?: string;
+      purchaseValue?: number;
     };
 
     const emailNorm = (email ?? "").toLowerCase().trim();
@@ -44,7 +49,15 @@ export async function POST(req: NextRequest) {
       // Guarda la tarjeta para poder cobrar el bono automáticamente en septiembre.
       setup_future_usage: "off_session",
       automatic_payment_methods: { enabled: true },
-      metadata: { tipo: MATRICULA_PI_TIPO },
+      metadata: {
+        tipo: MATRICULA_PI_TIPO,
+        // Para el Purchase por CAPI desde el webhook (deduplicado con el navegador).
+        meta_event_id: metaEventId || "",
+        meta_fbc: metaFbc || "",
+        meta_fbp: metaFbp || "",
+        purchase_value: purchaseValue != null ? String(purchaseValue) : "",
+        email: emailNorm,
+      },
     });
 
     return NextResponse.json({

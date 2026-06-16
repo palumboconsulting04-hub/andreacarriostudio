@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Script from "next/script";
+import { FB_PIXEL_ID, fbTrack } from "@/lib/meta";
 import StepIndicator from "@/components/inscripcion/StepIndicator";
 import Paso1Disciplina from "@/components/inscripcion/Paso1Disciplina";
 import Paso2Plan from "@/components/inscripcion/Paso2Plan";
@@ -50,6 +52,19 @@ export default function Home() {
       .then(setDisciplinas)
       .finally(() => setCargando(false));
   }, []);
+
+  // ── Meta Pixel: eventos del funnel de inscripción ──
+  const checkoutFired = useRef(false);
+  useEffect(() => {
+    fbTrack("ViewContent", { content_name: "Funnel inscripción" });
+  }, []);
+  useEffect(() => {
+    // Al llegar al paso de datos + pago: InitiateCheckout (una sola vez).
+    if (paso === 5 && !checkoutFired.current) {
+      checkoutFired.current = true;
+      fbTrack("InitiateCheckout", { content_name: "Datos y pago" });
+    }
+  }, [paso]);
 
   const update = (updates: Partial<InscripcionState>) =>
     setEstado((e) => ({ ...e, ...updates }));
@@ -113,6 +128,24 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#fff8f5", color: "#25190f" }}>
+
+      {/* ── Meta Pixel (base) — dispara PageView al cargar el funnel ── */}
+      <Script id="fb-pixel-funnel" strategy="afterInteractive">
+        {`!function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '${FB_PIXEL_ID}');
+        fbq('track', 'PageView');`}
+      </Script>
+      <noscript>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img height="1" width="1" style={{ display: "none" }} alt="" src={`https://www.facebook.com/tr?id=${FB_PIXEL_ID}&ev=PageView&noscript=1`} />
+      </noscript>
 
       {/* Mobile top bar */}
       <div className="md:hidden flex items-center px-5 py-3 border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9" }}>

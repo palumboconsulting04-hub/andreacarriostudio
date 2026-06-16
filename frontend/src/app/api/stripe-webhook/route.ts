@@ -1,7 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import type Stripe from "stripe";
 import { stripe, BONO_BILLING_ANCHOR, MATRICULA_PI_TIPO } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+
+const FB_PIXEL_ID = "2024231855152441";
+const sha256 = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
+
+function normPhone(t: string): string {
+  let d = (t || "").replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.length === 9) d = "34" + d;
+  return d;
+}
+
+// Envía el evento Purchase a la Conversions API de Meta (servidor → Meta) cuando
+// el pago de la matrícula se confirma. Comparte event_id con el Purchase del
+// navegador para que Meta NO lo cuente dos veces. No rompe nada si falla o si no
+// hay token configurado.
+async function sendCapiPurchase(pi: Stripe.PaymentIntent, telefono: string | null) {
+  const token = process.env.META_CAPI_TOKEN;
+  const eventId = pi.metadata?.meta_event_id || "";
+  if (!token || !eventId) return;
+
+  const value = parseFloat(pi.metadata?.purchase_value || "0") || 0;
+  const email = (pi.metadata?.email || "").toLowerCase().trim();
+  const fbc = pi.metadata?.meta_fbc || "";
+  const fbp = pi.metadata?.meta_fbp || "";
+
+  const user_data: Record<string, unknown> = {};
+  if (email) user_data.em = [sha256(email)];
+  if (telefono) user_data.ph = [sha256(normPhone(telefono))];
+  if (fbc) user_data.fbc = fbc;
+  if (fbp) user_data.fbp = fbp;
+
+  const payload = {
+    data: [
+      {
+        event_name: "Purchase",
+        event_time: Math.floor(Date.now() / 1000),
+        action_source: "website",
+        event_source_url: "https://andreacarriostudio.vercel.app/",
+        event_id: eventId,
+        user_data,
+        custom_data: { value, currency: "EUR" },
+      },
+    ],
+  };
+
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${FB_PIXEL_ID}/events?access_token=${token}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+    );
+    if (!res.ok) console.error("CAPI Purchase error:", await res.text());
+  } catch (e) {
+    console.error("CAPI Purchase fetch error:", e);
+  }
+}
 
 // Estados de una inscripción en el modelo de suscripción:
 //   attesa            → creada, matrícula aún no pagada
@@ -93,7 +149,7 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
   // Inscripciones de este pago.
   const { data: rows, error } = await supabaseAdmin
     .from("iscrizioni")
-    .select("id, piano_id, disciplina_id, stripe_subscription_id")
+    .select("id, piano_id, disciplina_id, stripe_subscription_id, telefono")
     .eq("stripe_payment_intent_id", pi.id);
   if (error) throw error;
   if (!rows || rows.length === 0) {
@@ -148,4 +204,7 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
       stripe_customer_id: customerId,
     })
     .eq("stripe_payment_intent_id", pi.id);
+
+  // Conversión Purchase a Meta por servidor (CAPI). No bloquea si falla.
+  await sendCapiPurchase(pi, rows[0]?.telefono ?? null);
 }

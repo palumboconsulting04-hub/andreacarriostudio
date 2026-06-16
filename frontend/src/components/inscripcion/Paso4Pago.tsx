@@ -6,6 +6,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import { findCoupon, applyCoupon, type Coupon } from "@/lib/coupons";
 import type { InscripcionState, MetodoPago, BozzaIscrizione } from "./types";
 import type { InscripcionEmailData } from "@/app/api/send-confirmation/route";
+import { fbTrack, getCookie } from "@/lib/meta";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -104,6 +105,9 @@ interface SavedPagoData {
   contattoId: string;
   iscrizioneId: string;
   emailPayload: InscripcionEmailData;
+  // Meta: para disparar el Purchase del navegador deduplicado con el del servidor.
+  metaEventId: string;
+  purchaseValue: number;
 }
 
 interface StripePaymentFaseProps {
@@ -161,6 +165,14 @@ function StripePaymentFase({
       setPagando(false);
       return;
     }
+
+    // Conversión: compra completada. Mismo eventID que el Purchase del servidor (CAPI)
+    // para que Meta no la cuente dos veces. Valor = matrícula + bono mensual.
+    fbTrack(
+      "Purchase",
+      { value: savedData.purchaseValue, currency: "EUR", content_name: "Inscripción" },
+      { eventID: savedData.metaEventId },
+    );
 
     fetch("/api/send-confirmation", {
       method: "POST",
@@ -452,8 +464,17 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
           }
         }
 
+        // Datos de Meta: event_id compartido (navegador + CAPI servidor) y valor
+        // de la compra = matrícula + bono mensual. Las cookies _fbc/_fbp ayudan a
+        // Meta a casar la conversión.
+        const metaEventId = (typeof crypto !== "undefined" && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const purchaseValue = totalMatricula + totalMensual;
+
         // 1. Cobrar la matrícula hoy y guardar la tarjeta.
-        //    Al confirmarse el pago, el webhook crea la suscripción del bono (1 sept).
+        //    Al confirmarse el pago, el webhook crea la suscripción del bono (1 sept)
+        //    y envía el Purchase a Meta por la Conversions API.
         const res = await fetch("/api/create-subscription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -463,6 +484,10 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
             nombre: `${estado.nombre} ${estado.apellido}`.trim(),
             description: `Matrícula — ${bozze.map(b => b.disciplinaNombre).join(", ")}`,
             couponCode: couponAplicado?.code,
+            metaEventId,
+            metaFbc: getCookie("_fbc"),
+            metaFbp: getCookie("_fbp"),
+            purchaseValue,
           }),
         });
         const { clientSecret: cs, paymentIntentId: piId, customerId, error: apiErr } = await res.json();
@@ -472,7 +497,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
         const { cId, firstId } = await saveToSupabase(piId, customerId);
 
         // 3. Pasar a la fase de pago (PaymentElement).
-        setSavedPagoData({ contattoId: cId, iscrizioneId: firstId, emailPayload: buildEmailPayload() });
+        setSavedPagoData({ contattoId: cId, iscrizioneId: firstId, emailPayload: buildEmailPayload(), metaEventId, purchaseValue });
         setClientSecret(cs);
         setFase("pago");
       } else {
