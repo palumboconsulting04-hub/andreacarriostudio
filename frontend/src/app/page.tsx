@@ -53,6 +53,34 @@ export default function Home() {
       .finally(() => setCargando(false));
   }, []);
 
+  // ── Embudo interno (anónimo): registra a qué paso llega cada sesión ──
+  const sessionIdRef = useRef<string>("");
+  const funnelLogged = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    let sid = sessionStorage.getItem("acs_fsid");
+    if (!sid) {
+      sid = (typeof crypto !== "undefined" && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      sessionStorage.setItem("acs_fsid", sid);
+    }
+    sessionIdRef.current = sid;
+  }, []);
+  useEffect(() => {
+    const map: Record<number, string> = {
+      1: "paso1_disciplina", 2: "paso2_plan", 3: "paso3_horarios",
+      4: "paso4_crosssell", 5: "paso5_pago", 6: "compra",
+    };
+    const step = map[paso];
+    if (!step || !sessionIdRef.current || funnelLogged.current.has(step)) return;
+    funnelLogged.current.add(step);
+    fetch("/api/funnel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionIdRef.current, step }),
+    }).catch(() => {});
+  }, [paso]);
+
   // ── Meta Pixel: eventos del funnel de inscripción ──
   const checkoutFired = useRef(false);
   useEffect(() => {

@@ -589,6 +589,11 @@ export default function AdminDashboard() {
   const [marketingData, setMarketingData] = useState<MarketingRow[]>([]);
   const [marketingLoading, setMarketingLoading] = useState(false);
 
+  // ── Embudo de inscripción (anónimo) ──
+  type FunnelStep = { step: string; label: string; count: number };
+  const [funnelData, setFunnelData] = useState<FunnelStep[]>([]);
+  const [funnelLoading, setFunnelLoading] = useState(false);
+
   type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas";
   const updateRenov = async (id: string, campo: RenovCampo, value: string) => {
     const ahora = new Date().toISOString();
@@ -773,6 +778,16 @@ export default function AdminDashboard() {
       .then(({ data }) => setMarketingData((data ?? []) as MarketingRow[]))
       .catch(() => setMarketingData([]))
       .finally(() => setMarketingLoading(false));
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeSection !== "Embudo") return;
+    setFunnelLoading(true);
+    fetch("/api/admin/funnel")
+      .then(r => r.json())
+      .then(({ data }) => setFunnelData((data ?? []) as FunnelStep[]))
+      .catch(() => setFunnelData([]))
+      .finally(() => setFunnelLoading(false));
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchVentas() {
@@ -1420,6 +1435,7 @@ export default function AdminDashboard() {
     { icon: "celebration", label: "Puertas Abiertas" },
     { icon: "autorenew", label: "Renovaciones" },
     { icon: "insights", label: "Marketing" },
+    { icon: "filter_alt", label: "Embudo" },
     { icon: "receipt_long", label: "Costes" },
     { icon: "trending_up", label: "Ventas" },
     { icon: "account_balance", label: "Finanzas" },
@@ -3540,6 +3556,62 @@ export default function AdminDashboard() {
                           })}
                         </tbody>
                       </table>
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* ── Embudo de inscripción (anónimo) ── */}
+          {activeSection === "Embudo" && (() => {
+            const top = funnelData[0]?.count ?? 0;
+            const hayDatos = funnelData.some(s => s.count > 0);
+            return (
+              <section className="space-y-5">
+                <div>
+                  <h3 className="font-headline-md text-headline-md text-primary">Embudo de inscripción</h3>
+                  <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
+                    Cuánta gente pasa por cada paso (últimos 30 días). Anónimo: cuántos, no quiénes.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl p-5 sm:p-6 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                  {funnelLoading ? (
+                    <div className="p-6 text-center text-sm" style={{ color: "#89726c" }}>Cargando...</div>
+                  ) : !hayDatos ? (
+                    <div className="p-6 text-center">
+                      <Icon name="filter_alt" className="text-4xl mb-3" style={{ color: "#dcc1b9" }} />
+                      <p className="text-sm" style={{ color: "#89726c" }}>
+                        Aún no hay datos del embudo. Se irán registrando a medida que la gente entre al formulario de inscripción.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {funnelData.map((s, i) => {
+                        const prev = i > 0 ? funnelData[i - 1].count : s.count;
+                        const pctTotal = top > 0 ? Math.round((s.count / top) * 100) : 0;
+                        const caida = prev > 0 ? Math.round(((prev - s.count) / prev) * 100) : 0;
+                        return (
+                          <div key={s.step}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium" style={{ color: "#25190f" }}>{s.label}</span>
+                              <span className="text-xs" style={{ color: "#89726c" }}>
+                                {s.count} {s.count === 1 ? "persona" : "personas"} · {pctTotal}% del inicio
+                                {i > 0 && caida > 0 && <span style={{ color: "#b71c1c" }}> · −{caida}% vs. paso anterior</span>}
+                              </span>
+                            </div>
+                            <div className="h-7 rounded-lg overflow-hidden" style={{ backgroundColor: "#f0ddd5" }}>
+                              <div className="h-full rounded-lg flex items-center justify-end px-2 transition-all" style={{ width: `${Math.max(3, pctTotal)}%`, backgroundColor: s.step === "compra" ? "#1f7a3d" : "#7d2b13" }}>
+                                <span className="text-[11px] font-bold text-white">{s.count}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <p className="text-xs pt-2" style={{ color: "#89726c" }}>
+                        💡 El paso donde más cae el porcentaje es el que conviene mejorar.
+                      </p>
                     </div>
                   )}
                 </div>
