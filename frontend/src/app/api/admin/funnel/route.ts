@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -17,16 +17,20 @@ const PASOS: { step: string; label: string }[] = [
   { step: "compra", label: "6. Compra" },
 ];
 
-// Devuelve el embudo: sesiones únicas que han llegado a cada paso (últimos 30 días).
-export async function GET() {
+// Devuelve el embudo: sesiones únicas que han llegado a cada paso.
+// Filtro de fecha opcional: ?desde=ISO&hasta=ISO. Sin filtro = todo el histórico.
+export async function GET(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
-  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
-  const { data, error } = await supabaseAdmin
-    .from("funnel_eventos")
-    .select("session_id, step")
-    .gte("created_at", since);
+  const sp = req.nextUrl.searchParams;
+  const desde = sp.get("desde");
+  const hasta = sp.get("hasta");
+
+  let q = supabaseAdmin.from("funnel_eventos").select("session_id, step");
+  if (desde) q = q.gte("created_at", desde);
+  if (hasta) q = q.lte("created_at", hasta);
+  const { data, error } = await q;
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

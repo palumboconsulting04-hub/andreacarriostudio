@@ -593,6 +593,8 @@ export default function AdminDashboard() {
   type FunnelStep = { step: string; label: string; count: number };
   const [funnelData, setFunnelData] = useState<FunnelStep[]>([]);
   const [funnelLoading, setFunnelLoading] = useState(false);
+  const [funnelFiltro, setFunnelFiltro] = useState<"hoy" | "7" | "30" | "todo" | "dia">("30");
+  const [funnelDia, setFunnelDia] = useState(""); // yyyy-mm-dd para un día concreto
 
   type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas";
   const updateRenov = async (id: string, campo: RenovCampo, value: string) => {
@@ -782,13 +784,25 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (activeSection !== "Embudo") return;
+    // Construye el rango de fechas según el filtro (la fecha se calcula en local,
+    // zona del navegador de Andrea, y se manda en ISO al servidor).
+    let qs = "";
+    if (funnelFiltro === "dia" && funnelDia) {
+      qs = `?desde=${new Date(funnelDia + "T00:00:00").toISOString()}&hasta=${new Date(funnelDia + "T23:59:59").toISOString()}`;
+    } else if (funnelFiltro !== "todo") {
+      const desde = new Date();
+      if (funnelFiltro === "hoy") desde.setHours(0, 0, 0, 0);
+      else if (funnelFiltro === "7") desde.setTime(Date.now() - 7 * 24 * 3600 * 1000);
+      else desde.setTime(Date.now() - 30 * 24 * 3600 * 1000);
+      qs = `?desde=${desde.toISOString()}`;
+    }
     setFunnelLoading(true);
-    fetch("/api/admin/funnel")
+    fetch(`/api/admin/funnel${qs}`)
       .then(r => r.json())
       .then(({ data }) => setFunnelData((data ?? []) as FunnelStep[]))
       .catch(() => setFunnelData([]))
       .finally(() => setFunnelLoading(false));
-  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeSection, funnelFiltro, funnelDia]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchVentas() {
     setVentasLoading(true);
@@ -3566,15 +3580,69 @@ export default function AdminDashboard() {
           {/* ── Embudo de inscripción (anónimo) ── */}
           {activeSection === "Embudo" && (() => {
             const top = funnelData[0]?.count ?? 0;
+            const compra = funnelData.find(s => s.step === "compra")?.count ?? 0;
+            const convPct = top > 0 ? Math.round((compra / top) * 1000) / 10 : 0;
             const hayDatos = funnelData.some(s => s.count > 0);
+            // Mayor caída entre pasos consecutivos (el cuello de botella).
+            let peor = { label: "", caida: 0 };
+            for (let i = 1; i < funnelData.length; i++) {
+              const prev = funnelData[i - 1].count;
+              const c = prev > 0 ? Math.round(((prev - funnelData[i].count) / prev) * 100) : 0;
+              if (c > peor.caida) peor = { label: funnelData[i].label, caida: c };
+            }
+            const FILTROS: { v: "hoy" | "7" | "30" | "todo"; label: string }[] = [
+              { v: "hoy", label: "Hoy" }, { v: "7", label: "7 días" }, { v: "30", label: "30 días" }, { v: "todo", label: "Todo" },
+            ];
             return (
               <section className="space-y-5">
-                <div>
-                  <h3 className="font-headline-md text-headline-md text-primary">Embudo de inscripción</h3>
-                  <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
-                    Cuánta gente pasa por cada paso (últimos 30 días). Anónimo: cuántos, no quiénes.
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-headline-md text-headline-md text-primary">Embudo de inscripción</h3>
+                    <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
+                      Cuánta gente pasa por cada paso. Anónimo: cuántos, no quiénes.
+                    </p>
+                  </div>
+                  {/* Filtro de fecha */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {FILTROS.map(f => (
+                      <button
+                        key={f.v}
+                        onClick={() => setFunnelFiltro(f.v)}
+                        className="text-xs font-semibold px-3 py-2 rounded-xl border transition-colors"
+                        style={funnelFiltro === f.v
+                          ? { backgroundColor: "#7d2b13", borderColor: "#7d2b13", color: "#fff8f5" }
+                          : { backgroundColor: "#fff8f5", borderColor: "#dcc1b9", color: "#7d2b13" }}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                    <input
+                      type="date"
+                      value={funnelDia}
+                      onChange={e => { setFunnelDia(e.target.value); setFunnelFiltro("dia"); }}
+                      className="text-xs px-3 py-2 rounded-xl border"
+                      style={funnelFiltro === "dia"
+                        ? { backgroundColor: "#ffdbd1", borderColor: "#7d2b13", color: "#7d2b13" }
+                        : { backgroundColor: "#fff8f5", borderColor: "#dcc1b9", color: "#56423d" }}
+                    />
+                  </div>
                 </div>
+
+                {/* KPIs */}
+                {hayDatos && (
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: "Visitas", value: String(top) },
+                      { label: "Compras", value: String(compra) },
+                      { label: "Conversión", value: `${convPct}%` },
+                    ].map(k => (
+                      <div key={k.label} className="rounded-2xl p-4 border text-center" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                        <p className="text-2xl font-bold" style={{ color: "#7d2b13" }}>{k.value}</p>
+                        <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{k.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="rounded-2xl p-5 sm:p-6 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
                   {funnelLoading ? (
@@ -3583,7 +3651,7 @@ export default function AdminDashboard() {
                     <div className="p-6 text-center">
                       <Icon name="filter_alt" className="text-4xl mb-3" style={{ color: "#dcc1b9" }} />
                       <p className="text-sm" style={{ color: "#89726c" }}>
-                        Aún no hay datos del embudo. Se irán registrando a medida que la gente entre al formulario de inscripción.
+                        No hay datos en este periodo. Prueba con otro rango de fechas o espera a que entren visitas nuevas.
                       </p>
                     </div>
                   ) : (
@@ -3609,9 +3677,13 @@ export default function AdminDashboard() {
                           </div>
                         );
                       })}
-                      <p className="text-xs pt-2" style={{ color: "#89726c" }}>
-                        💡 El paso donde más cae el porcentaje es el que conviene mejorar.
-                      </p>
+                      {peor.label && peor.caida > 0 && (
+                        <div className="rounded-xl px-4 py-3 mt-1" style={{ backgroundColor: "#fff0eb", border: "1px solid #dcc1b9" }}>
+                          <p className="text-xs" style={{ color: "#56423d" }}>
+                            🎯 <strong>Mayor cuello de botella:</strong> {peor.label} — se cae el {peor.caida}% respecto al paso anterior. Es donde más conviene mejorar.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
