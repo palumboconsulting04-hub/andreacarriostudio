@@ -595,6 +595,7 @@ export default function AdminDashboard() {
   const [funnelLoading, setFunnelLoading] = useState(false);
   const [funnelFiltro, setFunnelFiltro] = useState<"hoy" | "7" | "30" | "todo" | "dia">("30");
   const [funnelDia, setFunnelDia] = useState(""); // yyyy-mm-dd para un día concreto
+  const [funnelOrigen, setFunnelOrigen] = useState<"todo" | "ads" | "directo">("todo");
 
   type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas";
   const updateRenov = async (id: string, campo: RenovCampo, value: string) => {
@@ -796,13 +797,14 @@ export default function AdminDashboard() {
       else desde.setTime(Date.now() - 30 * 24 * 3600 * 1000);
       qs = `?desde=${desde.toISOString()}`;
     }
+    if (funnelOrigen !== "todo") qs += `${qs ? "&" : "?"}origen=${funnelOrigen}`;
     setFunnelLoading(true);
     fetch(`/api/admin/funnel${qs}`)
       .then(r => r.json())
       .then(({ data }) => setFunnelData((data ?? []) as FunnelStep[]))
       .catch(() => setFunnelData([]))
       .finally(() => setFunnelLoading(false));
-  }, [activeSection, funnelFiltro, funnelDia]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeSection, funnelFiltro, funnelDia, funnelOrigen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchVentas() {
     setVentasLoading(true);
@@ -3626,6 +3628,27 @@ export default function AdminDashboard() {
                         : { backgroundColor: "#fff8f5", borderColor: "#dcc1b9", color: "#56423d" }}
                     />
                   </div>
+                </div>
+
+                {/* Filtro de origen: anuncios vs. directo */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold" style={{ color: "#89726c" }}>Origen:</span>
+                  {[
+                    { v: "todo", label: "Todos" },
+                    { v: "ads", label: "Anuncios" },
+                    { v: "directo", label: "Directo" },
+                  ].map(o => (
+                    <button
+                      key={o.v}
+                      onClick={() => setFunnelOrigen(o.v as "todo" | "ads" | "directo")}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors"
+                      style={funnelOrigen === o.v
+                        ? { backgroundColor: "#7d2b13", borderColor: "#7d2b13", color: "#fff8f5" }
+                        : { backgroundColor: "#fff8f5", borderColor: "#dcc1b9", color: "#7d2b13" }}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
                 </div>
 
                 {/* KPIs */}

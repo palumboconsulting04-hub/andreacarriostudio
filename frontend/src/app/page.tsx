@@ -55,6 +55,7 @@ export default function Home() {
 
   // ── Embudo interno (anónimo): registra a qué paso llega cada sesión ──
   const sessionIdRef = useRef<string>("");
+  const origenRef = useRef<"ads" | "directo">("directo");
   const funnelLogged = useRef<Set<string>>(new Set());
   useEffect(() => {
     let sid = sessionStorage.getItem("acs_fsid");
@@ -65,6 +66,18 @@ export default function Home() {
       sessionStorage.setItem("acs_fsid", sid);
     }
     sessionIdRef.current = sid;
+
+    // Origen: anuncios de Meta (fbclid o UTM de pago) vs. tráfico directo.
+    const p = new URLSearchParams(window.location.search);
+    const src = (p.get("utm_source") || "").toLowerCase();
+    const med = (p.get("utm_medium") || "").toLowerCase();
+    if (
+      p.get("fbclid") ||
+      ["facebook", "fb", "ig", "instagram", "meta"].includes(src) ||
+      ["paid", "cpc", "ppc", "paid_social"].includes(med)
+    ) {
+      origenRef.current = "ads";
+    }
   }, []);
   useEffect(() => {
     const map: Record<number, string> = {
@@ -77,7 +90,7 @@ export default function Home() {
     fetch("/api/funnel", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionIdRef.current, step }),
+      body: JSON.stringify({ session_id: sessionIdRef.current, step, origen: origenRef.current }),
     }).catch(() => {});
   }, [paso]);
 

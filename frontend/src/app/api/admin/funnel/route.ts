@@ -26,10 +26,12 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const desde = sp.get("desde");
   const hasta = sp.get("hasta");
+  const origen = sp.get("origen"); // "ads" | "directo" | null (todos)
 
   let q = supabaseAdmin.from("funnel_eventos").select("session_id, step");
   if (desde) q = q.gte("created_at", desde);
   if (hasta) q = q.lte("created_at", hasta);
+  if (origen === "ads" || origen === "directo") q = q.eq("origen", origen);
   const { data, error } = await q;
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

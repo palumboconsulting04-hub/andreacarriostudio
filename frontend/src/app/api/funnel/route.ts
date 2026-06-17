@@ -17,10 +17,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const session_id = (body?.session_id ?? "").toString().slice(0, 64);
   const step = (body?.step ?? "").toString();
+  const origen = body?.origen === "ads" ? "ads" : "directo";
   if (!session_id || !STEPS.has(step)) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
   // Inserta vía service-role (la tabla está cerrada a la clave pública).
-  await supabaseAdmin.from("funnel_eventos").insert({ session_id, step });
+  await supabaseAdmin.from("funnel_eventos").insert({ session_id, step, origen });
   return NextResponse.json({ ok: true });
 }
