@@ -5,12 +5,17 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 // inscripción, para poder ver el embudo en el admin. No guarda datos personales:
 // solo un id de sesión aleatorio del navegador y el nombre del paso.
 const STEPS = new Set([
+  // Funnel de inscripción
   "paso1_disciplina",
   "paso2_plan",
   "paso3_horarios",
   "paso4_crosssell",
   "paso5_pago",
   "compra",
+  // Funnel de Puertas Abiertas
+  "pa_visita",
+  "pa_click",
+  "pa_reserva",
 ]);
 
 export async function POST(req: NextRequest) {
@@ -18,10 +23,11 @@ export async function POST(req: NextRequest) {
   const session_id = (body?.session_id ?? "").toString().slice(0, 64);
   const step = (body?.step ?? "").toString();
   const origen = body?.origen === "ads" ? "ads" : "directo";
+  const funnel = body?.funnel === "puertas" ? "puertas" : "inscripcion";
   if (!session_id || !STEPS.has(step)) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
   // Inserta vía service-role (la tabla está cerrada a la clave pública).
-  await supabaseAdmin.from("funnel_eventos").insert({ session_id, step, origen });
+  await supabaseAdmin.from("funnel_eventos").insert({ session_id, step, origen, funnel });
   return NextResponse.json({ ok: true });
 }

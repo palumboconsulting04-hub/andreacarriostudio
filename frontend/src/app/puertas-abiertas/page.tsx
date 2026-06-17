@@ -133,6 +133,7 @@ export default function PuertasAbiertas() {
       botonLeadFired.current.add(origen);
       window.fbq?.("track", "Lead", { content_name: `Click reserva: ${origen}` });
     }
+    logFunnel("pa_click");
     scrollToForm();
   };
 
@@ -169,6 +170,35 @@ export default function PuertasAbiertas() {
     }
     atrib.current = { origen, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid };
   }, []);
+
+  // ── Embudo interno (anónimo) de la landing: Visita → Pulsó reservar → Reserva ──
+  const paSessionRef = useRef<string>("");
+  const paLogged = useRef<Set<string>>(new Set());
+  const logFunnel = (step: string) => {
+    if (!paSessionRef.current || paLogged.current.has(step)) return;
+    paLogged.current.add(step);
+    fetch("/api/funnel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        session_id: paSessionRef.current,
+        step,
+        origen: atrib.current.origen === "ads" ? "ads" : "directo",
+        funnel: "puertas",
+      }),
+    }).catch(() => {});
+  };
+  useEffect(() => {
+    let sid = sessionStorage.getItem("acs_pa_fsid");
+    if (!sid) {
+      sid = (typeof crypto !== "undefined" && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      sessionStorage.setItem("acs_pa_fsid", sid);
+    }
+    paSessionRef.current = sid;
+    logFunnel("pa_visita");
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async () => {
     if (!formValido || enviando) return;
@@ -209,6 +239,7 @@ export default function PuertasAbiertas() {
       });
       if (!res.ok) throw new Error();
       setEnviado(true);
+      logFunnel("pa_reserva");
       // Conversión: la madre ha reservado su plaza con éxito. Mismo eventID que CAPI.
       window.fbq?.("track", "Lead", {}, { eventID: eventId });
     } catch {

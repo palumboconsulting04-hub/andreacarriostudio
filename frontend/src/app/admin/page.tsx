@@ -596,6 +596,7 @@ export default function AdminDashboard() {
   const [funnelFiltro, setFunnelFiltro] = useState<"hoy" | "7" | "30" | "todo" | "dia">("30");
   const [funnelDia, setFunnelDia] = useState(""); // yyyy-mm-dd para un día concreto
   const [funnelOrigen, setFunnelOrigen] = useState<"todo" | "ads" | "directo">("todo");
+  const [funnelTipo, setFunnelTipo] = useState<"inscripcion" | "puertas">("inscripcion");
 
   type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas";
   const updateRenov = async (id: string, campo: RenovCampo, value: string) => {
@@ -798,13 +799,14 @@ export default function AdminDashboard() {
       qs = `?desde=${desde.toISOString()}`;
     }
     if (funnelOrigen !== "todo") qs += `${qs ? "&" : "?"}origen=${funnelOrigen}`;
+    if (funnelTipo !== "inscripcion") qs += `${qs ? "&" : "?"}funnel=${funnelTipo}`;
     setFunnelLoading(true);
     fetch(`/api/admin/funnel${qs}`)
       .then(r => r.json())
       .then(({ data }) => setFunnelData((data ?? []) as FunnelStep[]))
       .catch(() => setFunnelData([]))
       .finally(() => setFunnelLoading(false));
-  }, [activeSection, funnelFiltro, funnelDia, funnelOrigen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeSection, funnelFiltro, funnelDia, funnelOrigen, funnelTipo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchVentas() {
     setVentasLoading(true);
@@ -3582,8 +3584,8 @@ export default function AdminDashboard() {
           {/* ── Embudo de inscripción (anónimo) ── */}
           {activeSection === "Embudo" && (() => {
             const top = funnelData[0]?.count ?? 0;
-            const compra = funnelData.find(s => s.step === "compra")?.count ?? 0;
-            const convPct = top > 0 ? Math.round((compra / top) * 1000) / 10 : 0;
+            const fin = funnelData[funnelData.length - 1]?.count ?? 0;
+            const convPct = top > 0 ? Math.round((fin / top) * 1000) / 10 : 0;
             const hayDatos = funnelData.some(s => s.count > 0);
             // Mayor caída entre pasos consecutivos (el cuello de botella).
             let peor = { label: "", caida: 0 };
@@ -3597,9 +3599,30 @@ export default function AdminDashboard() {
             ];
             return (
               <section className="space-y-5">
+                {/* Selector de embudo: inscripción vs. puertas abiertas */}
+                <div className="inline-flex rounded-xl border p-1" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                  {[
+                    { v: "inscripcion", label: "Inscripción" },
+                    { v: "puertas", label: "Puertas Abiertas" },
+                  ].map(t => (
+                    <button
+                      key={t.v}
+                      onClick={() => setFunnelTipo(t.v as "inscripcion" | "puertas")}
+                      className="text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors"
+                      style={funnelTipo === t.v
+                        ? { backgroundColor: "#7d2b13", color: "#fff8f5" }
+                        : { backgroundColor: "transparent", color: "#7d2b13" }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div>
-                    <h3 className="font-headline-md text-headline-md text-primary">Embudo de inscripción</h3>
+                    <h3 className="font-headline-md text-headline-md text-primary">
+                      {funnelTipo === "puertas" ? "Embudo de Puertas Abiertas" : "Embudo de inscripción"}
+                    </h3>
                     <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
                       Cuánta gente pasa por cada paso. Anónimo: cuántos, no quiénes.
                     </p>
@@ -3656,7 +3679,7 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-3 gap-3">
                     {[
                       { label: "Visitas", value: String(top) },
-                      { label: "Compras", value: String(compra) },
+                      { label: funnelTipo === "puertas" ? "Reservas" : "Compras", value: String(fin) },
                       { label: "Conversión", value: `${convPct}%` },
                     ].map(k => (
                       <div key={k.label} className="rounded-2xl p-4 border text-center" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
@@ -3693,7 +3716,7 @@ export default function AdminDashboard() {
                               </span>
                             </div>
                             <div className="h-7 rounded-lg overflow-hidden" style={{ backgroundColor: "#f0ddd5" }}>
-                              <div className="h-full rounded-lg flex items-center justify-end px-2 transition-all" style={{ width: `${Math.max(3, pctTotal)}%`, backgroundColor: s.step === "compra" ? "#1f7a3d" : "#7d2b13" }}>
+                              <div className="h-full rounded-lg flex items-center justify-end px-2 transition-all" style={{ width: `${Math.max(3, pctTotal)}%`, backgroundColor: i === funnelData.length - 1 ? "#1f7a3d" : "#7d2b13" }}>
                                 <span className="text-[11px] font-bold text-white">{s.count}</span>
                               </div>
                             </div>
