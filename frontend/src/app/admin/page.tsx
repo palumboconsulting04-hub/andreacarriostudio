@@ -395,7 +395,7 @@ export default function AdminDashboard() {
   // Recuerda la última sección abierta para no volver a "Resumen" al recargar.
   useEffect(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("admin_section") : null;
-    if (saved) setActiveSection(saved);
+    if (saved) setActiveSection(saved === "Usuarios" ? "Clientas" : saved);
   }, []);
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem("admin_section", activeSection);
@@ -844,7 +844,7 @@ export default function AdminDashboard() {
   }, [activeSection, asistenciaFecha, orari]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (activeSection !== "Usuarios") return;
+    if (activeSection !== "Clientas") return;
     setUsuariosLoading(true);
     Promise.all([
       fetch("/api/admin/iscrizioni").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
@@ -1668,7 +1668,7 @@ export default function AdminDashboard() {
     { icon: "dashboard", label: "Resumen" },
     { icon: "calendar_month", label: "Calendario" },
     { icon: "checklist", label: "Asistencia" },
-    { icon: "group", label: "Usuarios" },
+    { icon: "group", label: "Clientas" },
     { icon: "celebration", label: "Puertas Abiertas" },
     { icon: "autorenew", label: "Renovaciones" },
     { icon: "insights", label: "Marketing" },
@@ -2847,7 +2847,7 @@ export default function AdminDashboard() {
             );
           })()}
 
-          {activeSection === "Usuarios" && (() => {
+          {activeSection === "Clientas" && (() => {
             const q = usuariosSearch.toLowerCase();
             // Disciplinas presentes en las alumnas, para el selector de filtro.
             const discOptions = [...new Map(usuariosData.map(u => [u.disciplina_id, u.discipline?.nome ?? u.disciplina_id])).entries()]
@@ -2868,7 +2868,7 @@ export default function AdminDashboard() {
               <section className="space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div>
-                    <h3 className="font-headline-md text-headline-md text-primary">Usuarios</h3>
+                    <h3 className="font-headline-md text-headline-md text-primary">Clientas</h3>
                     <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>
                       {usuariosLoading
                         ? "Cargando..."
