@@ -392,6 +392,15 @@ export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("Resumen");
 
+  // Recuerda la última sección abierta para no volver a "Resumen" al recargar.
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("admin_section") : null;
+    if (saved) setActiveSection(saved);
+  }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem("admin_section", activeSection);
+  }, [activeSection]);
+
   // ── Finanzas state ──
   const [finanzasLoading, setFinanzasLoading] = useState(false);
   const [finanzasMensual, setFinanzasMensual] = useState<{ mes: string; label: string; ingresos: number; costes: number }[]>([]);
