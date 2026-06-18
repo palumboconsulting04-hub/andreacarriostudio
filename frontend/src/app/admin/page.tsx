@@ -919,24 +919,34 @@ export default function AdminDashboard() {
       prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null,
       tipo: "stripe" as const,
     }));
+    // Los grupos de renovación ("Pre-Ballet", "Ballet 1", "Ballet 2") corresponden a
+    // disciplinas reales del catálogo. Se mapean para no duplicarlas en el desglose.
+    const GRUPO_A_DISCIPLINA: Record<string, { id: string; nome: string }> = {
+      "Pre-Ballet": { id: "pre-ballet", nome: "Pre Ballet 3-6 años" },
+      "Ballet 1": { id: "ballet-i", nome: "Ballet I 7-9 años" },
+      "Ballet 2": { id: "ballet-ii", nome: "Ballet II 10-12 años" },
+    };
     const manualRows: VentaRow[] = (renovs ?? [])
       .filter(r => r.estado_pago === "pagado")
-      .map(r => ({
-        id: r.id,
-        created_at: r.updated_at,
-        stato: "pagado",
-        disciplina_id: r.grupo,
-        piano_id: "renovacion",
-        nome: r.nombre,
-        cognome: r.apellidos ?? "",
-        nome_alumna: null,
-        cognome_alumna: null,
-        discipline: { nome: r.grupo },
-        prezzo: 0,
-        matricula: r.importe_matricula ?? 0,
-        metodo_pagamento: r.metodo_pago || "efectivo",
-        tipo: "manual" as const,
-      }));
+      .map(r => {
+        const disc = GRUPO_A_DISCIPLINA[r.grupo] ?? { id: r.grupo, nome: r.grupo };
+        return {
+          id: r.id,
+          created_at: r.updated_at,
+          stato: "pagado",
+          disciplina_id: disc.id,
+          piano_id: "renovacion",
+          nome: r.nombre,
+          cognome: r.apellidos ?? "",
+          nome_alumna: null,
+          cognome_alumna: null,
+          discipline: { nome: disc.nome },
+          prezzo: 0,
+          matricula: r.importe_matricula ?? 0,
+          metodo_pagamento: r.metodo_pago || "efectivo",
+          tipo: "manual" as const,
+        };
+      });
     // Cuotas mensuales en efectivo/bizum (pagos_manuales) como filas de venta.
     const cuotaRows: VentaRow[] = (pagosM ?? []).map(p => ({
       id: `pago-${p.id}`,
