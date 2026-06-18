@@ -569,6 +569,90 @@ export default function AdminDashboard() {
   const [renovDeleteId, setRenovDeleteId] = useState<string | null>(null);
   const [renovEditId, setRenovEditId] = useState<string | null>(null);
 
+  // ── Pagos manuales (cuotas mensuales en efectivo/bizum) ──
+  type PagoManual = {
+    id: string;
+    renovacion_id: string | null;
+    alumna_nombre: string;
+    concepto: string;
+    mes: string | null;
+    importe: number;
+    metodo: string;
+    fecha: string;
+    notas: string | null;
+    created_at: string;
+  };
+  // Pagos de la alumna abierta en el modal.
+  const [pagoModalRenov, setPagoModalRenov] = useState<RenovacionRow | null>(null);
+  const [pagosAlumna, setPagosAlumna] = useState<PagoManual[]>([]);
+  const [pagosAlumnaLoading, setPagosAlumnaLoading] = useState(false);
+  // Todos los pagos manuales (para contabilidad).
+  const [pagosManuales, setPagosManuales] = useState<PagoManual[]>([]);
+  const emptyNewPago = { concepto: "", mes: "", importe: 70, metodo: "efectivo", fecha: new Date().toLocaleDateString("en-CA") };
+  const [newPago, setNewPago] = useState(emptyNewPago);
+  const [pagoSaving, setPagoSaving] = useState(false);
+  const [pagoDeleteId, setPagoDeleteId] = useState<string | null>(null);
+
+  // Meses del curso 2026-2027 para el selector de concepto.
+  const MESES_CURSO: { value: string; label: string }[] = [
+    { value: "2026-09", label: "Mensualidad Septiembre 2026" },
+    { value: "2026-10", label: "Mensualidad Octubre 2026" },
+    { value: "2026-11", label: "Mensualidad Noviembre 2026" },
+    { value: "2026-12", label: "Mensualidad Diciembre 2026" },
+    { value: "2027-01", label: "Mensualidad Enero 2027" },
+    { value: "2027-02", label: "Mensualidad Febrero 2027" },
+    { value: "2027-03", label: "Mensualidad Marzo 2027" },
+    { value: "2027-04", label: "Mensualidad Abril 2027" },
+    { value: "2027-05", label: "Mensualidad Mayo 2027" },
+    { value: "2027-06", label: "Mensualidad Junio 2027" },
+  ];
+
+  const abrirPagosAlumna = async (r: RenovacionRow) => {
+    setPagoModalRenov(r);
+    setNewPago({ ...emptyNewPago, fecha: new Date().toLocaleDateString("en-CA") });
+    setPagoDeleteId(null);
+    setPagosAlumnaLoading(true);
+    const { data } = await fetch(`/api/admin/pagos-manuales?renovacion_id=${r.id}`).then(res => res.json());
+    setPagosAlumna((data ?? []) as PagoManual[]);
+    setPagosAlumnaLoading(false);
+  };
+
+  const registrarPago = async () => {
+    if (!pagoModalRenov || pagoSaving) return;
+    setPagoSaving(true);
+    const mesInfo = MESES_CURSO.find(m => m.value === newPago.mes);
+    const concepto = newPago.concepto.trim() || mesInfo?.label || "Mensualidad";
+    const res = await fetch("/api/admin/pagos-manuales", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        renovacion_id: pagoModalRenov.id,
+        alumna_nombre: `${pagoModalRenov.nombre} ${pagoModalRenov.apellidos ?? ""}`.trim(),
+        concepto,
+        mes: newPago.mes || null,
+        importe: newPago.importe,
+        metodo: newPago.metodo,
+        fecha: newPago.fecha,
+      }),
+    });
+    const { data } = await res.json();
+    if (data) {
+      setPagosAlumna(prev => [data as PagoManual, ...prev]);
+      setPagosManuales(prev => [data as PagoManual, ...prev]);
+      setNewPago({ ...emptyNewPago, fecha: new Date().toLocaleDateString("en-CA") });
+    }
+    setPagoSaving(false);
+  };
+
+  const borrarPago = async (id: string) => {
+    const res = await fetch(`/api/admin/pagos-manuales?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setPagosAlumna(prev => prev.filter(p => p.id !== id));
+      setPagosManuales(prev => prev.filter(p => p.id !== id));
+    }
+    setPagoDeleteId(null);
+  };
+
   // ── Marketing (cuestionario post-compra) ──
   type MarketingRow = {
     id: string;
@@ -695,7 +779,8 @@ export default function AdminDashboard() {
       supabase.from("piani").select("id, disciplina_id, prezzo"),
       fetch("/api/admin/costes").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
       fetch("/api/admin/renovaciones").then(r => r.json()).then(j => ({ data: (j.data ?? []) as RenovacionRow[] })),
-    ]).then(([{ data: isc }, { data: piani }, { data: costes }, { data: renovs }]) => {
+      fetch("/api/admin/pagos-manuales").then(r => r.json()).then(j => ({ data: (j.data ?? []) as PagoManual[] })),
+    ]).then(([{ data: isc }, { data: piani }, { data: costes }, { data: renovs }, { data: pagosM }]) => {
       const pm: Record<string, number> = {};
       for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
         pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
@@ -715,11 +800,15 @@ export default function AdminDashboard() {
         const matMes = ((isc ?? []) as { created_at: string; matricula: number }[])
           .filter(v => v.created_at.substring(0, 7) === mes)
           .reduce((s, v) => s + (v.matricula ?? 0), 0);
-        // Pagos manuales (efectivo/bizum) del mes — usando updated_at como fecha de cobro.
-        const manualMes = renovsPagadas
+        // Matrículas manuales (efectivo/bizum) del mes — usando updated_at como fecha de cobro.
+        const matManualMes = renovsPagadas
           .filter(r => r.updated_at && r.updated_at.substring(0, 7) === mes)
           .reduce((s, r) => s + (r.importe_matricula ?? 0), 0);
-        const ingresos = mrr + matMes + manualMes;
+        // Cuotas mensuales manuales del mes — por su fecha real de cobro.
+        const cuotaManualMes = (pagosM ?? [])
+          .filter(p => (p.fecha ?? "").substring(0, 7) === mes)
+          .reduce((s, p) => s + (p.importe ?? 0), 0);
+        const ingresos = mrr + matMes + matManualMes + cuotaManualMes;
         return { mes, label, ingresos, costes: costeMensual };
       });
       setFinanzasMensual(monthly);
@@ -820,10 +909,11 @@ export default function AdminDashboard() {
 
   async function fetchVentas() {
     setVentasLoading(true);
-    const [{ data: isc }, { data: piani }, { data: renovs }] = await Promise.all([
+    const [{ data: isc }, { data: piani }, { data: renovs }, { data: pagosM }] = await Promise.all([
       fetch("/api/admin/iscrizioni").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
       fetch("/api/admin/renovaciones").then(r => r.json()).then(j => ({ data: (j.data ?? []) as RenovacionRow[] })),
+      fetch("/api/admin/pagos-manuales").then(r => r.json()).then(j => ({ data: (j.data ?? []) as PagoManual[] })),
     ]);
     const pm: Record<string, number> = {};
     for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
@@ -851,7 +941,24 @@ export default function AdminDashboard() {
         metodo_pagamento: r.metodo_pago || "efectivo",
         tipo: "manual" as const,
       }));
-    setVentasData([...stripeRows, ...manualRows].sort((a, b) => b.created_at.localeCompare(a.created_at)));
+    // Cuotas mensuales en efectivo/bizum (pagos_manuales) como filas de venta.
+    const cuotaRows: VentaRow[] = (pagosM ?? []).map(p => ({
+      id: `pago-${p.id}`,
+      created_at: p.fecha,
+      stato: "pagado",
+      disciplina_id: "cuota-mensual",
+      piano_id: "renovacion",
+      nome: p.alumna_nombre,
+      cognome: "",
+      nome_alumna: null,
+      cognome_alumna: null,
+      discipline: { nome: "Cuotas mensuales" },
+      prezzo: 0,
+      matricula: p.importe ?? 0,
+      metodo_pagamento: p.metodo || "efectivo",
+      tipo: "manual" as const,
+    }));
+    setVentasData([...stripeRows, ...manualRows, ...cuotaRows].sort((a, b) => b.created_at.localeCompare(a.created_at)));
     setVentasLoading(false);
   }
 
@@ -1231,7 +1338,9 @@ export default function AdminDashboard() {
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
       fetch("/api/admin/renovaciones").then(r => r.json()).then(j => (j.data ?? []) as RenovacionRow[]),
-    ]).then(([allIsc, r2, r4, r7, renovaciones]) => {
+      fetch("/api/admin/pagos-manuales").then(r => r.json()).then(j => (j.data ?? []) as PagoManual[]),
+    ]).then(([allIsc, r2, r4, r7, renovaciones, pagosM]) => {
+      setPagosManuales(pagosM);
       setIscrittiCount(allIsc.filter(i => INSCRITA_STATI_ARR.includes(i.stato)).length);
       setLezioniCount(r2.count ?? 0);
       setPendingCount(allIsc.filter(i => i.stato === "attesa").length);
@@ -1262,11 +1371,22 @@ export default function AdminDashboard() {
           if (isc.created_at.substring(0, 7) < curMonthStr) factAnt += mat;
         }
       }
-      // Sumar pagos manuales (efectivo / bizum) de renovaciones.
+      // Sumar matrículas manuales (efectivo / bizum) de renovaciones.
       for (const r of renovaciones.filter(x => x.estado_pago === "pagado")) {
         const amt = r.importe_matricula ?? 0;
         factMes += amt;
         if (r.updated_at && r.updated_at.substring(0, 7) < curMonthStr) factAnt += amt;
+      }
+      // Sumar cuotas mensuales manuales (pagos_manuales), por su fecha real de cobro.
+      const prevMonthStr = (() => {
+        const pm = tm === 0 ? 11 : tm - 1;
+        const py = tm === 0 ? ty - 1 : ty;
+        return `${py}-${String(pm + 1).padStart(2, "0")}`;
+      })();
+      for (const p of pagosM) {
+        const mesPago = (p.fecha ?? "").substring(0, 7);
+        if (mesPago === curMonthStr) factMes += p.importe ?? 0;
+        else if (mesPago === prevMonthStr) factAnt += p.importe ?? 0;
       }
       setFacturacionMes(factMes);
       setFacturacionMesAnterior(factAnt);
@@ -3535,6 +3655,9 @@ export default function AdminDashboard() {
                                     </button>
                                   ) : (
                                     <span className="inline-flex items-center gap-1">
+                                      <button onClick={() => abrirPagosAlumna(r)} className="p-1.5 rounded-lg hover:bg-[#e7f7ec] transition-colors" aria-label="Registrar pago mensual" title="Pagos mensuales (efectivo/bizum)">
+                                        <Icon name="payments" className="text-base" style={{ color: "#1f7a3d" }} />
+                                      </button>
                                       <button onClick={() => setRenovEditId(r.id)} className="p-1.5 rounded-lg hover:bg-[#fff0eb] transition-colors" aria-label="Editar datos" title="Editar datos">
                                         <Icon name="edit" className="text-base" style={{ color: "#7d2b13" }} />
                                       </button>
@@ -3562,6 +3685,132 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
+
+                {/* Modal: pagos mensuales de una alumna */}
+                {pagoModalRenov && typeof document !== "undefined" && createPortal(
+                  <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }} onClick={() => setPagoModalRenov(null)}>
+                    <div onClick={e => e.stopPropagation()} className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl" style={{ backgroundColor: "#fffdfc" }}>
+                      {/* Cabecera */}
+                      <div className="px-6 py-5 flex items-start justify-between gap-3 sticky top-0" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                        <div>
+                          <p className="text-xs uppercase tracking-widest" style={{ color: "#ffdbd1" }}>Pagos mensuales</p>
+                          <p className="text-lg font-bold mt-0.5">{pagoModalRenov.nombre} {pagoModalRenov.apellidos}</p>
+                          <p className="text-xs mt-0.5" style={{ color: "#ffdbd1" }}>{pagoModalRenov.grupo}</p>
+                        </div>
+                        <button onClick={() => setPagoModalRenov(null)} className="p-1.5 rounded-full hover:bg-white/15 transition-colors" aria-label="Cerrar">
+                          <Icon name="close" className="text-xl" />
+                        </button>
+                      </div>
+
+                      {/* Formulario nuevo pago */}
+                      <div className="px-6 py-5 border-b" style={{ borderColor: "#f0ddd5" }}>
+                        <p className="text-sm font-semibold mb-3" style={{ color: "#7d2b13" }}>Registrar un pago</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className="col-span-2 text-xs font-medium" style={{ color: "#89726c" }}>
+                            Concepto
+                            <select
+                              value={newPago.mes}
+                              onChange={e => setNewPago(p => ({ ...p, mes: e.target.value }))}
+                              className="mt-1 w-full px-3 py-2 rounded-lg border text-sm cursor-pointer"
+                              style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }}
+                            >
+                              <option value="">Otro / sin mes concreto</option>
+                              {MESES_CURSO.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                            </select>
+                          </label>
+                          <label className="text-xs font-medium" style={{ color: "#89726c" }}>
+                            Importe €
+                            <input
+                              type="number" min={0}
+                              value={newPago.importe}
+                              onChange={e => setNewPago(p => ({ ...p, importe: parseInt(e.target.value, 10) || 0 }))}
+                              className="mt-1 w-full px-3 py-2 rounded-lg border text-sm"
+                              style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }}
+                            />
+                          </label>
+                          <label className="text-xs font-medium" style={{ color: "#89726c" }}>
+                            Método
+                            <select
+                              value={newPago.metodo}
+                              onChange={e => setNewPago(p => ({ ...p, metodo: e.target.value }))}
+                              className="mt-1 w-full px-3 py-2 rounded-lg border text-sm cursor-pointer"
+                              style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }}
+                            >
+                              <option value="efectivo">Efectivo</option>
+                              <option value="bizum">Bizum</option>
+                              <option value="otro">Otro</option>
+                            </select>
+                          </label>
+                          <label className="col-span-2 text-xs font-medium" style={{ color: "#89726c" }}>
+                            Fecha del cobro
+                            <input
+                              type="date"
+                              value={newPago.fecha}
+                              onChange={e => setNewPago(p => ({ ...p, fecha: e.target.value }))}
+                              className="mt-1 w-full px-3 py-2 rounded-lg border text-sm"
+                              style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }}
+                            />
+                          </label>
+                        </div>
+                        <button
+                          onClick={registrarPago}
+                          disabled={pagoSaving || newPago.importe <= 0}
+                          className="mt-4 w-full py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                          style={{ backgroundColor: pagoSaving || newPago.importe <= 0 ? "#dcc1b9" : "#1f7a3d", color: "#fff", cursor: pagoSaving || newPago.importe <= 0 ? "not-allowed" : "pointer" }}
+                        >
+                          <Icon name="add" className="text-base" />
+                          {pagoSaving ? "Guardando…" : "Guardar pago"}
+                        </button>
+                      </div>
+
+                      {/* Historial */}
+                      <div className="px-6 py-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Pagos registrados</p>
+                          {pagosAlumna.length > 0 && (
+                            <span className="text-sm font-bold" style={{ color: "#1f7a3d" }}>
+                              {pagosAlumna.reduce((s, p) => s + (p.importe ?? 0), 0)}€ en total
+                            </span>
+                          )}
+                        </div>
+                        {pagosAlumnaLoading ? (
+                          <p className="text-sm py-4 text-center" style={{ color: "#89726c" }}>Cargando…</p>
+                        ) : pagosAlumna.length === 0 ? (
+                          <p className="text-sm py-4 text-center" style={{ color: "#89726c" }}>Aún no hay pagos registrados para esta alumna.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {pagosAlumna.map(p => (
+                              <div key={p.id} className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border" style={{ borderColor: "#f0ddd5", backgroundColor: "#fff8f5" }}>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate" style={{ color: "#25190f" }}>{p.concepto}</p>
+                                  <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>
+                                    {new Date(`${p.fecha}T00:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                                    {" · "}
+                                    <span className="capitalize">{p.metodo}</span>
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-sm font-bold" style={{ color: "#1f7a3d" }}>{p.importe}€</span>
+                                  {pagoDeleteId === p.id ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <button onClick={() => borrarPago(p.id)} className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#b3261e", color: "#fff" }}>Sí</button>
+                                      <button onClick={() => setPagoDeleteId(null)} className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: "#f0ddd5", color: "#56423d" }}>No</button>
+                                    </span>
+                                  ) : (
+                                    <button onClick={() => setPagoDeleteId(p.id)} className="p-1 rounded-lg hover:bg-[#fbe9e7] transition-colors" aria-label="Borrar pago" title="Borrar pago">
+                                      <Icon name="delete" className="text-sm" style={{ color: "#b3261e" }} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>,
+                  document.body,
+                )}
               </section>
             );
           })()}
