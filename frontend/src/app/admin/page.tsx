@@ -1345,16 +1345,20 @@ export default function AdminDashboard() {
     setKpiLoading(false);
   };
 
-  useEffect(() => {
+  // Carga (o recarga) todos los datos del Resumen. Se llama al montar y cada vez
+  // que se vuelve a "Resumen", para reflejar cambios hechos en otras secciones
+  // (renovaciones marcadas pagadas, pagos manuales registrados, etc.).
+  const cargarResumen = async () => {
     const todayEs = DOW_ES[new Date().getDay()];
-    Promise.all([
+    const [allIsc, r2, r4, r7, renovaciones, pagosM] = await Promise.all([
       fetch("/api/admin/iscrizioni").then(r => r.json()).then(j => (j.data ?? []) as Array<{ id: string; stato: string; created_at: string; disciplina_id: string; piano_id: string; matricula: number; [k: string]: unknown }>),
       supabase.from("orari").select("*", { count: "exact", head: true }).eq("giorno", todayEs).eq("attivo", true),
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
       fetch("/api/admin/renovaciones").then(r => r.json()).then(j => (j.data ?? []) as RenovacionRow[]),
       fetch("/api/admin/pagos-manuales").then(r => r.json()).then(j => (j.data ?? []) as PagoManual[]),
-    ]).then(([allIsc, r2, r4, r7, renovaciones, pagosM]) => {
+    ]);
+    {
       setIscrittiCount(allIsc.filter(i => INSCRITA_STATI_ARR.includes(i.stato)).length);
       setLezioniCount(r2.count ?? 0);
       setPendingCount(allIsc.filter(i => i.stato === "attesa").length);
@@ -1442,8 +1446,12 @@ export default function AdminDashboard() {
       setOcupacionDisciplinas(discList);
 
       setLoading(false);
-    });
+    }
+  };
 
+  // Carga inicial + realtime de iscrizioni (pagos online en vivo).
+  useEffect(() => {
+    cargarResumen();
     const channel = supabase
       .channel("iscrizioni-live")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "iscrizioni" }, () => {
@@ -1457,6 +1465,14 @@ export default function AdminDashboard() {
     return () => { supabase.removeChannel(channel); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Al volver al Resumen, recalcula con los datos más recientes para que los
+  // cambios hechos en otras secciones (renovaciones, pagos manuales) se
+  // reflejen sin necesidad de recargar la página.
+  useEffect(() => {
+    if (activeSection === "Resumen") cargarResumen();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection]);
 
   const weekDates = getWeekDates();
   const times = [...new Set(orari.map((o) => o.ora_inizio.substring(0, 5)))].sort();
@@ -1542,13 +1558,13 @@ export default function AdminDashboard() {
   const ventasChartData = ventasGranularity === "diario"
     ? Array.from({ length: daysInMonth }, (_, i) => {
         const dayStr = `${ventasMes}-${String(i + 1).padStart(2, "0")}`;
-        const rows = ventasMesFiltradas.filter(v => v.created_at.startsWith(dayStr));
+        const rows = pagadasMes.filter(v => v.created_at.startsWith(dayStr));
         return { label: String(i + 1), ingresos: rows.reduce((s, v) => s + ingresoFila(v), 0), inscripciones: rows.length };
       })
     : [1, 2, 3, 4].map(w => {
         const start = (w - 1) * 7 + 1;
         const end = w === 4 ? daysInMonth : w * 7;
-        const rows = ventasMesFiltradas.filter(v => { const d = new Date(v.created_at).getDate(); return d >= start && d <= end; });
+        const rows = pagadasMes.filter(v => { const d = new Date(v.created_at).getDate(); return d >= start && d <= end; });
         return { label: `Sem ${w}`, ingresos: rows.reduce((s, v) => s + ingresoFila(v), 0), inscripciones: rows.length };
       });
   const discMap: Record<string, { nombre: string; ingresos: number; count: number }> = {};
@@ -2392,12 +2408,12 @@ export default function AdminDashboard() {
 
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
                   <div className="flex justify-between items-start">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Inscripciones</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Pagos cobrados</p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="person_add" className="text-base" /></div>
                   </div>
-                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{ventasLoading ? "—" : ventasMesFiltradas.length}</p>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{ventasLoading ? "—" : pagadasMes.length}</p>
                   <p className="text-xs" style={{ color: pendientesCountV > 0 ? "#c62828" : "#89726c" }}>
-                    {pendientesCountV > 0 ? `${pendientesCountV} pendiente${pendientesCountV > 1 ? "s" : ""}` : "Todas cobradas"}
+                    {pendientesCountV > 0 ? `${pendientesCountV} pendiente${pendientesCountV > 1 ? "s" : ""} sin pagar` : "Solo pagos reales"}
                   </p>
                 </div>
 
@@ -2505,8 +2521,8 @@ export default function AdminDashboard() {
               {/* Tabla detalle */}
               <div className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden">
                 <div className="p-6 border-b" style={{ borderColor: "#dcc1b9" }}>
-                  <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Detalle de Inscripciones</p>
-                  <p className="text-xs mt-1" style={{ color: "#89726c" }}>{ventasMesFiltradas.length} inscripción{ventasMesFiltradas.length !== 1 ? "es" : ""} en el período</p>
+                  <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Detalle de pagos cobrados</p>
+                  <p className="text-xs mt-1" style={{ color: "#89726c" }}>{pagadasMes.length} pago{pagadasMes.length !== 1 ? "s" : ""} en el período · {ingresosMesV}€</p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -2518,9 +2534,9 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {ventasMesFiltradas.length === 0
-                        ? <tr><td colSpan={6} className="py-10 text-center text-sm" style={{ color: "#89726c" }}>Sin inscripciones en este período</td></tr>
-                        : ventasMesFiltradas.map(v => {
+                      {pagadasMes.length === 0
+                        ? <tr><td colSpan={7} className="py-10 text-center text-sm" style={{ color: "#89726c" }}>Sin pagos cobrados en este período</td></tr>
+                        : pagadasMes.map(v => {
                             const alumna = v.nome_alumna ? `${v.nome_alumna} ${v.cognome_alumna ?? ""}`.trim() : `${v.nome} ${v.cognome}`.trim();
                             const mp = v.metodo_pagamento ?? "";
                             const metodoLabel = METODO_LABEL[mp] ?? (mp === "efectivo" ? "Efectivo" : mp === "bizum" ? "Bizum" : mp || "—");
