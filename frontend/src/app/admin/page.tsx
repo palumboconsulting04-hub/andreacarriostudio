@@ -586,8 +586,6 @@ export default function AdminDashboard() {
   const [pagoModalRenov, setPagoModalRenov] = useState<RenovacionRow | null>(null);
   const [pagosAlumna, setPagosAlumna] = useState<PagoManual[]>([]);
   const [pagosAlumnaLoading, setPagosAlumnaLoading] = useState(false);
-  // Todos los pagos manuales (para contabilidad).
-  const [pagosManuales, setPagosManuales] = useState<PagoManual[]>([]);
   const emptyNewPago = { concepto: "", mes: "", importe: 70, metodo: "efectivo", fecha: new Date().toLocaleDateString("en-CA") };
   const [newPago, setNewPago] = useState(emptyNewPago);
   const [pagoSaving, setPagoSaving] = useState(false);
@@ -638,7 +636,6 @@ export default function AdminDashboard() {
     const { data } = await res.json();
     if (data) {
       setPagosAlumna(prev => [data as PagoManual, ...prev]);
-      setPagosManuales(prev => [data as PagoManual, ...prev]);
       setNewPago({ ...emptyNewPago, fecha: new Date().toLocaleDateString("en-CA") });
     }
     setPagoSaving(false);
@@ -648,7 +645,6 @@ export default function AdminDashboard() {
     const res = await fetch(`/api/admin/pagos-manuales?id=${id}`, { method: "DELETE" });
     if (res.ok) {
       setPagosAlumna(prev => prev.filter(p => p.id !== id));
-      setPagosManuales(prev => prev.filter(p => p.id !== id));
     }
     setPagoDeleteId(null);
   };
@@ -1340,7 +1336,6 @@ export default function AdminDashboard() {
       fetch("/api/admin/renovaciones").then(r => r.json()).then(j => (j.data ?? []) as RenovacionRow[]),
       fetch("/api/admin/pagos-manuales").then(r => r.json()).then(j => (j.data ?? []) as PagoManual[]),
     ]).then(([allIsc, r2, r4, r7, renovaciones, pagosM]) => {
-      setPagosManuales(pagosM);
       setIscrittiCount(allIsc.filter(i => INSCRITA_STATI_ARR.includes(i.stato)).length);
       setLezioniCount(r2.count ?? 0);
       setPendingCount(allIsc.filter(i => i.stato === "attesa").length);
