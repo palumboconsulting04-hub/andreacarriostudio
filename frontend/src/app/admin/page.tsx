@@ -3051,6 +3051,19 @@ export default function AdminDashboard() {
             const resumenEdadArr = Object.entries(resumenEdad).sort((a, b) => b[1] - a[1]);
             const totalNinas = resumenEdadArr.reduce((s, [, v]) => s + v, 0);
             const maxEdad = Math.max(1, ...resumenEdadArr.map(([, v]) => v));
+            // Desglose por grupo (Pre-Ballet / Ballet 1 / Ballet 2) sumando sus
+            // franjas de edad. Visible siempre, para verlo de un vistazo.
+            const GRUPOS_PA = [
+              { label: "Pre-Ballet", sub: "3–6 años", match: "Pre-Ballet" },
+              { label: "Ballet 1", sub: "7–9 años", match: "Ballet 1" },
+              { label: "Ballet 2", sub: "10–12 años", match: "Ballet 2" },
+            ];
+            const resumenGrupo = GRUPOS_PA.map(g => ({
+              ...g,
+              n: Object.entries(resumenEdad)
+                .filter(([k]) => k.includes(g.match))
+                .reduce((s, [, v]) => s + v, 0),
+            }));
             return (
               <section className="space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -3084,6 +3097,22 @@ export default function AdminDashboard() {
                       <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{k.label}</p>
                     </div>
                   ))}
+                </div>
+
+                {/* Niñas por grupo (de un vistazo) */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>
+                    Niñas por grupo · {totalNinas} en total
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {resumenGrupo.map(g => (
+                      <div key={g.label} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff0eb", border: "1px solid #dcc1b9" }}>
+                        <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{puertasLoading ? "—" : g.n}</p>
+                        <p className="text-xs mt-1 font-semibold" style={{ color: "#7d2b13" }}>{g.label}</p>
+                        <p className="text-[11px]" style={{ color: "#89726c" }}>{g.sub}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Buscador + filtro por disciplina + resumen */}
