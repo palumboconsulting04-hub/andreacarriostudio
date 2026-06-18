@@ -94,6 +94,8 @@ type VentaRow = {
   discipline: { nome: string } | null;
   prezzo?: number | null;
   matricula?: number | null;
+  metodo_pagamento?: string | null;
+  tipo?: "stripe" | "manual";
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -113,6 +115,7 @@ const PLAN_LABEL: Record<string, string> = {
   "basico": "Básico",
   "avanzado": "Avanzado",
   "intensivo": "Intensivo",
+  "renovacion": "Renovación",
 };
 // El pago con tarjeta (webhook Stripe) guarda "pagado"; el alta manual guarda "pagato".
 // "activa" = suscripción del bono cobrándose cada mes. Los tres cuentan como pago.
@@ -551,6 +554,7 @@ export default function AdminDashboard() {
     estado_pago: string;
     metodo_pago: string;
     notas: string;
+    importe_matricula: number;
     updated_at: string;
   };
   const [renovData, setRenovData] = useState<RenovacionRow[]>([]);
@@ -598,8 +602,8 @@ export default function AdminDashboard() {
   const [funnelOrigen, setFunnelOrigen] = useState<"todo" | "ads" | "directo">("todo");
   const [funnelTipo, setFunnelTipo] = useState<"inscripcion" | "puertas">("inscripcion");
 
-  type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas";
-  const updateRenov = async (id: string, campo: RenovCampo, value: string) => {
+  type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas" | "importe_matricula";
+  const updateRenov = async (id: string, campo: RenovCampo, value: string | number) => {
     const ahora = new Date().toISOString();
     setRenovData(prev => prev.map(r => (r.id === id ? { ...r, [campo]: value, updated_at: ahora } : r)));
     await fetch("/api/admin/renovaciones", {
@@ -690,13 +694,15 @@ export default function AdminDashboard() {
       fetch("/api/admin/iscrizioni?inscritas").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
       fetch("/api/admin/costes").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
-    ]).then(([{ data: isc }, { data: piani }, { data: costes }]) => {
+      fetch("/api/admin/renovaciones").then(r => r.json()).then(j => ({ data: (j.data ?? []) as RenovacionRow[] })),
+    ]).then(([{ data: isc }, { data: piani }, { data: costes }, { data: renovs }]) => {
       const pm: Record<string, number> = {};
       for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
         pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
       const costeMensual = ((costes ?? []) as { importe_mensual: number }[]).reduce((s, c) => s + Number(c.importe_mensual), 0);
       setFinanzasCosteMensual(costeMensual);
       const now = new Date();
+      const renovsPagadas = (renovs ?? []).filter(r => r.estado_pago === "pagado");
       const monthly = Array.from({ length: 12 }, (_, i) => {
         const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
         const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -705,11 +711,15 @@ export default function AdminDashboard() {
         const mrr = ((isc ?? []) as { created_at: string; disciplina_id: string; piano_id: string; matricula: number; stato: string }[])
           .filter(v => v.created_at.substring(0, 7) <= mes && PAID_STATI.has(v.stato))
           .reduce((s, v) => s + (pm[`${v.piano_id}:${v.disciplina_id}`] ?? 0), 0);
-        // Matrícula: ingreso del mes en que se cobró, para cualquier inscrita.
+        // Matrícula Stripe: ingreso del mes en que se cobró.
         const matMes = ((isc ?? []) as { created_at: string; matricula: number }[])
           .filter(v => v.created_at.substring(0, 7) === mes)
           .reduce((s, v) => s + (v.matricula ?? 0), 0);
-        const ingresos = mrr + matMes;
+        // Pagos manuales (efectivo/bizum) del mes — usando updated_at como fecha de cobro.
+        const manualMes = renovsPagadas
+          .filter(r => r.updated_at && r.updated_at.substring(0, 7) === mes)
+          .reduce((s, r) => s + (r.importe_matricula ?? 0), 0);
+        const ingresos = mrr + matMes + manualMes;
         return { mes, label, ingresos, costes: costeMensual };
       });
       setFinanzasMensual(monthly);
@@ -810,14 +820,38 @@ export default function AdminDashboard() {
 
   async function fetchVentas() {
     setVentasLoading(true);
-    const [{ data: isc }, { data: piani }] = await Promise.all([
+    const [{ data: isc }, { data: piani }, { data: renovs }] = await Promise.all([
       fetch("/api/admin/iscrizioni").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
+      fetch("/api/admin/renovaciones").then(r => r.json()).then(j => ({ data: (j.data ?? []) as RenovacionRow[] })),
     ]);
     const pm: Record<string, number> = {};
     for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
       pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
-    setVentasData(((isc ?? []) as unknown as VentaRow[]).map(i => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+    const stripeRows: VentaRow[] = ((isc ?? []) as unknown as VentaRow[]).map(i => ({
+      ...i,
+      prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null,
+      tipo: "stripe" as const,
+    }));
+    const manualRows: VentaRow[] = (renovs ?? [])
+      .filter(r => r.estado_pago === "pagado")
+      .map(r => ({
+        id: r.id,
+        created_at: r.updated_at,
+        stato: "pagado",
+        disciplina_id: r.grupo,
+        piano_id: "renovacion",
+        nome: r.nombre,
+        cognome: r.apellidos ?? "",
+        nome_alumna: null,
+        cognome_alumna: null,
+        discipline: { nome: r.grupo },
+        prezzo: 0,
+        matricula: r.importe_matricula ?? 0,
+        metodo_pagamento: r.metodo_pago || "efectivo",
+        tipo: "manual" as const,
+      }));
+    setVentasData([...stripeRows, ...manualRows].sort((a, b) => b.created_at.localeCompare(a.created_at)));
     setVentasLoading(false);
   }
 
@@ -1196,7 +1230,8 @@ export default function AdminDashboard() {
       supabase.from("orari").select("*", { count: "exact", head: true }).eq("giorno", todayEs).eq("attivo", true),
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
-    ]).then(([allIsc, r2, r4, r7]) => {
+      fetch("/api/admin/renovaciones").then(r => r.json()).then(j => (j.data ?? []) as RenovacionRow[]),
+    ]).then(([allIsc, r2, r4, r7, renovaciones]) => {
       setIscrittiCount(allIsc.filter(i => INSCRITA_STATI_ARR.includes(i.stato)).length);
       setLezioniCount(r2.count ?? 0);
       setPendingCount(allIsc.filter(i => i.stato === "attesa").length);
@@ -1226,6 +1261,12 @@ export default function AdminDashboard() {
           factMes += mat;
           if (isc.created_at.substring(0, 7) < curMonthStr) factAnt += mat;
         }
+      }
+      // Sumar pagos manuales (efectivo / bizum) de renovaciones.
+      for (const r of renovaciones.filter(x => x.estado_pago === "pagado")) {
+        const amt = r.importe_matricula ?? 0;
+        factMes += amt;
+        if (r.updated_at && r.updated_at.substring(0, 7) < curMonthStr) factAnt += amt;
       }
       setFacturacionMes(factMes);
       setFacturacionMesAnterior(factAnt);
@@ -1348,7 +1389,9 @@ export default function AdminDashboard() {
   const ventasPrevMes = ventasData.filter(v => v.created_at.startsWith(prevMesStr));
   // Ingreso real aportado por una inscripción: cuota cobrándose + matrícula cuando está
   // pagada; solo matrícula si el bono aún no ha arrancado (matricula_pagada, empieza en sept.).
+  // Para filas manuales (efectivo/bizum) el ingreso es solo el importe_matricula registrado.
   const ingresoFila = (v: VentaRow) => {
+    if (v.tipo === "manual") return v.matricula ?? 0;
     const prezzo = v.prezzo ?? 0;
     const mat = v.matricula ?? 0;
     if (isPaid(v.stato)) return prezzo + mat;
@@ -1390,6 +1433,32 @@ export default function AdminDashboard() {
   });
   const planBreakdownV = Object.values(planMapV).sort((a, b) => b.ingresos - a.ingresos);
   const maxPlan = Math.max(...planBreakdownV.map(p => p.ingresos), 1);
+  // Desglose por canal de pago.
+  const CANAL_INFO: Record<string, { label: string; color: string }> = {
+    online:    { label: "Online (Stripe)", color: "#7d2b13" },
+    efectivo:  { label: "Efectivo",        color: "#1f7a3d" },
+    bizum:     { label: "Bizum",           color: "#1b4f9c" },
+  };
+  const canalMapV: Record<string, { label: string; color: string; ingresos: number; count: number }> = {};
+  pagadasMes.forEach(v => {
+    const mp = v.metodo_pagamento ?? "";
+    let key: string;
+    if (v.tipo === "manual") {
+      key = mp === "bizum" ? "bizum" : "efectivo";
+    } else {
+      key = ["tarjeta", "google-pay", "apple-pay", "paypal"].includes(mp) ? "online"
+          : mp === "bizum" ? "bizum"
+          : mp === "efectivo" ? "efectivo"
+          : "online";
+    }
+    const info = CANAL_INFO[key] ?? { label: key, color: "#89726c" };
+    if (!canalMapV[key]) canalMapV[key] = { ...info, ingresos: 0, count: 0 };
+    canalMapV[key].ingresos += ingresoFila(v);
+    canalMapV[key].count++;
+  });
+  const canalBreakdownV = Object.values(canalMapV).sort((a, b) => b.ingresos - a.ingresos);
+  const maxCanal = Math.max(...canalBreakdownV.map(c => c.ingresos), 1);
+  const totalCanalV = canalBreakdownV.reduce((s, c) => s + c.ingresos, 0);
 
   // Clases de hoy (para el bloque "Para hoy" del Resumen).
   const todayEs = DOW_ES[new Date().getDay()];
@@ -2233,7 +2302,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Breakdowns */}
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-3 gap-4">
                 <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
                   <p className="text-sm font-semibold mb-4" style={{ color: "#7d2b13" }}>Por Disciplina</p>
                   {discBreakdown.length === 0
@@ -2273,6 +2342,30 @@ export default function AdminDashboard() {
                       </div>
                   }
                 </div>
+
+                <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
+                  <p className="text-sm font-semibold mb-1" style={{ color: "#7d2b13" }}>Por Canal de Pago</p>
+                  <p className="text-xs mb-4" style={{ color: "#89726c" }}>Cómo entra el dinero</p>
+                  {canalBreakdownV.length === 0
+                    ? <p className="text-sm" style={{ color: "#89726c" }}>Sin datos cobrados este mes</p>
+                    : <div className="space-y-3">
+                        {canalBreakdownV.map(c => {
+                          const pct = totalCanalV > 0 ? Math.round((c.ingresos / totalCanalV) * 100) : 0;
+                          return (
+                            <div key={c.label}>
+                              <div className="flex justify-between text-xs mb-1">
+                                <span style={{ color: "#25190f" }}>{c.label}</span>
+                                <span className="font-semibold" style={{ color: c.color }}>{c.ingresos}€ · {pct}%</span>
+                              </div>
+                              <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#f3e6e0" }}>
+                                <div className="h-full rounded-full transition-all" style={{ width: `${(c.ingresos / maxCanal) * 100}%`, backgroundColor: c.color }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                  }
+                </div>
               </div>
 
               {/* Tabla detalle */}
@@ -2285,7 +2378,7 @@ export default function AdminDashboard() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
-                        {["Alumna", "Disciplina", "Plan", "Precio", "Fecha", "Estado"].map(h => (
+                        {["Alumna", "Disciplina", "Plan", "Precio", "Fecha", "Método", "Estado"].map(h => (
                           <th key={h} className="text-left py-3 px-4 text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>{h}</th>
                         ))}
                       </tr>
@@ -2295,15 +2388,26 @@ export default function AdminDashboard() {
                         ? <tr><td colSpan={6} className="py-10 text-center text-sm" style={{ color: "#89726c" }}>Sin inscripciones en este período</td></tr>
                         : ventasMesFiltradas.map(v => {
                             const alumna = v.nome_alumna ? `${v.nome_alumna} ${v.cognome_alumna ?? ""}`.trim() : `${v.nome} ${v.cognome}`.trim();
+                            const mp = v.metodo_pagamento ?? "";
+                            const metodoLabel = METODO_LABEL[mp] ?? (mp === "efectivo" ? "Efectivo" : mp === "bizum" ? "Bizum" : mp || "—");
+                            const metodoColor = v.tipo === "manual"
+                              ? (mp === "bizum" ? { bg: "#e6efff", fg: "#1b4f9c" } : { bg: "#e7f7ec", fg: "#1f7a3d" })
+                              : { bg: "#fff0eb", fg: "#7d2b13" };
                             return (
                               <tr key={v.id} className="border-b hover:bg-[#fff8f5] transition-colors" style={{ borderColor: "#f0e0d8" }}>
-                                <td className="py-3 px-4 font-medium" style={{ color: "#25190f" }}>{alumna}</td>
+                                <td className="py-3 px-4 font-medium" style={{ color: "#25190f" }}>
+                                  {alumna}
+                                  {v.tipo === "manual" && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "#fff3e0", color: "#e65100" }}>Manual</span>}
+                                </td>
                                 <td className="py-3 px-4" style={{ color: "#25190f" }}>{v.discipline?.nome ?? "—"}</td>
                                 <td className="py-3 px-4" style={{ color: "#25190f" }}>{PLAN_LABEL[v.piano_id] ?? v.piano_id}</td>
-                                <td className="py-3 px-4 font-semibold" style={{ color: "#7d2b13" }}>{v.prezzo != null ? `${v.prezzo}€` : "—"}</td>
+                                <td className="py-3 px-4 font-semibold" style={{ color: "#7d2b13" }}>{ingresoFila(v) > 0 ? `${ingresoFila(v)}€` : "—"}</td>
                                 <td className="py-3 px-4 whitespace-nowrap" style={{ color: "#89726c" }}>{new Date(v.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</td>
                                 <td className="py-3 px-4">
-                                  {isPaid(v.stato)
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: metodoColor.bg, color: metodoColor.fg }}>{metodoLabel}</span>
+                                </td>
+                                <td className="py-3 px-4">
+                                  {ingresoFila(v) > 0
                                     ? <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e8f5e9] text-[#2e7d32] text-xs font-semibold">Cobrado</span>
                                     : <span className="inline-flex items-center px-3 py-1 rounded-full bg-error-container text-on-error-container text-xs font-semibold">Pendiente</span>}
                                 </td>
@@ -3154,6 +3258,10 @@ export default function AdminDashboard() {
             const noRenuevan = renovData.filter(r => r.estado_contacto === "no_renueva").length;
             const sinContactar = renovData.filter(r => r.estado_contacto === "sin_llamar").length;
             const pct = total > 0 ? Math.round((renovadas / total) * 100) : 0;
+            const totalCobrado = renovData.filter(r => r.estado_pago === "pagado").reduce((s, r) => s + (r.importe_matricula ?? 0), 0);
+            const efectivoCobrado = renovData.filter(r => r.estado_pago === "pagado" && r.metodo_pago === "efectivo").reduce((s, r) => s + (r.importe_matricula ?? 0), 0);
+            const bizumCobrado = renovData.filter(r => r.estado_pago === "pagado" && r.metodo_pago === "bizum").reduce((s, r) => s + (r.importe_matricula ?? 0), 0);
+            const webCobrado = renovData.filter(r => r.estado_pago === "pagado" && r.metodo_pago === "web").reduce((s, r) => s + (r.importe_matricula ?? 0), 0);
             const porGrupo = GRUPOS.map(g => ({
               grupo: g,
               total: renovData.filter(r => r.grupo === g).length,
@@ -3244,6 +3352,24 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Total cobrado */}
+                <div className="rounded-2xl p-4 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>Cobrado en renovaciones</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { label: "Total", value: totalCobrado, color: "#7d2b13" },
+                      { label: "Efectivo", value: efectivoCobrado, color: "#1f7a3d" },
+                      { label: "Bizum", value: bizumCobrado, color: "#1b4f9c" },
+                      { label: "Web", value: webCobrado, color: "#56423d" },
+                    ].map(m => (
+                      <div key={m.label}>
+                        <p className="text-xl font-bold" style={{ color: m.color }}>{renovLoading ? "—" : `${m.value}€`}</p>
+                        <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{m.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Desglose por grupo */}
                 <div className="rounded-2xl p-4 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
                   <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>Renovadas por grupo</p>
@@ -3293,7 +3419,7 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Alumna", "Edad", "Grupo", "Contacto", "Nota familia", "Estado contacto", "Pago", "Método", "Notas", "Últ. act.", ""].map((h, hi) => (
+                            {["Alumna", "Edad", "Grupo", "Contacto", "Nota familia", "Estado contacto", "Pago", "Método", "Importe €", "Notas", "Últ. act.", ""].map((h, hi) => (
                               <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
@@ -3366,6 +3492,25 @@ export default function AdminDashboard() {
                                     {MP_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                   </select>
                                 </td>
+                                <td className="px-4 py-3 whitespace-nowrap" style={{ opacity: noRen ? 0.4 : 1 }}>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs" style={{ color: "#89726c" }}>€</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      defaultValue={r.importe_matricula || ""}
+                                      onBlur={e => {
+                                        const val = parseInt(e.target.value, 10);
+                                        const prev = r.importe_matricula ?? 0;
+                                        if (!isNaN(val) && val >= 0 && val !== prev) updateRenov(r.id, "importe_matricula", val);
+                                        else if (e.target.value === "" && prev !== 0) updateRenov(r.id, "importe_matricula", 0);
+                                      }}
+                                      placeholder="0"
+                                      className="w-16 text-xs rounded-lg border px-2 py-1 outline-none"
+                                      style={{ borderColor: "#dcc1b9", backgroundColor: "#fffdfc", color: "#25190f" }}
+                                    />
+                                  </div>
+                                </td>
                                 <td className="px-4 py-3 align-top">
                                   <textarea
                                     value={renovNotasDraft[r.id] ?? r.notas ?? ""}
@@ -3405,10 +3550,11 @@ export default function AdminDashboard() {
                         </tbody>
                         <tfoot>
                           <tr style={{ backgroundColor: "#fff0eb", borderTop: "2px solid #dcc1b9" }}>
-                            <td colSpan={11} className="px-4 py-3 text-sm font-bold" style={{ color: "#7d2b13" }}>
+                            <td colSpan={12} className="px-4 py-3 text-sm font-bold" style={{ color: "#7d2b13" }}>
                               Total: {filtered.length} {filtered.length === 1 ? "alumna" : "alumnas"}
                               {renovFiltroGrupo ? ` · ${renovFiltroGrupo}` : ""}
                               {renovFiltroEstado ? ` · ${EC_OPT.find(o => o.value === renovFiltroEstado)?.label ?? ""}` : ""}
+                              {" · "}Cobrado: {filtered.filter(r => r.estado_pago === "pagado").reduce((s, r) => s + (r.importe_matricula ?? 0), 0)}€
                             </td>
                           </tr>
                         </tfoot>

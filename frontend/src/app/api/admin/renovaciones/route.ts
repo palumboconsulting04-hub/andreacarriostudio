@@ -65,7 +65,7 @@ export async function PATCH(req: NextRequest) {
   if (!id) {
     return NextResponse.json({ error: "Falta el id" }, { status: 400 });
   }
-  const updates: Record<string, string | null> = { updated_at: new Date().toISOString() };
+  const updates: Record<string, string | number | null> = { updated_at: new Date().toISOString() };
 
   // Campos fijos editables.
   if (body.nombre !== undefined) updates.nombre = String(body.nombre).trim();
@@ -80,6 +80,10 @@ export async function PATCH(req: NextRequest) {
   if (body.estado_pago !== undefined && ESTADO_PAGO.has(String(body.estado_pago))) updates.estado_pago = String(body.estado_pago);
   if (body.metodo_pago !== undefined && METODO_PAGO.has(String(body.metodo_pago))) updates.metodo_pago = String(body.metodo_pago);
   if (body.notas !== undefined) updates.notas = String(body.notas);
+  if (body.importe_matricula !== undefined) {
+    const val = parseInt(String(body.importe_matricula), 10);
+    if (!isNaN(val) && val >= 0) updates.importe_matricula = val;
+  }
 
   const { error } = await supabaseAdmin.from("renovaciones").update(updates).eq("id", id);
   if (error) {
