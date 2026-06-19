@@ -327,22 +327,13 @@ export default function PuertasAbiertasAdultas() {
             Tonifica tu cuerpo, libera tensiones y regálate 30 minutos de desconexión real
           </h1>
 
-          {/* Disciplinas destacadas — muy visibles al entrar (coherencia anuncio/landing) */}
-          <div className="flex flex-wrap justify-center items-center gap-2.5 mb-5">
-            <span
-              className="px-5 py-2.5 rounded-full text-base sm:text-lg font-bold shadow-sm"
-              style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans }}
-            >
-              Pilates Mat
-            </span>
-            <span className="text-sm font-semibold" style={{ color: C.muted, fontFamily: fSans }}>+</span>
-            <span
-              className="px-5 py-2.5 rounded-full text-base sm:text-lg font-bold"
-              style={{ backgroundColor: C.blush, color: C.burgundy, border: `2px solid ${C.burgundy}`, fontFamily: fSans }}
-            >
-              Barre Fit
-            </span>
-          </div>
+          {/* Disciplinas destacadas — visibles al entrar (coherencia anuncio/landing) */}
+          <p
+            className="text-lg sm:text-2xl font-bold mb-5"
+            style={{ color: C.burgundy, fontFamily: fSans }}
+          >
+            Pilates Mat <span style={{ color: C.muted, fontWeight: 400 }}>·</span> Barre Fit
+          </p>
 
           <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6 space-y-3" style={{ color: C.dark }}>
             <p>Sé perfectamente lo difícil que es compaginar el trabajo, los planes y el día a día.</p>
