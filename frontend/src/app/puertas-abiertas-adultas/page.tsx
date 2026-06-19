@@ -317,7 +317,7 @@ export default function PuertasAbiertasAdultas() {
             className="text-xs uppercase tracking-[0.18em] mb-3"
             style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 600 }}
           >
-            Clase de prueba gratuita de Barre Fit o Pilates Mat · Viernes, 24 de julio · Valencia (Alfahuir)
+            Clase de prueba gratuita · 24 de julio · Valencia
           </p>
 
           <h1
