@@ -149,6 +149,7 @@ export async function POST(req: NextRequest) {
     telefono: b.telefono ? String(b.telefono).trim() : null,
     email: b.email ? String(b.email).trim() : null,
     nota: b.nota ? String(b.nota).trim() : null,
+    nombre_madre: b.nombre_madre ? String(b.nombre_madre).trim() : null,
   };
   const { data, error } = await supabaseAdmin.from("renovaciones").insert(row).select().single();
   if (error) {
@@ -178,6 +179,7 @@ export async function PATCH(req: NextRequest) {
   if (body.telefono !== undefined) updates.telefono = body.telefono ? String(body.telefono).trim() : null;
   if (body.email !== undefined) updates.email = body.email ? String(body.email).trim() : null;
   if (body.nota !== undefined) updates.nota = body.nota ? String(body.nota).trim() : null;
+  if (body.nombre_madre !== undefined) updates.nombre_madre = body.nombre_madre ? String(body.nombre_madre).trim() : null;
   // Seguimiento.
   if (body.estado_contacto !== undefined && ESTADO_CONTACTO.has(String(body.estado_contacto))) updates.estado_contacto = String(body.estado_contacto);
   if (body.estado_pago !== undefined && ESTADO_PAGO.has(String(body.estado_pago))) updates.estado_pago = String(body.estado_pago);

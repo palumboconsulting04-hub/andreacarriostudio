@@ -564,6 +564,7 @@ export default function AdminDashboard() {
     metodo_pago: string;
     notas: string;
     importe_matricula: number;
+    nombre_madre: string | null;
     updated_at: string;
   };
   const [renovData, setRenovData] = useState<RenovacionRow[]>([]);
@@ -573,7 +574,7 @@ export default function AdminDashboard() {
   const [renovFiltroEstado, setRenovFiltroEstado] = useState("");
   const [renovNotasDraft, setRenovNotasDraft] = useState<Record<string, string>>({});
   const [showAddRenov, setShowAddRenov] = useState(false);
-  const emptyNewRenov = { nombre: "", apellidos: "", fecha_nacimiento: "", grupo: "Pre-Ballet", telefono: "", email: "", nota: "" };
+  const emptyNewRenov = { nombre: "", apellidos: "", fecha_nacimiento: "", grupo: "Pre-Ballet", telefono: "", email: "", nota: "", nombre_madre: "" };
   const [newRenov, setNewRenov] = useState(emptyNewRenov);
   const [renovDeleteId, setRenovDeleteId] = useState<string | null>(null);
   const [renovEditId, setRenovEditId] = useState<string | null>(null);
@@ -691,7 +692,7 @@ export default function AdminDashboard() {
   const [funnelOrigen, setFunnelOrigen] = useState<"todo" | "ads" | "directo">("todo");
   const [funnelTipo, setFunnelTipo] = useState<"inscripcion" | "puertas">("inscripcion");
 
-  type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas" | "importe_matricula";
+  type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas" | "importe_matricula" | "nombre_madre";
   const updateRenov = async (id: string, campo: RenovCampo, value: string | number) => {
     const ahora = new Date().toISOString();
     setRenovData(prev => prev.map(r => (r.id === id ? { ...r, [campo]: value, updated_at: ahora } : r)));
@@ -3499,6 +3500,7 @@ export default function AdminDashboard() {
                       </select>
                       <input value={newRenov.telefono} onChange={e => setNewRenov(p => ({ ...p, telefono: e.target.value }))} placeholder="Teléfono" className="px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }} />
                       <input value={newRenov.email} onChange={e => setNewRenov(p => ({ ...p, email: e.target.value }))} placeholder="Email" className="px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }} />
+                      <input value={newRenov.nombre_madre} onChange={e => setNewRenov(p => ({ ...p, nombre_madre: e.target.value }))} placeholder="Nombre de la madre" className="px-3 py-2 rounded-lg border text-sm sm:col-span-2" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }} />
                       <input value={newRenov.nota} onChange={e => setNewRenov(p => ({ ...p, nota: e.target.value }))} placeholder="Nota familia (opcional)" className="px-3 py-2 rounded-lg border text-sm sm:col-span-2" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", color: "#25190f" }} />
                     </div>
                     <div className="flex gap-2 mt-4">
@@ -3601,7 +3603,7 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Alumna", "Edad", "Grupo", "Contacto", "Nota familia", "Estado contacto", "Pago", "Método", "Importe €", "Notas", "Últ. act.", ""].map((h, hi) => (
+                            {["Alumna", "Edad", "Grupo", "Contacto", "Madre", "Nota familia", "Estado contacto", "Pago", "Método", "Importe €", "Notas", "Últ. act.", ""].map((h, hi) => (
                               <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
@@ -3630,6 +3632,9 @@ export default function AdminDashboard() {
                                       <input defaultValue={r.telefono ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.telefono ?? "")) updateRenov(r.id, "telefono", e.target.value.trim()); }} placeholder="Teléfono" style={{ ...editInput, width: "140px", marginBottom: "4px" }} />
                                       <input defaultValue={r.email ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.email ?? "")) updateRenov(r.id, "email", e.target.value.trim()); }} placeholder="Email" style={{ ...editInput, width: "180px" }} />
                                     </td>
+                                    <td className="px-4 py-3 align-top whitespace-nowrap">
+                                      <input defaultValue={r.nombre_madre ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.nombre_madre ?? "")) updateRenov(r.id, "nombre_madre", e.target.value.trim()); }} placeholder="Nombre madre" style={{ ...editInput, width: "150px" }} />
+                                    </td>
                                     <td className="px-4 py-3 align-top">
                                       <input defaultValue={r.nota ?? ""} onBlur={e => { if (e.target.value.trim() !== (r.nota ?? "")) updateRenov(r.id, "nota", e.target.value.trim()); }} placeholder="Nota familia…" style={{ ...editInput, width: "200px" }} />
                                     </td>
@@ -3642,8 +3647,23 @@ export default function AdminDashboard() {
                                       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>{r.grupo}</span>
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap">
-                                      <p style={{ color: "#25190f" }}>{r.telefono}</p>
+                                      {r.telefono ? (
+                                        <a
+                                          href={whatsappHref(r.telefono)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 font-medium hover:underline"
+                                          style={{ color: "#1f7a3d" }}
+                                          title="Abrir WhatsApp"
+                                        >
+                                          <Icon name="chat" className="text-sm" style={{ color: "#1f7a3d" }} />
+                                          {r.telefono}
+                                        </a>
+                                      ) : <span style={{ color: "#89726c" }}>—</span>}
                                       <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{r.email}</p>
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap" style={{ color: "#25190f" }}>
+                                      {r.nombre_madre || <span style={{ color: "#89726c" }}>—</span>}
                                     </td>
                                     <td className="px-4 py-3 max-w-[200px]">
                                       {r.nota ? (
@@ -3735,7 +3755,7 @@ export default function AdminDashboard() {
                         </tbody>
                         <tfoot>
                           <tr style={{ backgroundColor: "#fff0eb", borderTop: "2px solid #dcc1b9" }}>
-                            <td colSpan={12} className="px-4 py-3 text-sm font-bold" style={{ color: "#7d2b13" }}>
+                            <td colSpan={13} className="px-4 py-3 text-sm font-bold" style={{ color: "#7d2b13" }}>
                               Total: {filtered.length} {filtered.length === 1 ? "alumna" : "alumnas"}
                               {renovFiltroGrupo ? ` · ${renovFiltroGrupo}` : ""}
                               {renovFiltroEstado ? ` · ${EC_OPT.find(o => o.value === renovFiltroEstado)?.label ?? ""}` : ""}
