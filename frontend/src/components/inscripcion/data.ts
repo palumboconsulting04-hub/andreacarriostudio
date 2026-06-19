@@ -33,7 +33,7 @@ export const disciplinas: Disciplina[] = [
   },
   {
     id: "ballet-ii",
-    nombre: "Ballet II 10-12 años",
+    nombre: "Ballet II 10-14 años",
     descripcion: "Mayor exigencia técnica con metodología RAD.",
     imagen: "/ballet-ii.png",
     soloIntensivo: true,

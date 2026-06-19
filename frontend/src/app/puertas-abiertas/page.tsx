@@ -16,7 +16,7 @@ declare global {
 const EDAD_NINA_OPTIONS = [
   "Pre-Ballet · 3–6 años",
   "Ballet 1 · 7–9 años",
-  "Ballet 2 · 10–12 años",
+  "Ballet 2 · 10–14 años",
 ];
 
 const C = {

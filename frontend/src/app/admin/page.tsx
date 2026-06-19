@@ -935,7 +935,7 @@ export default function AdminDashboard() {
     const GRUPO_A_DISCIPLINA: Record<string, { id: string; nome: string }> = {
       "Pre-Ballet": { id: "pre-ballet", nome: "Pre Ballet 3-6 años" },
       "Ballet 1": { id: "ballet-i", nome: "Ballet I 7-9 años" },
-      "Ballet 2": { id: "ballet-ii", nome: "Ballet II 10-12 años" },
+      "Ballet 2": { id: "ballet-ii", nome: "Ballet II 10-14 años" },
     };
     // Excluir metodo_pago="web": esas matrículas ya están contabilizadas via Stripe (iscrizioni).
     const manualRows: VentaRow[] = (renovs ?? [])
@@ -3060,7 +3060,7 @@ export default function AdminDashboard() {
             const GRUPOS_PA = [
               { label: "Pre-Ballet", sub: "3–6 años", match: "Pre-Ballet" },
               { label: "Ballet 1", sub: "7–9 años", match: "Ballet 1" },
-              { label: "Ballet 2", sub: "10–12 años", match: "Ballet 2" },
+              { label: "Ballet 2", sub: "10–14 años", match: "Ballet 2" },
             ];
             const resumenGrupo = GRUPOS_PA.map(g => ({
               ...g,
@@ -3920,7 +3920,7 @@ export default function AdminDashboard() {
               socializar: "Socializar y divertirse",
             };
             const EDAD_LABEL: Record<string, string> = {
-              "3-4": "3 – 4 años", "5-6": "5 – 6 años", "7-9": "7 – 9 años", "10-12": "10 – 12 años",
+              "3-4": "3 – 4 años", "5-6": "5 – 6 años", "7-9": "7 – 9 años", "10-12": "10 – 14 años",
               "18-30": "18 – 30", "31-45": "31 – 45", "46-60": "46 – 60", "60+": "Más de 60",
             };
             const RED_LABEL: Record<string, string> = {

@@ -26,7 +26,7 @@ export default function Paso4CrossSell({
   const esAdulta = ADULTAS.has(disciplinaId);
 
   const sugerencia = esAdulta
-    ? "¿Tienes una hija que quiera aprender ballet? Tenemos Pre Ballet (3-6 años), Ballet I (7-9 años) y Ballet II (10-12 años)."
+    ? "¿Tienes una hija que quiera aprender ballet? Tenemos Pre Ballet (3-6 años), Ballet I (7-9 años) y Ballet II (10-14 años)."
     : "¿Te apuntas tú también? Mientras tu hija baila, tú también puedes tener tu momento. Prueba Pilates Mat o Barre Fit.";
 
   return (
