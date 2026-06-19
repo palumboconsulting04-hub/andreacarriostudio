@@ -327,19 +327,10 @@ export default function PuertasAbiertasAdultas() {
             Tonifica tu cuerpo, libera tensiones y regálate 30 minutos de desconexión real
           </h1>
 
-          <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-5 space-y-3" style={{ color: C.dark }}>
+          <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6 space-y-3" style={{ color: C.dark }}>
             <p>Sé perfectamente lo difícil que es compaginar el trabajo, los planes y el día a día.</p>
             <p>Al salir de casa, lo último que te apetece es meterte en un gimnasio enorme, ruidoso y lleno de gente. Quieres cuidarte, claro que sí, pero también buscas un sitio cercano donde estar a gusto y desconectar de verdad.</p>
             <p>Por eso, el próximo 24 de julio abro las puertas de mi estudio para ponértelo muy fácil:</p>
-          </div>
-
-          <div
-            className="max-w-lg mx-auto rounded-2xl p-5 mb-6 text-left"
-            style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
-          >
-            <p className="text-sm leading-relaxed" style={{ color: C.brown }}>
-              🎁 <strong style={{ color: C.dark }}>Te invito a una sesión corta de 30 minutos</strong> para que pruebes la clase que más te apetezca, conozcas el espacio y veas si te pilla bien al lado de casa. Sin trampa ni cartón, y 100% gratis.
-            </p>
           </div>
 
           <button
