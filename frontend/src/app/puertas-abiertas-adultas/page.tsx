@@ -14,9 +14,9 @@ declare global {
 }
 
 const DISCIPLINA_OPTIONS = [
-  { value: "pilates", label: "Pilates Mat" },
-  { value: "barre", label: "Barre Fit" },
-  { value: "ambas", label: "Las dos" },
+  { value: "barre", label: "Barre Fit", desc: "Tonificar, esculpir y energía" },
+  { value: "pilates", label: "Pilates Mat", desc: "Abdomen, postura y flexibilidad" },
+  { value: "ambas", label: "Tengo curiosidad, ¡quiero probar las dos!", desc: "" },
 ];
 
 const C = {
@@ -32,22 +32,6 @@ const C = {
 
 const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
 const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
-
-function chip(selected: boolean) {
-  return {
-    padding: "10px 20px",
-    borderRadius: "999px",
-    border: `2px solid ${selected ? C.burgundy : C.border}`,
-    backgroundColor: selected ? C.blush : C.cream,
-    color: selected ? C.burgundy : C.brown,
-    cursor: "pointer",
-    fontSize: "0.875rem",
-    fontFamily: fSans,
-    transition: "all 0.18s ease",
-    outline: "none",
-    whiteSpace: "nowrap" as const,
-  };
-}
 
 function inputStyle() {
   return {
@@ -258,11 +242,11 @@ export default function PuertasAbiertasAdultas() {
           ¡Plaza reservada!
         </h2>
         <p className="text-base max-w-md leading-relaxed mb-8" style={{ color: C.brown }}>
-          Me alegra muchísimo que vengas a probar. Te escribiré personalmente por WhatsApp para confirmarte el horario y resolver cualquier duda. ¡Nos vemos pronto!
+          Me alegra muchísimo que vengas a probar. Te escribiré yo misma por WhatsApp para confirmarte la hora de tu clase y resolver cualquier duda. ¡Tengo muchas ganas de conocerte!
         </p>
 
         <p className="text-sm max-w-md leading-relaxed mb-10" style={{ color: C.brown }}>
-          ¡Hasta el 24 de julio!<br />
+          ¡Nos vemos el 24 de julio!<br />
           <strong>Andrea</strong>
         </p>
 
@@ -330,76 +314,67 @@ export default function PuertasAbiertasAdultas() {
           />
 
           <p
-            className="text-xs uppercase tracking-[0.22em] mb-3"
+            className="text-xs uppercase tracking-[0.18em] mb-3"
             style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 600 }}
           >
-            Jornada de Puertas Abiertas · 24 de julio · Valencia
+            Clase de prueba gratuita de Barre Fit o Pilates Mat · Viernes, 24 de julio · Valencia (Alfahuir)
           </p>
 
           <h1
             className="text-[1.7rem] sm:text-5xl mb-4 leading-[1.15]"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            Descubre el Pilates y el Barre Fit, sin pagar nada y sin compromiso
+            Tonifica tu cuerpo, libera tensiones y regálate 30 minutos de desconexión real
           </h1>
 
-          <p
-            className="text-sm sm:text-lg leading-relaxed max-w-lg mx-auto mb-5"
-            style={{ color: C.dark }}
-          >
-            Una clase de prueba real para que sientas el método, te muevas, cuides tu cuerpo y conozcas el estudio y a tu profesora antes de decidir. Tu momento para ti.
-          </p>
+          <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-5 space-y-3" style={{ color: C.dark }}>
+            <p>Sé perfectamente lo difícil que es compaginar el trabajo, los planes y el día a día.</p>
+            <p>Al salir de casa, lo último que te apetece es meterte en un gimnasio enorme, ruidoso y lleno de gente. Quieres cuidarte, claro que sí, pero también buscas un sitio cercano donde estar a gusto y desconectar de verdad.</p>
+            <p>Por eso, el próximo 24 de julio abro las puertas de mi estudio para ponértelo muy fácil:</p>
+          </div>
 
-          <ul className="inline-flex flex-col gap-1.5 text-left mb-6 mx-auto">
-            {[
-              "Clase de prueba gratuita",
-              "Grupos reducidos",
-              "Para cualquier nivel",
-              "Sin compromiso de inscripción",
-            ].map(t => (
-              <li key={t} className="flex items-center gap-2.5">
-                <Check />
-                <span className="text-sm font-medium" style={{ color: C.dark, fontFamily: fSans }}>{t}</span>
-              </li>
-            ))}
-          </ul>
+          <div
+            className="max-w-lg mx-auto rounded-2xl p-5 mb-6 text-left"
+            style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
+          >
+            <p className="text-sm leading-relaxed" style={{ color: C.brown }}>
+              🎁 <strong style={{ color: C.dark }}>Te invito a una sesión corta de 30 minutos</strong> para que pruebes la clase que más te apetezca, conozcas el espacio y veas si te pilla bien al lado de casa. Sin trampa ni cartón, y 100% gratis.
+            </p>
+          </div>
 
           <button
             onClick={() => handleReservaClick("hero")}
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.1em" }}
+            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Reserva tu clase de prueba gratis
+            Reservar mi clase gratis con Andrea
           </button>
 
           <p className="text-sm mt-4 font-semibold" style={{ color: C.burgundy }}>
-            ⚠ Plazas limitadas · Los grupos suelen completarse rápido.
+            ⚠ Grupos muy reducidos · Las plazas suelen completarse rápido.
           </p>
         </div>
       </div>
 
-      {/* ── Qué vivirás (value stack) ── */}
+      {/* ── Las 4 cosas que vienes a hacer ── */}
       <div className="px-4 py-12">
         <div
           className="max-w-2xl mx-auto rounded-3xl p-7 sm:p-10 shadow-sm"
           style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
         >
           <h2
-            className="text-2xl sm:text-3xl mb-2 text-center"
+            className="text-2xl sm:text-3xl mb-7 text-center"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            ¿Qué vivirás durante la jornada?
+            Las 4 cosas que vienes a hacer en estos 30 minutos
           </h2>
-          <p className="text-sm text-center mb-7" style={{ color: C.muted }}>
-            Todo completamente gratis.
-          </p>
 
           <ul className="space-y-4">
             {[
-              ["Una clase real, no una demostración", "Participarás en una clase de verdad de Pilates Mat o Barre Fit, adaptada a tu nivel, para que sientas de primera mano cómo trabajamos."],
-              ["Grupos reducidos y atención personalizada", "Pocas personas por clase para que la profesora pueda corregirte, acompañarte y que te lleves la técnica bien hecha."],
-              ["Para cualquier nivel y edad", "No necesitas experiencia previa ni una forma física concreta. Empezamos donde tú estás."],
-              ["Conoce el estudio con calma", "Verás el espacio, resolverás tus dudas y decidirás tranquilamente si es tu sitio. Sin presiones."],
+              ["Ver si te pilla al lado de casa", "El estudio está aquí mismo, en la zona de Alfahuir (Carrer de Motilla del Palancar 34), justo al lado del Centro Comercial Arena. Si vives por el barrio o cerca de la zona, te vendrá genial para venir dando un paseo y ver si te cuadra en tu día a día."],
+              ["Conocerme en persona", "Olvídate de profesores que cambian cada semana y que ni se saben tu nombre. Estaré yo contigo en la sesión, guiándote para que veas cómo trabajo y compruebes si tenemos buen feeling."],
+              ["Probar el Barre Fit", "Es la disciplina que está arrasando y a mí me tiene enamorada. Es perfecta si buscas tonificar piernas y glúteos, esculpir el cuerpo y activar tu energía al ritmo de la música (y no, no hace falta saber bailar en absoluto)."],
+              ["Probar el Pilates Mat", "El clásico en suelo sobre colchoneta. Te vendrá genial si lo que quieres es definir el abdomen, liberar la rigidez de la espalda después de pasar horas sentada y ganar flexibilidad."],
             ].map(([t, d]) => (
               <li key={t} className="flex gap-3">
                 <Check />
@@ -414,14 +389,53 @@ export default function PuertasAbiertasAdultas() {
           <button
             onClick={() => handleReservaClick("value")}
             className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.1em" }}
+            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Quiero reservar mi clase de prueba
+            Quiero reservar mi clase gratis
+          </button>
+
+          <div className="mt-6 rounded-2xl p-4" style={{ backgroundColor: "#fff3e0" }}>
+            <p className="text-sm leading-relaxed" style={{ color: "#8a4b1a" }}>
+              ⚠️ <strong>Un pequeño detalle:</strong> Trabajo siempre con grupos muy reducidos porque me gusta estar pendiente de cada una de vosotras y corregiros bien. Por eso, las plazas para este día son limitadas. Si te apetece venir, reserva tu hueco ahora para no quedarte sin tu horario.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── ¿Por qué pasarte a verme? ── */}
+      <div className="px-4 pb-12">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl mb-7 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
+            ¿Por qué pasarte a verme el 24 de julio?
+          </h2>
+          <div className="space-y-3">
+            {[
+              ["Porque es rápido y directo", "En media hora entras, pruebas la actividad, estiras, te ríes un rato, conoces el espacio y sigues con tu día."],
+              ["Por el ambiente", "Mi estudio es un espacio boutique pensado para mujeres que buscan entrenar a gusto, sin postureos y liberando el estrés de la semana."],
+              ["Porque tú tienes el control", "Miras las instalaciones, resuelves las dudas de horarios conmigo y decides tranquilamente desde casa. No te voy a presionar con nada al terminar, te lo prometo."],
+            ].map(([t, d]) => (
+              <div
+                key={t}
+                className="rounded-2xl p-5"
+                style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
+              >
+                <strong style={{ color: C.dark, fontFamily: fSans, fontSize: "0.95rem" }}>{t}.</strong>{" "}
+                <span className="text-sm" style={{ color: C.brown }}>{d}</span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => handleReservaClick("porque")}
+            className="w-full mt-7 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
+          >
+            Quiero reservar mi clase gratis
           </button>
         </div>
       </div>
 
-      {/* ── Confianza: Hola, soy Andrea ── */}
+      {/* ── Confianza: un poco sobre mí ── */}
       <div className="px-4 pb-12">
         <div
           className="max-w-4xl mx-auto rounded-3xl overflow-hidden grid md:grid-cols-2"
@@ -437,33 +451,21 @@ export default function PuertasAbiertasAdultas() {
           />
           <div className="p-7 sm:p-9">
             <h2 className="text-2xl sm:text-3xl mb-2" style={{ fontFamily: fSerif, color: C.burgundy }}>
-              Hola, soy Andrea Carrió
+              Un poco sobre mí…
             </h2>
             <p className="text-sm font-medium mb-4" style={{ color: C.dark, fontFamily: fSans }}>
-              Y quiero que tengas un espacio donde cuidarte, a tu ritmo.
+              …por si aún no nos conocemos.
             </p>
-            <div className="text-sm leading-relaxed space-y-3 mb-6" style={{ color: C.brown }}>
+            <div className="text-sm leading-relaxed space-y-3" style={{ color: C.brown }}>
               <p>
-                Acabo de abrir mi propio estudio en la <strong style={{ color: C.dark }}>Calle Motilla del Palancar 34</strong>, en la zona de Alfahuir, la que muchas conocéis como la escuela de Mari Cruz Alcalá.
+                Soy <strong style={{ color: C.dark }}>Andrea Carrió</strong>. Tras muchos años dedicada a la danza profesional y a la enseñanza del movimiento, decidí crear este rincón en Valencia.
               </p>
               <p>
-                Además de las clases de ballet, he creado un espacio para adultas con <strong style={{ color: C.dark }}>Pilates Mat y Barre Fit</strong>: clases para moverte, mejorar tu postura, ganar fuerza y dedicarte un rato solo para ti.
+                Mi objetivo no es que vengas aquí a sufrir por sufrir. Quiero ayudarte a entrenar de forma inteligente: a ganar fuerza, moldear tu cuerpo, mejorar la postura y, sobre todo, a que salgas de clase con mucha más energía de la que tenías al entrar.
               </p>
               <p>
-                Llevo toda mi vida ligada a la danza y al movimiento, y mi forma de trabajar es siempre cercana: grupos pequeños, trato personal y mucho cuidado por la técnica.
+                Como me obsesiona que hagas los ejercicios bien para cuidar tu espalda y no lesionarte, mis grupos son muy pequeñitos y el trato es súper familiar.
               </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {["Grupos reducidos", "Trato cercano y personal", "Estudio propio en Alfahuir"].map(s => (
-                <span
-                  key={s}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold"
-                  style={{ backgroundColor: C.cream, border: `1px solid ${C.border}`, color: C.burgundy, fontFamily: fSans }}
-                >
-                  {s}
-                </span>
-              ))}
             </div>
           </div>
         </div>
@@ -476,40 +478,54 @@ export default function PuertasAbiertasAdultas() {
           style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}
         >
           <h2 className="text-2xl sm:text-3xl mb-1 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
-            Reserva tu clase de prueba
+            Reserva tu plaza en 20 segundos
           </h2>
-          <p className="text-sm text-center mb-1" style={{ color: C.brown }}>
-            Solo necesitas 20 segundos.
-          </p>
-          <p className="text-sm text-center mb-7 font-semibold" style={{ color: C.burgundy }}>
-            Las plazas son limitadas para garantizar una atención personalizada.
+          <p className="text-sm text-center mb-7" style={{ color: C.brown }}>
+            Rellena este mini formulario y te escribiré yo misma por WhatsApp para confirmar tu hora de clase. No te preocupes, odio el spam tanto como tú; no te mandaré publicidad pesada.
           </p>
 
           <div className="space-y-4">
             <input
               style={inputStyle()}
-              placeholder="Tu nombre"
+              placeholder="Nombre"
               value={nombre}
               onChange={e => setNombre(e.target.value)}
             />
             <input
               style={inputStyle()}
-              placeholder="Teléfono (WhatsApp)"
+              placeholder="WhatsApp"
               type="tel"
               value={telefono}
               onChange={e => setTelefono(e.target.value)}
             />
 
             <div>
-              <p className="text-sm font-semibold mb-2" style={{ color: C.brown, fontFamily: fSans }}>
-                ¿Qué quieres probar?
+              <p className="text-sm font-semibold mb-2.5" style={{ color: C.brown, fontFamily: fSans }}>
+                ¿Qué te apetece probar en tu sesión de 30 minutos?
               </p>
-              <div className="flex flex-wrap gap-2">
-                {DISCIPLINA_OPTIONS.map(o => (
-                  <button key={o.value} onClick={() => setDisciplina(o.value)} style={chip(disciplina === o.value)}>
-                    {o.label}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-2.5">
+                {DISCIPLINA_OPTIONS.map(o => {
+                  const sel = disciplina === o.value;
+                  return (
+                    <button
+                      key={o.value}
+                      onClick={() => setDisciplina(o.value)}
+                      className="w-full text-left rounded-2xl px-4 py-3 transition-all"
+                      style={{
+                        border: `2px solid ${sel ? C.burgundy : C.border}`,
+                        backgroundColor: sel ? C.blush : C.cream,
+                        outline: "none",
+                      }}
+                    >
+                      <span className="block text-sm font-semibold" style={{ color: sel ? C.burgundy : C.dark, fontFamily: fSans }}>
+                        {o.label}
+                      </span>
+                      {o.desc && (
+                        <span className="block text-xs mt-0.5" style={{ color: C.muted }}>{o.desc}</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -523,17 +539,13 @@ export default function PuertasAbiertasAdultas() {
                 backgroundColor: formValido ? C.burgundy : C.border,
                 color: "#fff8f5",
                 fontFamily: fSans,
-                letterSpacing: "0.1em",
+                letterSpacing: "0.08em",
                 cursor: formValido ? "pointer" : "not-allowed",
                 opacity: enviando ? 0.7 : 1,
               }}
             >
-              {enviando ? "Reservando..." : "Reservar mi plaza"}
+              {enviando ? "Reservando..." : "Quiero reservar mi plaza"}
             </button>
-
-            <p className="text-xs text-center" style={{ color: C.muted }}>
-              Te escribiré personalmente por WhatsApp para confirmar el horario. No recibirás publicidad ni mensajes innecesarios.
-            </p>
           </div>
         </div>
       </div>
@@ -541,16 +553,21 @@ export default function PuertasAbiertasAdultas() {
       {/* ── FAQ ── */}
       <div className="px-4 pb-12">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl mb-6 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
+          <h2 className="text-2xl sm:text-3xl mb-2 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
             Preguntas frecuentes
           </h2>
+          <p className="text-sm text-center mb-6" style={{ color: C.muted }}>
+            Respondidas por mí.
+          </p>
           <div className="space-y-3">
             {[
-              ["¿Cuánto cuesta asistir?", "Nada. La clase de prueba es completamente gratuita."],
-              ["¿Y si nunca he hecho Pilates o Barre?", "Perfecto. Las clases se adaptan a tu nivel y muchas personas vienen por primera vez. No necesitas experiencia."],
-              ["¿Qué necesito llevar?", "Ropa cómoda y unos calcetines. El material lo tienes en el estudio."],
-              ["¿Estoy obligada a apuntarme después?", "No. Vienes, pruebas, conoces el estudio y decides con calma."],
-              ["¿Dónde está el estudio?", "Carrer de Motilla del Palancar 34, zona Alfahuir, Valencia. A solo 5 minutos del Centro Comercial Arena."],
+              ["¿De verdad es gratis? ¿Dónde está el truco?", "Es 100% gratis. Vienes, pruebas la sesión de 30 minutos, ves el estudio y te vas a casa con un buen entrenamiento encima. El único «truco» es que confío tanto en mis clases que sé que a muchas os encantará el ambiente y os apetecerá quedaros, pero la decisión es completamente tuya."],
+              ["¿Y si nunca he hecho Pilates o Barre?", "Mejor todavía. La jornada está pensada justo para eso, para tener una primera toma de contacto muy suave. Yo te iré guiando paso a paso en cada movimiento, así que no te vas a sentir perdida en ningún momento."],
+              ["¿Qué es el Barre Fit exactamente?", "Es súper divertido. Mezcla la precisión del Pilates, la elegancia del ballet y el entrenamiento fitness usando la barra de danza como apoyo. Es muy dinámico, con música, y va de lujo para tonificar rápido el tren inferior y el abdomen sin machacar las articulaciones."],
+              ["¿Las clases de Pilates son con máquinas?", "No, es Pilates Mat (en suelo con colchoneta). Usamos el propio peso del cuerpo y accesorios como aros, bandas elásticas o pelotas. Es lo más efectivo para corregir la postura y fortalecer el core de verdad."],
+              ["¿Qué tengo que llevar?", "Solo ropa cómoda con la que te muevas bien y ganas de probar algo nuevo. Todo el material que necesitas lo tengo yo listo en el estudio."],
+              ["¿Me vais a obligar a apuntarme al terminar?", "Para nada. Odio las tácticas de venta pesadas. Vienes, pruebas, y si te encanta, me pides los horarios y los precios. Si ves que no es para ti, tan amigas. Así de simple."],
+              ["¿Dónde estás exactamente?", "En Carrer de Motilla del Palancar 34, en la zona de Alfahuir (Valencia). Estamos a solo 5 minutos andando del Centro Comercial Arena. Si vives por el barrio o cerquita, te pillará perfecto para venir a entrenar a un paso de casa."],
             ].map(([q, a]) => (
               <details
                 key={q}
@@ -571,24 +588,24 @@ export default function PuertasAbiertasAdultas() {
         </div>
       </div>
 
-      {/* ── Plazas limitadas (CTA final) ── */}
+      {/* ── CTA final ── */}
       <div className="px-4 pb-12">
         <div
           className="max-w-2xl mx-auto rounded-3xl p-8 sm:p-10 text-center"
           style={{ backgroundColor: C.burgundy }}
         >
           <h2 className="text-2xl sm:text-3xl mb-3" style={{ fontFamily: fSerif, color: C.cream }}>
-            Plazas limitadas
+            Venga, elige tu hora antes de que se llenen los grupos
           </h2>
           <p className="text-sm sm:text-base mb-7 max-w-md mx-auto" style={{ color: C.blush }}>
-            Grupos reducidos para que cada persona reciba atención personalizada. Reserva antes de que se complete tu clase.
+            Si estás leyendo esto, aún quedan huecos libres para el 24 de julio. No lo dejes para el final, ¡tengo muchas ganas de conocerte!
           </p>
           <button
             onClick={() => handleReservaClick("cta_final")}
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: C.cream, color: C.burgundy, fontFamily: fSans, letterSpacing: "0.1em" }}
+            style={{ backgroundColor: C.cream, color: C.burgundy, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Reservar mi clase de prueba
+            Reservar mi clase gratis
           </button>
         </div>
       </div>
@@ -600,10 +617,10 @@ export default function PuertasAbiertasAdultas() {
             Dónde estamos
           </p>
           <h2 className="text-2xl sm:text-3xl mb-2" style={{ fontFamily: fSerif, color: C.burgundy }}>
-            En el corazón de Alfahuir
+            📍 En el corazón de Alfahuir
           </h2>
           <p className="text-sm mb-5" style={{ color: C.dark }}>
-            Carrer de Motilla del Palancar 34 · Zona Alfahuir, Valencia · A 5 min del C.C. Arena
+            Carrer de Motilla del Palancar 34 · Alfahuir, Valencia · A 5 minutos del Centro Comercial Arena
           </p>
           <div className="rounded-3xl overflow-hidden shadow-lg" style={{ border: `1px solid ${C.border}` }}>
             <iframe
