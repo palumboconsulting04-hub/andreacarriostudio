@@ -317,7 +317,7 @@ export default function PuertasAbiertasAdultas() {
             className="text-xs uppercase tracking-[0.18em] mb-3"
             style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 600 }}
           >
-            Clase de prueba gratuita · 24 de julio · Valencia (Alfahuir)
+            Clase de prueba gratuita · 24 de julio · Valencia (Zona Alfahuir)
           </p>
 
           <h1
@@ -336,9 +336,9 @@ export default function PuertasAbiertasAdultas() {
           </p>
 
           <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6 space-y-3" style={{ color: C.dark }}>
-            <p>Sé perfectamente lo difícil que es compaginar el trabajo, los planes y el día a día.</p>
-            <p>Al salir de casa, lo último que te apetece es meterte en un gimnasio enorme, ruidoso y lleno de gente. Quieres cuidarte, claro que sí, pero también buscas un sitio cercano donde estar a gusto y desconectar de verdad.</p>
-            <p>Por eso, el próximo 24 de julio abro las puertas de mi estudio para ponértelo muy fácil:</p>
+            <p>Sé lo difícil que es sacar tiempo para ti entre el trabajo, la familia y el día a día.</p>
+            <p>Y sé que, al salir de casa, lo último que te apetece es un gimnasio enorme, ruidoso y lleno de gente. Quieres cuidarte, sí, pero en un sitio cercano y tranquilo donde de verdad puedas desconectar.</p>
+            <p style={{ fontWeight: 600 }}>Por eso el 24 de julio te invito a una clase de prueba gratis de 30 minutos: eliges qué probar, conoces el estudio a un paso de casa y decides con calma. Sin compromiso y sin pagar nada.</p>
           </div>
 
           <button
