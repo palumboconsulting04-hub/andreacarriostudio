@@ -324,7 +324,7 @@ export default function PuertasAbiertasAdultas() {
             className="text-[1.7rem] sm:text-5xl mb-4 leading-[1.15]"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            Tonifica tu cuerpo, libera tensiones y regálate 30 minutos de desconexión real
+            Tonifica tu cuerpo, libera tensiones y regálate 60 minutos de desconexión real
           </h1>
 
           {/* Disciplinas destacadas — visibles al entrar (coherencia anuncio/landing) */}
@@ -338,7 +338,7 @@ export default function PuertasAbiertasAdultas() {
           <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6 space-y-3" style={{ color: C.dark }}>
             <p>Sé lo difícil que es sacar tiempo para ti entre el trabajo, la familia y el día a día.</p>
             <p>Y sé que, al salir de casa, lo último que te apetece es un gimnasio enorme, ruidoso y lleno de gente. Quieres cuidarte, sí, pero en un sitio cercano y tranquilo donde de verdad puedas desconectar.</p>
-            <p style={{ fontWeight: 600 }}>Por eso el 24 de julio te invito a una clase de prueba gratis de 30 minutos: eliges qué probar, conoces el estudio a un paso de casa y decides con calma. Sin compromiso y sin pagar nada.</p>
+            <p style={{ fontWeight: 600 }}>Por eso el 24 de julio te invito a una clase de prueba gratis de 60 minutos: eliges qué probar, conoces el estudio a un paso de casa y decides con calma. Sin compromiso y sin pagar nada.</p>
           </div>
 
           <button
@@ -365,7 +365,7 @@ export default function PuertasAbiertasAdultas() {
             className="text-2xl sm:text-3xl mb-7 text-center"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            Las 4 cosas que vienes a hacer en estos 30 minutos
+            Las 4 cosas que vienes a hacer en estos 60 minutos
           </h2>
 
           <ul className="space-y-4">
@@ -409,7 +409,7 @@ export default function PuertasAbiertasAdultas() {
           </h2>
           <div className="space-y-3">
             {[
-              ["Porque es rápido y directo", "En media hora entras, pruebas la actividad, estiras, te ríes un rato, conoces el espacio y sigues con tu día."],
+              ["Porque es rápido y directo", "En una hora entras, pruebas la actividad, estiras, te ríes un rato, conoces el espacio y sigues con tu día."],
               ["Por el ambiente", "Mi estudio es un espacio boutique pensado para mujeres que buscan entrenar a gusto, sin postureos y liberando el estrés de la semana."],
               ["Porque tú tienes el control", "Miras las instalaciones, resuelves las dudas de horarios conmigo y decides tranquilamente desde casa. No te voy a presionar con nada al terminar, te lo prometo."],
             ].map(([t, d]) => (
@@ -500,7 +500,7 @@ export default function PuertasAbiertasAdultas() {
 
             <div>
               <p className="text-sm font-semibold mb-2.5" style={{ color: C.brown, fontFamily: fSans }}>
-                ¿Qué te apetece probar en tu sesión de 30 minutos?
+                ¿Qué te apetece probar en tu sesión de 60 minutos?
               </p>
               <div className="flex flex-col gap-2.5">
                 {DISCIPLINA_OPTIONS.map(o => {
@@ -560,7 +560,7 @@ export default function PuertasAbiertasAdultas() {
           </p>
           <div className="space-y-3">
             {[
-              ["¿De verdad es gratis? ¿Dónde está el truco?", "Es 100% gratis. Vienes, pruebas la sesión de 30 minutos, ves el estudio y te vas a casa con un buen entrenamiento encima. El único «truco» es que confío tanto en mis clases que sé que a muchas os encantará el ambiente y os apetecerá quedaros, pero la decisión es completamente tuya."],
+              ["¿De verdad es gratis? ¿Dónde está el truco?", "Es 100% gratis. Vienes, pruebas la sesión de 60 minutos, ves el estudio y te vas a casa con un buen entrenamiento encima. El único «truco» es que confío tanto en mis clases que sé que a muchas os encantará el ambiente y os apetecerá quedaros, pero la decisión es completamente tuya."],
               ["¿Y si nunca he hecho Pilates o Barre?", "Mejor todavía. La jornada está pensada justo para eso, para tener una primera toma de contacto muy suave. Yo te iré guiando paso a paso en cada movimiento, así que no te vas a sentir perdida en ningún momento."],
               ["¿Qué es el Barre Fit exactamente?", "Es súper divertido. Mezcla la precisión del Pilates, la elegancia del ballet y el entrenamiento fitness usando la barra de danza como apoyo. Es muy dinámico, con música, y va de lujo para tonificar rápido el tren inferior y el abdomen sin machacar las articulaciones."],
               ["¿Las clases de Pilates son con máquinas?", "No, es Pilates Mat (en suelo con colchoneta). Usamos el propio peso del cuerpo y accesorios como aros, bandas elásticas o pelotas. Es lo más efectivo para corregir la postura y fortalecer el core de verdad."],
