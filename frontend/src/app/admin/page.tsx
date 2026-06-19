@@ -3662,8 +3662,14 @@ export default function AdminDashboard() {
                                       ) : <span style={{ color: "#89726c" }}>—</span>}
                                       <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{r.email}</p>
                                     </td>
-                                    <td className="px-4 py-3 whitespace-nowrap" style={{ color: "#25190f" }}>
-                                      {r.nombre_madre || <span style={{ color: "#89726c" }}>—</span>}
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <input
+                                        defaultValue={r.nombre_madre ?? ""}
+                                        onBlur={e => { if (e.target.value.trim() !== (r.nombre_madre ?? "")) updateRenov(r.id, "nombre_madre", e.target.value.trim()); }}
+                                        placeholder="+ Añadir madre"
+                                        className="w-[150px] rounded-lg border px-2.5 py-1.5 text-sm outline-none focus:ring-2"
+                                        style={{ borderColor: "#dcc1b9", backgroundColor: "#fffdfc", color: "#25190f" }}
+                                      />
                                     </td>
                                     <td className="px-4 py-3 max-w-[200px]">
                                       {r.nota ? (
