@@ -370,10 +370,10 @@ export default function PuertasAbiertasAdultas() {
 
           <ul className="space-y-4">
             {[
-              ["Ver si te pilla al lado de casa", "El estudio está aquí mismo, en la zona de Alfahuir (Carrer de Motilla del Palancar 34), justo al lado del Centro Comercial Arena. Si vives por el barrio o cerca de la zona, te vendrá genial para venir dando un paseo y ver si te cuadra en tu día a día."],
-              ["Conocerme en persona", "Olvídate de profesores que cambian cada semana y que ni se saben tu nombre. Estaré yo contigo en la sesión, guiándote para que veas cómo trabajo y compruebes si tenemos buen feeling."],
-              ["Probar el Barre Fit", "Es la disciplina que está arrasando y a mí me tiene enamorada. Es perfecta si buscas tonificar piernas y glúteos, esculpir el cuerpo y activar tu energía al ritmo de la música (y no, no hace falta saber bailar en absoluto)."],
-              ["Probar el Pilates Mat", "El clásico en suelo sobre colchoneta. Te vendrá genial si lo que quieres es definir el abdomen, liberar la rigidez de la espalda después de pasar horas sentada y ganar flexibilidad."],
+              ["Tu momento, solo para ti", "60 minutos para soltar el estrés de la semana, moverte y salir con la cabeza despejada y más energía de la que entraste. Sin móvil, sin prisas."],
+              ["Pruebas el Barre Fit", "Es la disciplina que está arrasando y a mí me tiene enamorada. Es perfecta si buscas tonificar piernas y glúteos, esculpir el cuerpo y activar tu energía al ritmo de la música (y no, no hace falta saber bailar en absoluto)."],
+              ["Pruebas el Pilates Mat", "El clásico en suelo sobre colchoneta. Te vendrá genial si lo que quieres es definir el abdomen, liberar la rigidez de la espalda después de pasar horas sentada y ganar flexibilidad."],
+              ["Me conoces a mí y ves si te pilla cerca", "Estaré yo contigo, con grupos pequeños y trato cercano. Y compruebas si el estudio, en la zona de Alfahuir (al lado del Centro Comercial Arena), te cuadra para venir entre semana."],
             ].map(([t, d]) => (
               <li key={t} className="flex gap-3">
                 <Check />
