@@ -792,7 +792,8 @@ export default function AdminDashboard() {
       const costeMensual = ((costes ?? []) as { importe_mensual: number }[]).reduce((s, c) => s + Number(c.importe_mensual), 0);
       setFinanzasCosteMensual(costeMensual);
       const now = new Date();
-      const renovsPagadas = (renovs ?? []).filter(r => r.estado_pago === "pagado");
+      // Excluir metodo_pago="web": esas matrículas ya están contabilizadas via Stripe (iscrizioni).
+      const renovsPagadas = (renovs ?? []).filter(r => r.estado_pago === "pagado" && r.metodo_pago !== "web");
       const monthly = Array.from({ length: 12 }, (_, i) => {
         const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
         const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -935,8 +936,9 @@ export default function AdminDashboard() {
       "Ballet 1": { id: "ballet-i", nome: "Ballet I 7-9 años" },
       "Ballet 2": { id: "ballet-ii", nome: "Ballet II 10-12 años" },
     };
+    // Excluir metodo_pago="web": esas matrículas ya están contabilizadas via Stripe (iscrizioni).
     const manualRows: VentaRow[] = (renovs ?? [])
-      .filter(r => r.estado_pago === "pagado")
+      .filter(r => r.estado_pago === "pagado" && r.metodo_pago !== "web")
       .map(r => {
         const disc = GRUPO_A_DISCIPLINA[r.grupo] ?? { id: r.grupo, nome: r.grupo };
         return {
@@ -1390,7 +1392,8 @@ export default function AdminDashboard() {
         }
       }
       // Sumar matrículas manuales (efectivo / bizum) de renovaciones.
-      for (const r of renovaciones.filter(x => x.estado_pago === "pagado")) {
+      // Excluir metodo_pago="web": esas matrículas ya están contabilizadas via Stripe (iscrizioni).
+      for (const r of renovaciones.filter(x => x.estado_pago === "pagado" && x.metodo_pago !== "web")) {
         const amt = r.importe_matricula ?? 0;
         factMes += amt;
         if (r.updated_at && r.updated_at.substring(0, 7) < curMonthStr) factAnt += amt;

@@ -83,7 +83,12 @@ async function sincronizarEspejo(renovId: string): Promise<void> {
   if (!renov) return;
   const r = renov as RenovacionDB;
 
-  if (r.estado_pago === "pagado") {
+  // Solo las pagadas en efectivo/bizum necesitan inscripción espejo. Las pagadas
+  // por "web" ya tienen su inscripción real de Stripe (crear espejo las duplicaría
+  // en calendario, asistencia y contabilidad).
+  const debeTenerEspejo = r.estado_pago === "pagado" && r.metodo_pago !== "web";
+
+  if (debeTenerEspejo) {
     if (r.iscrizione_id) {
       // Ya tiene espejo: comprobar que la disciplina coincide con el grupo actual.
       const { data: isc } = await supabaseAdmin
@@ -103,7 +108,8 @@ async function sincronizarEspejo(renovId: string): Promise<void> {
       if (nuevoId) await supabaseAdmin.from("renovaciones").update({ iscrizione_id: nuevoId }).eq("id", r.id);
     }
   } else if (r.iscrizione_id) {
-    // Ya no está pagada: elimina la inscripción espejo (los horarios caen en cascada).
+    // Ya no debe tener espejo (no pagada, o pagada por web): elimínala
+    // (los horarios caen en cascada).
     await supabaseAdmin.from("iscrizioni").delete().eq("id", r.iscrizione_id);
     await supabaseAdmin.from("renovaciones").update({ iscrizione_id: null }).eq("id", r.id);
   }
@@ -187,9 +193,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Si cambió el estado de pago o el grupo, sincroniza la inscripción espejo
-  // (alta/baja en calendario, asistencia, usuarios). No bloquea la respuesta si falla.
-  if (body.estado_pago !== undefined || body.grupo !== undefined) {
+  // Si cambió el estado de pago, el grupo o el método de pago, sincroniza la
+  // inscripción espejo (alta/baja en calendario, asistencia, clientas). No
+  // bloquea la respuesta si falla.
+  if (body.estado_pago !== undefined || body.grupo !== undefined || body.metodo_pago !== undefined) {
     try { await sincronizarEspejo(id); } catch { /* la actualización principal ya se guardó */ }
   }
   return NextResponse.json({ ok: true });
