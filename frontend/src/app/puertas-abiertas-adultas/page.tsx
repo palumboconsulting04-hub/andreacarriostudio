@@ -401,39 +401,6 @@ export default function PuertasAbiertasAdultas() {
         </div>
       </div>
 
-      {/* ── ¿Por qué pasarte a verme? ── */}
-      <div className="px-4 pb-12">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl mb-7 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
-            ¿Por qué pasarte a verme el 24 de julio?
-          </h2>
-          <div className="space-y-3">
-            {[
-              ["Porque es rápido y directo", "En una hora entras, pruebas la actividad, estiras, te ríes un rato, conoces el espacio y sigues con tu día."],
-              ["Por el ambiente", "Mi estudio es un espacio boutique pensado para mujeres que buscan entrenar a gusto, sin postureos y liberando el estrés de la semana."],
-              ["Porque tú tienes el control", "Miras las instalaciones, resuelves las dudas de horarios conmigo y decides tranquilamente desde casa. No te voy a presionar con nada al terminar, te lo prometo."],
-            ].map(([t, d]) => (
-              <div
-                key={t}
-                className="rounded-2xl p-5"
-                style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
-              >
-                <strong style={{ color: C.dark, fontFamily: fSans, fontSize: "0.95rem" }}>{t}.</strong>{" "}
-                <span className="text-sm" style={{ color: C.brown }}>{d}</span>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={() => handleReservaClick("porque")}
-            className="w-full mt-7 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
-          >
-            Quiero reservar mi clase gratis
-          </button>
-        </div>
-      </div>
-
       {/* ── Confianza: un poco sobre mí ── */}
       <div className="px-4 pb-12">
         <div
