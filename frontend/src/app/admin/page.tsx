@@ -549,6 +549,62 @@ export default function AdminDashboard() {
     setTimeout(() => setPuertasNotasSaved(s => (s === id ? null : s)), 1500);
   };
 
+  // ── Puertas Abiertas Adultas (Pilates / Barre) ──
+  type PuertaAdultaRow = {
+    id: string;
+    created_at: string;
+    nombre: string;
+    telefono: string;
+    email: string | null;
+    disciplina: string | null;
+    origen: string | null;
+    notas_andrea: string | null;
+    llamada: string;
+    confirmacion: string;
+    ya_inscrita?: boolean;
+  };
+  const [adultasData, setAdultasData] = useState<PuertaAdultaRow[]>([]);
+  const [adultasLoading, setAdultasLoading] = useState(false);
+  const [adultasSearch, setAdultasSearch] = useState("");
+  const [adultasFiltroDisc, setAdultasFiltroDisc] = useState("");
+  const [adultasDeleteId, setAdultasDeleteId] = useState<string | null>(null);
+  const [adultasNotasDraft, setAdultasNotasDraft] = useState<Record<string, string>>({});
+  const [adultasNotasSaved, setAdultasNotasSaved] = useState<string | null>(null);
+
+  const handleDeleteAdulta = async (id: string) => {
+    const res = await fetch(`/api/admin/puertas-abiertas-adultas?id=${id}`, { method: "DELETE" });
+    if (res.ok) setAdultasData(prev => prev.filter(r => r.id !== id));
+    setAdultasDeleteId(null);
+  };
+  const updateAdultaSeguimiento = async (id: string, campo: "llamada" | "confirmacion", value: string) => {
+    setAdultasData(prev => prev.map(r => (r.id === id ? { ...r, [campo]: value } : r)));
+    await fetch("/api/admin/puertas-abiertas-adultas", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, [campo]: value }),
+    });
+  };
+  const updateAdultaOrigen = async (id: string, origen: string) => {
+    const value = origen || null;
+    setAdultasData(prev => prev.map(r => (r.id === id ? { ...r, origen: value } : r)));
+    await fetch("/api/admin/puertas-abiertas-adultas", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, origen: value }),
+    });
+  };
+  const saveAdultaNotas = async (id: string, notas: string) => {
+    const value = notas.trim() || null;
+    setAdultasData(prev => prev.map(r => (r.id === id ? { ...r, notas_andrea: value } : r)));
+    await fetch("/api/admin/puertas-abiertas-adultas", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, notas_andrea: value }),
+    });
+    setAdultasNotasSaved(id);
+    setTimeout(() => setAdultasNotasSaved(s => (s === id ? null : s)), 1500);
+  };
+
   // ── Renovaciones 2026-2027 ──
   type RenovacionRow = {
     id: string;
@@ -690,7 +746,7 @@ export default function AdminDashboard() {
   const [funnelFiltro, setFunnelFiltro] = useState<"hoy" | "7" | "30" | "todo" | "dia">("30");
   const [funnelDia, setFunnelDia] = useState(""); // yyyy-mm-dd para un día concreto
   const [funnelOrigen, setFunnelOrigen] = useState<"todo" | "ads" | "directo">("todo");
-  const [funnelTipo, setFunnelTipo] = useState<"inscripcion" | "puertas">("inscripcion");
+  const [funnelTipo, setFunnelTipo] = useState<"inscripcion" | "puertas" | "adultas">("inscripcion");
 
   type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas" | "importe_matricula" | "nombre_madre";
   const updateRenov = async (id: string, campo: RenovCampo, value: string | number) => {
@@ -868,6 +924,16 @@ export default function AdminDashboard() {
       .then(({ data }) => setPuertasData((data ?? []) as PuertaRow[]))
       .catch(() => setPuertasData([]))
       .finally(() => setPuertasLoading(false));
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeSection !== "P.A. Adultas") return;
+    setAdultasLoading(true);
+    fetch("/api/admin/puertas-abiertas-adultas")
+      .then(r => r.json())
+      .then(({ data }) => setAdultasData((data ?? []) as PuertaAdultaRow[]))
+      .catch(() => setAdultasData([]))
+      .finally(() => setAdultasLoading(false));
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -1674,6 +1740,7 @@ export default function AdminDashboard() {
     { icon: "checklist", label: "Asistencia" },
     { icon: "group", label: "Clientas" },
     { icon: "celebration", label: "Puertas Abiertas" },
+    { icon: "self_improvement", label: "P.A. Adultas" },
     { icon: "autorenew", label: "Renovaciones" },
     { icon: "insights", label: "Marketing" },
     { icon: "filter_alt", label: "Embudo" },
@@ -3398,6 +3465,291 @@ export default function AdminDashboard() {
             );
           })()}
 
+          {/* ── Puertas Abiertas Adultas (Pilates / Barre) ── */}
+          {activeSection === "P.A. Adultas" && (() => {
+            const DISC_ADULTA_LABEL: Record<string, string> = {
+              pilates: "Pilates Mat",
+              barre: "Barre Fit",
+              ambas: "Las dos",
+            };
+            const LLAMADA_OPT: { value: string; label: string; bg: string; fg: string }[] = [
+              { value: "sin_llamar",    label: "Sin llamar",        bg: "#f0eae6", fg: "#6b5a52" },
+              { value: "realizada",     label: "Llamada realizada", bg: "#e7f7ec", fg: "#1f7a3d" },
+              { value: "no_contesta",   label: "No contesta",       bg: "#fff3e0", fg: "#e65100" },
+              { value: "no_disponible", label: "No disponible",     bg: "#fde7e7", fg: "#b71c1c" },
+            ];
+            const CONFIRM_OPT: { value: string; label: string; bg: string; fg: string }[] = [
+              { value: "pendiente", label: "Pendiente",           bg: "#f0eae6", fg: "#6b5a52" },
+              { value: "confirma",  label: "Confirma asistencia", bg: "#e7f7ec", fg: "#1f7a3d" },
+              { value: "no_viene",  label: "No viene",            bg: "#fde7e7", fg: "#b71c1c" },
+            ];
+            const llamadaInfo = (v: string) => LLAMADA_OPT.find(o => o.value === v) ?? LLAMADA_OPT[0];
+            const confirmInfo = (v: string) => CONFIRM_OPT.find(o => o.value === v) ?? CONFIRM_OPT[0];
+            const waLink = (r: PuertaAdultaRow) => {
+              let tel = (r.telefono || "").replace(/\D/g, "");
+              if (tel.startsWith("00")) tel = tel.slice(2);
+              if (tel.length === 9) tel = "34" + tel;
+              const msg =
+                `¡Hola ${r.nombre}! Soy Andrea, de Andrea Carrió Studio. ` +
+                `Gracias por reservar tu clase de prueba de la Jornada de Puertas Abiertas del 24 de julio. ` +
+                `Te escribo para confirmarte el horario. ¿Te viene bien?`;
+              return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+            };
+            const q = adultasSearch.toLowerCase();
+            const filtered = adultasData.filter(r =>
+              (!q ||
+                r.nombre.toLowerCase().includes(q) ||
+                (r.telefono || "").includes(q)) &&
+              (!adultasFiltroDisc || r.disciplina === adultasFiltroDisc)
+            );
+            const porLlamar = adultasData.filter(r => r.llamada === "sin_llamar").length;
+            const confirmadas = adultasData.filter(r => r.confirmacion === "confirma").length;
+            const porDisc = [
+              { value: "pilates", label: "Pilates Mat" },
+              { value: "barre", label: "Barre Fit" },
+              { value: "ambas", label: "Las dos" },
+            ].map(d => ({ ...d, n: adultasData.filter(r => r.disciplina === d.value).length }));
+
+            return (
+              <section className="space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-headline-md text-headline-md text-primary">Puertas Abiertas · Adultas</h3>
+                    <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
+                      {adultasData.length} {adultasData.length === 1 ? "reserva" : "reservas"} de Pilates y Barre Fit
+                    </p>
+                  </div>
+                  <a
+                    href="/puertas-abiertas-adultas"
+                    target="_blank"
+                    className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full border transition-colors hover:bg-surface-container-high"
+                    style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}
+                  >
+                    <Icon name="open_in_new" className="text-sm" />
+                    Ver página pública
+                  </a>
+                </div>
+
+                {/* KPIs rápidos */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Total reservas", value: adultasData.length, icon: "groups" },
+                    { label: "Por llamar", value: porLlamar, icon: "phone_missed" },
+                    { label: "Confirmadas", value: confirmadas, icon: "event_available" },
+                  ].map(k => (
+                    <div key={k.label} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
+                      <Icon name={k.icon} className="text-xl mb-1" style={{ color: "#7d2b13" }} />
+                      <p className="text-2xl font-bold" style={{ color: "#7d2b13" }}>{adultasLoading ? "—" : k.value}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{k.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Reservas por disciplina */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Reservas por disciplina</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {porDisc.map(d => (
+                      <div key={d.value} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff0eb", border: "1px solid #dcc1b9" }}>
+                        <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{adultasLoading ? "—" : d.n}</p>
+                        <p className="text-xs mt-1 font-semibold" style={{ color: "#7d2b13" }}>{d.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Buscador + filtro */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <div className="relative flex-1">
+                    <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "#89726c" }} />
+                    <input
+                      value={adultasSearch}
+                      onChange={e => setAdultasSearch(e.target.value)}
+                      placeholder="Buscar por nombre o teléfono..."
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm"
+                      style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}
+                    />
+                  </div>
+                  <select value={adultasFiltroDisc} onChange={e => setAdultasFiltroDisc(e.target.value)} className="px-3 py-2.5 rounded-xl border text-sm cursor-pointer" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}>
+                    <option value="">Todas las disciplinas</option>
+                    <option value="pilates">Pilates Mat</option>
+                    <option value="barre">Barre Fit</option>
+                    <option value="ambas">Las dos</option>
+                  </select>
+                </div>
+
+                {/* Tabla */}
+                <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                  {adultasLoading ? (
+                    <div className="p-8 text-center text-sm" style={{ color: "#89726c" }}>Cargando...</div>
+                  ) : filtered.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Icon name="self_improvement" className="text-4xl mb-3" style={{ color: "#dcc1b9" }} />
+                      <p className="text-sm" style={{ color: "#89726c" }}>
+                        {adultasSearch ? "Sin resultados para esa búsqueda." : "Aún no hay reservas. Comparte el enlace para empezar a recibir inscripciones."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr style={{ backgroundColor: "#fff0eb" }}>
+                            {["Nombre", "Contacto", "Quiere probar", "Origen", "Llamada", "Confirmación", "Notas Andrea", "Fecha", ""].map((h, hi) => (
+                              <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((r, i) => (
+                            <tr key={r.id} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                              <td className="px-4 py-3 font-medium" style={{ color: "#25190f" }}>
+                                {r.nombre}
+                                {r.ya_inscrita && (
+                                  <span
+                                    className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold align-middle"
+                                    style={{ backgroundColor: "#e7f7ec", color: "#1f7a3d" }}
+                                    title="Ya está en contactos (se ha inscrito)"
+                                  >
+                                    <Icon name="check_circle" style={{ fontSize: "12px" }} /> Ya inscrita
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                <p className="text-xs" style={{ color: "#89726c" }}>{r.telefono}</p>
+                                <a
+                                  href={waLink(r)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+                                  style={{ backgroundColor: "#25D366" }}
+                                  title="Escribir por WhatsApp"
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.51 5.26l-.999 3.648 3.477-1.717zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/>
+                                  </svg>
+                                  WhatsApp
+                                </a>
+                              </td>
+                              <td className="px-4 py-3">
+                                {r.disciplina ? (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>
+                                    {DISC_ADULTA_LABEL[r.disciplina] ?? r.disciplina}
+                                  </span>
+                                ) : <span style={{ color: "#89726c" }}>—</span>}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {(() => {
+                                  const colors: Record<string, { bg: string; fg: string }> = {
+                                    ads: { bg: "#e6efff", fg: "#1b4f9c" },
+                                    escuela: { bg: "#e7f7ec", fg: "#1f7a3d" },
+                                    directo: { bg: "#f0eae6", fg: "#6b5a52" },
+                                    "": { bg: "#f4f0ee", fg: "#a08e86" },
+                                  };
+                                  const key = (r.origen || "").toLowerCase();
+                                  const c = colors[key] ?? colors[""];
+                                  return (
+                                    <select
+                                      value={["ads", "escuela", "directo"].includes(key) ? key : ""}
+                                      onChange={e => updateAdultaOrigen(r.id, e.target.value)}
+                                      className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none"
+                                      style={{ backgroundColor: c.bg, color: c.fg }}
+                                      title="Cambiar el origen de esta inscrita"
+                                    >
+                                      <option value="ads">Publicidad</option>
+                                      <option value="escuela">Escuela</option>
+                                      <option value="directo">Directo</option>
+                                      <option value="">Sin dato</option>
+                                    </select>
+                                  );
+                                })()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {(() => {
+                                  const c = llamadaInfo(r.llamada);
+                                  return (
+                                    <select
+                                      value={c.value}
+                                      onChange={e => updateAdultaSeguimiento(r.id, "llamada", e.target.value)}
+                                      className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none"
+                                      style={{ backgroundColor: c.bg, color: c.fg }}
+                                      title="Estado de la llamada"
+                                    >
+                                      {LLAMADA_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                  );
+                                })()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {(() => {
+                                  const c = confirmInfo(r.confirmacion);
+                                  return (
+                                    <select
+                                      value={c.value}
+                                      onChange={e => updateAdultaSeguimiento(r.id, "confirmacion", e.target.value)}
+                                      className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none"
+                                      style={{ backgroundColor: c.bg, color: c.fg }}
+                                      title="¿Viene a la jornada?"
+                                    >
+                                      {CONFIRM_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                  );
+                                })()}
+                              </td>
+                              <td className="px-4 py-3 align-top">
+                                <div className="relative">
+                                  <textarea
+                                    value={adultasNotasDraft[r.id] ?? r.notas_andrea ?? ""}
+                                    onChange={e => setAdultasNotasDraft(prev => ({ ...prev, [r.id]: e.target.value }))}
+                                    onBlur={e => saveAdultaNotas(r.id, e.target.value)}
+                                    rows={2}
+                                    placeholder="Apunta aquí lo que hablaste al llamarla…"
+                                    className="w-[200px] resize-y rounded-lg border px-2.5 py-2 text-xs leading-snug outline-none focus:ring-2"
+                                    style={{ borderColor: "#dcc1b9", backgroundColor: "#fffdfc", color: "#25190f" }}
+                                  />
+                                  {adultasNotasSaved === r.id && (
+                                    <span className="absolute -bottom-4 left-0 text-[10px] flex items-center gap-0.5" style={{ color: "#1f7a3d" }}>
+                                      <Icon name="check" style={{ fontSize: "12px" }} /> Guardado
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-xs whitespace-nowrap align-top" style={{ color: "#89726c" }}>
+                                {new Date(r.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                {adultasDeleteId === r.id ? (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => handleDeleteAdulta(r.id)}
+                                      className="px-2.5 py-1 rounded-full text-xs font-semibold"
+                                      style={{ backgroundColor: "#b3261e", color: "#fff" }}
+                                    >
+                                      Sí, borrar
+                                    </button>
+                                    <button onClick={() => setAdultasDeleteId(null)} className="px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: "#f0ddd5", color: "#56423d" }}>No</button>
+                                  </span>
+                                ) : (
+                                  <button onClick={() => setAdultasDeleteId(r.id)} className="p-1.5 rounded-lg hover:bg-[#fbe9e7] transition-colors" aria-label="Borrar reserva" title="Borrar reserva">
+                                    <Icon name="delete" className="text-base" style={{ color: "#b3261e" }} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                {!adultasLoading && filtered.length > 0 && (
+                  <p className="text-sm font-semibold text-right" style={{ color: "#7d2b13" }}>
+                    {filtered.length} {filtered.length === 1 ? "reserva" : "reservas"}
+                  </p>
+                )}
+              </section>
+            );
+          })()}
+
           {/* ── Renovaciones 2026-2027 ── */}
           {activeSection === "Renovaciones" && (() => {
             const GRUPOS = ["Pre-Ballet", "Ballet 1", "Ballet 2"];
@@ -4086,11 +4438,12 @@ export default function AdminDashboard() {
                 <div className="inline-flex rounded-xl border p-1" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
                   {[
                     { v: "inscripcion", label: "Inscripción" },
-                    { v: "puertas", label: "Puertas Abiertas" },
+                    { v: "puertas", label: "P.A. Niñas" },
+                    { v: "adultas", label: "P.A. Adultas" },
                   ].map(t => (
                     <button
                       key={t.v}
-                      onClick={() => setFunnelTipo(t.v as "inscripcion" | "puertas")}
+                      onClick={() => setFunnelTipo(t.v as "inscripcion" | "puertas" | "adultas")}
                       className="text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors"
                       style={funnelTipo === t.v
                         ? { backgroundColor: "#7d2b13", color: "#fff8f5" }
@@ -4104,7 +4457,9 @@ export default function AdminDashboard() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div>
                     <h3 className="font-headline-md text-headline-md text-primary">
-                      {funnelTipo === "puertas" ? "Embudo de Puertas Abiertas" : "Embudo de inscripción"}
+                      {funnelTipo === "puertas" ? "Embudo de Puertas Abiertas (Niñas)"
+                        : funnelTipo === "adultas" ? "Embudo de Puertas Abiertas (Adultas)"
+                        : "Embudo de inscripción"}
                     </h3>
                     <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
                       Cuánta gente pasa por cada paso. Anónimo: cuántos, no quiénes.
@@ -4162,7 +4517,7 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-3 gap-3">
                     {[
                       { label: "Visitas", value: String(top) },
-                      { label: funnelTipo === "puertas" ? "Reservas" : "Compras", value: String(fin) },
+                      { label: funnelTipo === "inscripcion" ? "Compras" : "Reservas", value: String(fin) },
                       { label: "Conversión", value: `${convPct}%` },
                     ].map(k => (
                       <div key={k.label} className="rounded-2xl p-4 border text-center" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>

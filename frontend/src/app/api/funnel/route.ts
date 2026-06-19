@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
   const session_id = (body?.session_id ?? "").toString().slice(0, 64);
   const step = (body?.step ?? "").toString();
   const origen = body?.origen === "ads" ? "ads" : "directo";
-  const funnel = body?.funnel === "puertas" ? "puertas" : "inscripcion";
+  const funnel = body?.funnel === "puertas" ? "puertas"
+    : body?.funnel === "adultas" ? "adultas"
+    : "inscripcion";
   if (!session_id || !STEPS.has(step)) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
