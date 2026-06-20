@@ -408,10 +408,10 @@ export default function PuertasAbiertasAdultas() {
           style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
         >
           <Image
-            src="/andrea.jpg"
+            src="/andrea-adultas.jpg"
             alt="Andrea Carrió"
-            width={1792}
-            height={2400}
+            width={1200}
+            height={1607}
             sizes="(max-width: 768px) 100vw, 400px"
             className="w-full h-full object-cover block"
           />
