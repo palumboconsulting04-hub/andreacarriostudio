@@ -25,6 +25,7 @@ loadEnvFile(join(HERE, '..', '..', 'frontend', '.env.local'));
 const args  = process.argv.slice(2);
 const DRY   = args.includes('--dry');
 const HOURS = (() => { const i = args.indexOf('--hours'); return i >= 0 && args[i+1] ? Number(args[i+1]) : 3; })();
+const PRESET = (() => { const i = args.indexOf('--preset'); return i >= 0 && args[i+1] ? args[i+1] : 'today'; })();
 
 const META_TOKEN   = process.env.META_ACCESS_TOKEN;
 const META_ACCOUNT = (process.env.META_AD_ACCOUNT_ID || '1239097093670462').replace(/^act_/, '');
@@ -59,15 +60,15 @@ function getMadridDayStart() {
   return Date.UTC(y, mo - 1, da, 0, 0, 0);
 }
 
-async function getMeta() {
-  if (!META_TOKEN) return { ok: false, error: 'Falta META_ACCESS_TOKEN', rows: [], ads: [] };
+async function getMeta(preset = 'today') {
+  if (!META_TOKEN) return { ok: false, error: 'Falta META_ACCESS_TOKEN', rows: [], adsBallet: [], adsBarre: [] };
   const base = `https://graph.facebook.com/${META_VERSION}/act_${META_ACCOUNT}/insights`;
   async function fetchLevel(level) {
     const extraFields = level === 'ad' ? ',ad_name,adset_name' : '';
     const p = new URLSearchParams({
       level,
       fields: `campaign_name,spend,impressions,reach,inline_link_clicks,outbound_clicks,actions${extraFields}`,
-      date_preset: 'today',
+      date_preset: preset,
       limit: '200',
       access_token: META_TOKEN,
     });
@@ -89,24 +90,33 @@ async function getMeta() {
       const convRate = outboundClicks > 0 ? (leads / outboundClicks) * 100 : null;
       return { name: c.campaign_name, spend, impressions, reach, clicks: outboundClicks, lpv, leads, cpl: leads > 0 ? spend / leads : null, ctr, convRate };
     }).sort((a, b) => b.spend - a.spend);
-    const preLancioAds = adData
-      .filter(a => (a.campaign_name || '').toLowerCase().replace(/[^a-z]/g, '').includes('prelancio')
-                || (a.campaign_name || '').toLowerCase().includes('pre_lancio')
-                || (a.campaign_name || '').toLowerCase().includes('pre lancio'))
-      .map(a => {
-        const spend = Number(a.spend || 0);
-        const leads = actionVal(a.actions, 'lead');
-        return { name: a.ad_name || a.adset_name || '(sin nombre)', spend, leads, cpl: leads > 0 ? spend / leads : null };
-      })
-      .sort((a, b) => {
-        if (a.cpl != null && b.cpl != null) return a.cpl - b.cpl;
-        if (a.cpl != null) return -1;
-        if (b.cpl != null) return 1;
-        return b.leads - a.leads;
-      });
-    return { ok: true, rows, ads: preLancioAds };
+    // Métricas por creatividad, incl. coste por visita a la landing y CR lead/visita.
+    const mapAd = a => {
+      const spend = Number(a.spend || 0);
+      const leads = actionVal(a.actions, 'lead');
+      const lpv   = actionVal(a.actions, 'landing_page_view');
+      return {
+        name: a.ad_name || a.adset_name || '(sin nombre)',
+        spend, leads, lpv,
+        cpl:      leads > 0 ? spend / leads : null,   // coste por lead
+        costeLpv: lpv   > 0 ? spend / lpv   : null,   // coste por visita a la página de destino
+        crLead:   lpv   > 0 ? (leads / lpv) * 100 : null, // % de visitas que se convierten en lead
+      };
+    };
+    const ordenarPorCpl = (a, b) => {
+      if (a.cpl != null && b.cpl != null) return a.cpl - b.cpl;
+      if (a.cpl != null) return -1;
+      if (b.cpl != null) return 1;
+      return b.leads - a.leads;
+    };
+    // Clasifica por campaña: barre = nombre con "barre"; ballet = "pre_lancio" sin barre.
+    const esBarre  = name => (name || '').toLowerCase().includes('barre');
+    const esBallet = name => (name || '').toLowerCase().replace(/[^a-z]/g, '').includes('prelancio') && !esBarre(name);
+    const adsBallet = adData.filter(a => esBallet(a.campaign_name)).map(mapAd).sort(ordenarPorCpl);
+    const adsBarre  = adData.filter(a => esBarre(a.campaign_name)).map(mapAd).sort(ordenarPorCpl);
+    return { ok: true, rows, adsBallet, adsBarre };
   } catch (e) {
-    return { ok: false, error: e.message, rows: [], ads: [] };
+    return { ok: false, error: e.message, rows: [], adsBallet: [], adsBarre: [] };
   }
 }
 
@@ -223,26 +233,34 @@ function buildHtml({ meta, ins, ahora, hours }) {
       `<td style="padding:10px 8px;font-size:12px;color:#25190f;font-weight:700;text-align:right;">${tConv!=null?pct(tConv):'—'}</td>` +
       `</tr></table>`;
 
-    let creatividades = '';
-    if (meta.ads.length > 0) {
-      const adFilas = meta.ads.map((a, i) => {
+    const tablaCreatividades = (titulo, ads) => {
+      if (!ads || ads.length === 0) return '';
+      const celdaDer = (txt, extra = '') =>
+        `<td style="padding:8px;border-bottom:1px solid #f0ddd5;font-size:12px;color:#56423d;text-align:right;${extra}">${txt}</td>`;
+      const adFilas = ads.map((a, i) => {
         const esMejor = i === 0 && a.cpl != null;
-        const esPeor  = i === meta.ads.length - 1 && meta.ads.length > 1 && a.cpl != null;
+        const esPeor  = i === ads.length - 1 && ads.length > 1 && a.cpl != null;
         const badge   = esMejor ? '🥇 ' : esPeor ? '⚠️ ' : '';
         const rowBg   = esMejor ? 'background:#f0faf0;' : esPeor ? 'background:#fff5f5;' : '';
         return `<tr style="${rowBg}">` +
           `<td style="padding:8px;border-bottom:1px solid #f0ddd5;font-size:12px;color:#25190f;">${badge}${a.name}</td>` +
-          `<td style="padding:8px;border-bottom:1px solid #f0ddd5;font-size:12px;color:#56423d;text-align:right;">${eur(a.spend)}</td>` +
+          celdaDer(eur(a.spend)) +
           `<td style="padding:8px;border-bottom:1px solid #f0ddd5;font-size:13px;color:#7d2b13;font-weight:700;text-align:right;">${num(a.leads)}</td>` +
-          `<td style="padding:8px;border-bottom:1px solid #f0ddd5;font-size:12px;${esMejor?'color:#2e7d32;font-weight:700;':'color:#56423d;'}text-align:right;">${a.cpl!=null?eur(a.cpl):'—'}</td>` +
+          celdaDer(a.cpl != null ? eur(a.cpl) : '—', esMejor ? 'color:#2e7d32;font-weight:700;' : '') +
+          celdaDer(a.costeLpv != null ? eur(a.costeLpv) : '—') +
+          celdaDer(a.crLead != null ? pct(a.crLead) : '—') +
           `</tr>`;
       }).join('');
-      creatividades =
-        `<p style="margin:20px 0 8px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#89726c;font-weight:700;">🎨 Creatividades · Pre_lancio</p>` +
+      return `<p style="margin:20px 0 8px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#89726c;font-weight:700;">🎨 Creatividades · ${titulo}</p>` +
         `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">` +
-        `<tr><th style="${thS.replace('right','left')}">Anuncio</th><th style="${thS}">Gasto</th><th style="${thS}">Leads</th><th style="${thS}">CPL</th></tr>` +
+        `<tr><th style="${thS.replace('right','left')}">Anuncio</th><th style="${thS}">Gasto</th><th style="${thS}">Leads</th><th style="${thS}">CPL</th><th style="${thS}">€/visita</th><th style="${thS}">CR%</th></tr>` +
         adFilas + `</table>`;
-    }
+    };
+    const hayCreatividades = (meta.adsBallet && meta.adsBallet.length) || (meta.adsBarre && meta.adsBarre.length);
+    const leyenda = hayCreatividades
+      ? `<p style="margin:8px 0 0;font-size:10px;color:#bcb0ab;line-height:1.5;">€/visita = coste por visita a la página de destino · CR% = leads por cada 100 visitas a la página</p>`
+      : '';
+    const creatividades = tablaCreatividades('Ballet · Pre_lancio', meta.adsBallet) + tablaCreatividades('Barre Fit', meta.adsBarre) + leyenda;
     metaBloque = tarjetas + tablaCampanas + creatividades;
   } else {
     metaBloque = `<p style="margin:0;font-size:13px;color:#b00020;">⚠️ No se pudieron leer los datos de Meta${meta.error ? ` — ${meta.error}` : ''}.</p>`;
@@ -329,7 +347,7 @@ async function enviar(subject, html) {
 const ahora       = new Date();
 const sinceMs     = ahora.getTime() - HOURS * 3600_000;
 const todayMs     = getMadridDayStart();
-const [meta, ins] = await Promise.all([getMeta(), getInscritos(sinceMs, todayMs)]);
+const [meta, ins] = await Promise.all([getMeta(PRESET), getInscritos(sinceMs, todayMs)]);
 
 const subject = buildSubject({ meta, ins });
 const html    = buildHtml({ meta, ins, ahora, hours: HOURS });
@@ -346,13 +364,16 @@ if (DRY) {
       const conv = r.convRate != null ? ` · conv ${pct(r.convRate)}` : '';
       console.log(`  ${r.name}: ${eur(r.spend)} · alcance ${num(r.reach)} · ${r.leads} leads · CTR ${pct(r.ctr)}${conv}`);
     });
-    if (meta.ads.length > 0) {
-      console.log(`\nCreatividades Pre_lancio (${meta.ads.length}):`);
-      meta.ads.forEach((a, i) => {
-        const tag = i === 0 ? '🥇' : i === meta.ads.length - 1 ? '⚠️' : '  ';
-        console.log(`  ${tag} ${a.name}: ${eur(a.spend)} · ${a.leads} leads · ${a.cpl != null ? eur(a.cpl) + '/lead' : 'sin leads'}`);
+    const dumpAds = (titulo, ads) => {
+      if (!ads || ads.length === 0) return;
+      console.log(`\nCreatividades ${titulo} (${ads.length}):`);
+      ads.forEach((a, i) => {
+        const tag = i === 0 ? '🥇' : i === ads.length - 1 ? '⚠️' : '  ';
+        console.log(`  ${tag} ${a.name}: ${eur(a.spend)} · ${a.leads} leads · CPL ${a.cpl != null ? eur(a.cpl) : '—'} · €/visita ${a.costeLpv != null ? eur(a.costeLpv) : '—'} · CR ${a.crLead != null ? pct(a.crLead) : '—'}`);
       });
-    }
+    };
+    dumpAds('Ballet', meta.adsBallet);
+    dumpAds('Barre', meta.adsBarre);
   } else console.log(`ERROR: ${meta.error}`);
   console.log('\n=== SUPABASE ===');
   if (ins.ok) {
