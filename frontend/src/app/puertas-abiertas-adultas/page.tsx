@@ -349,9 +349,8 @@ export default function PuertasAbiertasAdultas() {
           </p>
 
           <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6 space-y-3" style={{ color: C.dark }}>
-            <p>Sé lo difícil que es sacar tiempo para ti entre el trabajo, la familia y el día a día.</p>
-            <p>Y sé que, al salir de casa, lo último que te apetece es un gimnasio enorme, ruidoso y lleno de gente. Quieres cuidarte, sí, pero en un sitio cercano y tranquilo donde de verdad puedas desconectar.</p>
-            <p style={{ fontWeight: 600 }}>Por eso el 24 de julio te invito a una clase de prueba gratis de 60 minutos: eliges qué probar, conoces el estudio a un paso de casa y decides con calma. Sin compromiso y sin pagar nada.</p>
+            <p>Descubre dos de las disciplinas más eficaces para fortalecer el cuerpo, mejorar la movilidad y sentirte mejor en tu día a día.</p>
+            <p style={{ fontWeight: 600 }}>El 24 de julio podrás probar una clase real, conocer el estudio y resolver todas tus dudas antes de decidir.</p>
           </div>
 
           <button
