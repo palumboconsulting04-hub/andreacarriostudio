@@ -377,15 +377,16 @@ export default function PuertasAbiertasAdultas() {
             className="text-2xl sm:text-3xl mb-7 text-center"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            Las 4 cosas que vienes a hacer en estos 60 minutos
+            ¿Qué vivirás durante la jornada?
           </h2>
 
           <ul className="space-y-4">
             {[
-              ["Tu momento, solo para ti", "60 minutos para soltar el estrés de la semana, moverte y salir con la cabeza despejada y más energía de la que entraste. Sin móvil, sin prisas."],
-              ["Pruebas el Barre Fit", "Es la disciplina que está arrasando y a mí me tiene enamorada. Es perfecta si buscas tonificar piernas y glúteos, esculpir el cuerpo y activar tu energía al ritmo de la música (y no, no hace falta saber bailar en absoluto)."],
-              ["Pruebas el Pilates Mat", "El clásico en suelo sobre colchoneta. Te vendrá genial si lo que quieres es definir el abdomen, liberar la rigidez de la espalda después de pasar horas sentada y ganar flexibilidad."],
-              ["Me conoces a mí y ves si te pilla cerca", "Estaré yo contigo, con grupos pequeños y trato cercano. Y compruebas si el estudio, en la zona de Alfahuir (al lado del Centro Comercial Arena), te cuadra para venir entre semana."],
+              ["Una clase real de Pilates Mat o Barre Fit", "No es una demostración. Participarás en una clase adaptada a cualquier nivel para que descubras cómo se trabaja realmente en el estudio."],
+              ["Descubrir cuál disciplina encaja mejor contigo", "Conocerás los beneficios del Pilates Mat para la postura, la movilidad y el fortalecimiento del core, y del Barre Fit para la tonificación, el equilibrio y la resistencia muscular."],
+              ["Un ambiente cercano y grupos reducidos", "Podrás entrenar con tranquilidad, recibir atención personalizada y experimentar la diferencia de trabajar en grupos pequeños."],
+              ["Conoce el estudio y resuelve tus dudas", "Tendrás tiempo para conocer el espacio, hablar conmigo personalmente y descubrir qué opción se adapta mejor a tus objetivos."],
+              ["Sorpresa especial + picoteo", "Después de la clase compartiremos un pequeño aperitivo y una sorpresa preparada especialmente para las asistentes."],
             ].map(([t, d]) => (
               <li key={t} className="flex gap-3">
                 <Check />
