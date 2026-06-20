@@ -437,6 +437,40 @@ export default function PuertasAbiertasAdultas() {
         </div>
       </div>
 
+      {/* ── Así será la jornada ── */}
+      <div className="px-4 pb-12">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl mb-7 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
+            Así será la jornada
+          </h2>
+          <div className="space-y-3">
+            {[
+              ["Bienvenida", "Os recibiré personalmente, os enseñaré el estudio y os explicaré cómo será la experiencia."],
+              ["Clase de prueba (30 min)", "Participarás en una clase real de Pilates Mat o Barre Fit, adaptada a cualquier nivel. Podrás moverte, activar tu cuerpo y descubrir si esta actividad encaja contigo."],
+              ["Sorpresa especial + picoteo (30 min)", "Tras la clase nos quedaremos un ratito para compartir, disfrutar de un pequeño aperitivo y descubrir una sorpresa que hemos preparado para las asistentes."],
+              ["Decide con tranquilidad", "Sin presiones ni compromiso. Podrás resolver todas tus dudas sobre horarios, niveles y funcionamiento del estudio. Si te gusta la experiencia, te explicaremos las opciones disponibles para empezar en septiembre."],
+            ].map(([t, d], i) => (
+              <div
+                key={t}
+                className="flex gap-4 items-start rounded-2xl p-4"
+                style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
+              >
+                <span
+                  className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                  style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans }}
+                >
+                  {i + 1}
+                </span>
+                <span>
+                  <strong style={{ color: C.dark, fontFamily: fSans, fontSize: "0.95rem" }}>{t}.</strong>{" "}
+                  <span className="text-sm" style={{ color: C.brown }}>{d}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* ── Formulario ── */}
       <div ref={formRef} className="px-4 pb-12 scroll-mt-4">
         <div
