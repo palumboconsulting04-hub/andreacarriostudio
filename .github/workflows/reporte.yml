@@ -1,0 +1,29 @@
+name: Informe automático
+
+# Envía el informe (Meta Ads + inscritos) por correo con Resend.
+# Cada 3 h en horario diurno. GitHub usa UTC; en España (verano UTC+2) esto
+# equivale a las 9:00, 12:00, 15:00, 18:00 y 21:00. En invierno se desplaza 1 h.
+on:
+  schedule:
+    - cron: '0 7,10,13,16,19 * * *'
+  workflow_dispatch: {}   # permite lanzarlo a mano desde la pestaña "Actions"
+
+jobs:
+  enviar-informe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Enviar informe por correo
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          META_AD_ACCOUNT_ID: ${{ secrets.META_AD_ACCOUNT_ID }}
+          META_API_VERSION: ${{ secrets.META_API_VERSION }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+          REPORT_TO: ${{ secrets.REPORT_TO }}
+        run: node tools/reporte/reporte.mjs --hours 3
