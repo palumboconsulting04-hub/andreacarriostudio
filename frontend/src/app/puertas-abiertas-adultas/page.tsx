@@ -435,16 +435,27 @@ export default function PuertasAbiertasAdultas() {
             <p className="text-sm font-medium mb-4" style={{ color: C.dark, fontFamily: fSans }}>
               …por si aún no nos conocemos.
             </p>
-            <div className="text-sm leading-relaxed space-y-3" style={{ color: C.brown }}>
+            <div className="text-sm leading-relaxed space-y-3 mb-6" style={{ color: C.brown }}>
               <p>
-                Soy <strong style={{ color: C.dark }}>Andrea Carrió</strong>. Tras muchos años dedicada a la danza profesional y a la enseñanza del movimiento, decidí crear este rincón en Valencia.
+                <strong style={{ color: C.dark }}>Soy Andrea Carrió</strong>, titulada oficial en danza clásica y con certificación en Pilates Mat y Barre Fit.
               </p>
               <p>
-                Mi objetivo no es que vengas aquí a sufrir por sufrir. Quiero ayudarte a entrenar de forma inteligente: a ganar fuerza, moldear tu cuerpo, mejorar la postura y, sobre todo, a que salgas de clase con mucha más energía de la que tenías al entrar.
+                Muchos ya me conocéis como la profesora de ballet de la escuela que durante años fue la de Maricuz Alcalá. Ahora tomo el mando de este espacio con un proyecto más amplio: seguir cuidando a las niñas que llevan años aquí y, al mismo tiempo, abrir las puertas a las adultas.
               </p>
               <p>
-                Como me obsesiona que hagas los ejercicios bien para cuidar tu espalda y no lesionarte, mis grupos son muy pequeñitos y el trato es súper familiar.
+                Porque mi sueño más grande es que este estudio sea algo más que un lugar donde hacer ejercicio. Quiero que sea vuestra segunda casa: un sitio donde desconectar de verdad, sentiros bien con vuestro cuerpo y saber que alguien os está mirando y cuidando en cada movimiento.
               </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {["Titulada oficial en danza clásica", "Certificada en Pilates Mat y Barre Fit", "+8 años enseñando"].map(s => (
+                <span
+                  key={s}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={{ backgroundColor: C.cream, border: `1px solid ${C.border}`, color: C.burgundy, fontFamily: fSans }}
+                >
+                  {s}
+                </span>
+              ))}
             </div>
           </div>
         </div>
