@@ -40,6 +40,14 @@ const eur = v => `${Number(v||0).toLocaleString('es-ES', { minimumFractionDigits
 const num = v => Number(v||0).toLocaleString('es-ES');
 const pct = v => `${Number(v||0).toLocaleString('es-ES', { minimumFractionDigits:1, maximumFractionDigits:1 })}%`;
 
+// Valoración automática de una creatividad (útil para vigilar la fase de aprendizaje).
+const analisisCreatividad = a => {
+  if (!a.impressions) return '⏸ Sin entrega';
+  if (a.leads === 0) return a.impressions < 300 ? '🌱 Arrancando' : '⚠️ Llega, no convierte';
+  if (a.cpl != null && a.cpl <= 6) return '🔥 Funcionando';
+  return '🟡 Convierte caro';
+};
+
 const actionVal = (arr, type) => {
   const h = Array.isArray(arr) ? arr.find(a => a.action_type === type) : null;
   return h ? Number(h.value) : 0;
@@ -90,17 +98,18 @@ async function getMeta(preset = 'today') {
       const convRate = outboundClicks > 0 ? (leads / outboundClicks) * 100 : null;
       return { name: c.campaign_name, spend, impressions, reach, clicks: outboundClicks, lpv, leads, cpl: leads > 0 ? spend / leads : null, ctr, convRate };
     }).sort((a, b) => b.spend - a.spend);
-    // Métricas por creatividad, incl. coste por visita a la landing y CR lead/visita.
+    // Metricas por creatividad, incl. coste por visita a la landing y CR lead/visita.
     const mapAd = a => {
       const spend = Number(a.spend || 0);
       const leads = actionVal(a.actions, 'lead');
       const lpv   = actionVal(a.actions, 'landing_page_view');
+      const impressions = Number(a.impressions || 0);
       return {
         name: a.ad_name || a.adset_name || '(sin nombre)',
-        spend, leads, lpv,
-        cpl:      leads > 0 ? spend / leads : null,   // coste por lead
-        costeLpv: lpv   > 0 ? spend / lpv   : null,   // coste por visita a la página de destino
-        crLead:   lpv   > 0 ? (leads / lpv) * 100 : null, // % de visitas que se convierten en lead
+        spend, leads, lpv, impressions,
+        cpl:      leads > 0 ? spend / leads : null,
+        costeLpv: lpv   > 0 ? spend / lpv   : null,
+        crLead:   lpv   > 0 ? (leads / lpv) * 100 : null,
       };
     };
     const ordenarPorCpl = (a, b) => {
@@ -109,7 +118,7 @@ async function getMeta(preset = 'today') {
       if (b.cpl != null) return 1;
       return b.leads - a.leads;
     };
-    // Clasifica por campaña: barre = nombre con "barre"; ballet = "pre_lancio" sin barre.
+    // Clasifica por campana: barre = nombre con "barre"; ballet = "pre_lancio" sin barre.
     const esBarre  = name => (name || '').toLowerCase().includes('barre');
     const esBallet = name => (name || '').toLowerCase().replace(/[^a-z]/g, '').includes('prelancio') && !esBarre(name);
     const adsBallet = adData.filter(a => esBallet(a.campaign_name)).map(mapAd).sort(ordenarPorCpl);
@@ -143,33 +152,59 @@ async function getInscritos(sinceMs, todayMs) {
       const base = getName(r);
       return r.nome_alumna && r.nome_alumna !== base ? `${r.nome_alumna} (${base})` : base;
     }).filter(n => n && n !== '—');
+
+  // IDs de disciplinas por categoria (tabla `discipline`)
+  const BALLET_IDS = new Set(['ballet-i','ballet-ii','ballet-adultos','pre-ballet']);
+  const BARRE_IDS  = new Set(['barre-fit','pilates-mat']);
+  // puertas_abiertas_adultas usa texto libre en `disciplina`
+  const esBallet_paa = d => !d || BALLET_IDS.has(d) || d === 'ballet-nina' || (d && d.toLowerCase().includes('ballet'));
+  const esBarre_paa  = d => d && (BARRE_IDS.has(d) || d.toLowerCase().includes('barre') || d.toLowerCase().includes('pilates'));
+
   try {
     const [pa, paa, isc] = await Promise.all([
       sbFetch('puertas_abiertas?select=nombre,apellido,email,created_at&order=created_at.desc')
         .catch(() => sbFetch('puertas_abiertas?select=created_at&order=created_at.desc')),
-      sbFetch('puertas_abiertas_adultas?select=nombre,apellido,email,created_at&order=created_at.desc')
+      sbFetch('puertas_abiertas_adultas?select=nombre,apellido,email,created_at,disciplina&order=created_at.desc')
         .catch(() => sbFetch('puertas_abiertas_adultas?select=created_at&order=created_at.desc')),
-      sbFetch('iscrizioni?select=created_at,stato,nome,cognome,nome_alumna,email,matricula&order=created_at.desc'),
+      sbFetch('iscrizioni?select=created_at,stato,nome,cognome,nome_alumna,email,matricula,disciplina_id&order=created_at.desc'),
     ]);
+
     const inscritas = isc.filter(r => PLAZA.has(r.stato));
-    const matriculasHoy = inscritas.filter(isToday);
-    // NOTA: la tabla iscrizioni aún no tiene columna updated_at, así que esto
-    // queda en 0 por ahora. Cuando exista, detectará renovaciones (pago de hoy
-    // sobre un alta de un día anterior).
-    const renovacionesHoy = inscritas.filter(r => {
+
+    // NOTA: iscrizioni aun no tiene updated_at; renovaciones quedan en 0 por ahora.
+    const makeReno = list => list.filter(r => {
       if (!r.updated_at) return false;
-      const updHoy = new Date(r.updated_at).getTime() >= todayMs;
-      const creadoAntes = !r.created_at || new Date(r.created_at).getTime() < todayMs;
-      return updHoy && creadoAntes;
+      return new Date(r.updated_at).getTime() >= todayMs && (!r.created_at || new Date(r.created_at).getTime() < todayMs);
     });
-    const paHoy  = pa.filter(isToday);
-    const paaHoy = paa.filter(isToday);
+
+    // Separar por disciplina
+    const paa_ballet = paa.filter(r => esBallet_paa(r.disciplina));
+    const paa_barre  = paa.filter(r => esBarre_paa(r.disciplina));
+    const isc_ballet = inscritas.filter(r => BALLET_IDS.has(r.disciplina_id));
+    const isc_barre  = inscritas.filter(r => BARRE_IDS.has(r.disciplina_id));
+
+    const snap = list => ({
+      total:      list.length,
+      recientes:  list.filter(isRecent).length,
+      hoyCount:   list.filter(isToday).length,
+      hoyNombres: fmtNames(list.filter(isToday)),
+    });
+    const renoSnap = list => ({ hoyCount: list.length, hoyNombres: fmtNames(list) });
+
     return {
       ok: true,
-      pa:  { total: pa.length,  recientes: pa.filter(isRecent).length,  hoyCount: paHoy.length,  hoyNombres: fmtNames(paHoy)  },
-      paa: { total: paa.length, recientes: paa.filter(isRecent).length, hoyCount: paaHoy.length, hoyNombres: fmtNames(paaHoy) },
-      isc: { total: inscritas.length, recientes: inscritas.filter(isRecent).length, hoyCount: matriculasHoy.length, hoyNombres: fmtNames(matriculasHoy) },
-      reno: { hoyCount: renovacionesHoy.length, hoyNombres: fmtNames(renovacionesHoy) },
+      ballet: {
+        paNinas:    snap(pa),
+        paaAdultas: snap(paa_ballet),
+        isc:        snap(isc_ballet),
+        reno:       renoSnap(makeReno(isc_ballet)),
+      },
+      barre: {
+        paa:  snap(paa_barre),
+        isc:  snap(isc_barre),
+        reno: renoSnap(makeReno(isc_barre)),
+      },
+      totales: { pa: pa.length, paa: paa.length, isc: inscritas.length },
     };
   } catch (e) {
     return { ok: false, error: e.message };
@@ -243,7 +278,9 @@ function buildHtml({ meta, ins, ahora, hours }) {
         const badge   = esMejor ? '🥇 ' : esPeor ? '⚠️ ' : '';
         const rowBg   = esMejor ? 'background:#f0faf0;' : esPeor ? 'background:#fff5f5;' : '';
         return `<tr style="${rowBg}">` +
-          `<td style="padding:8px;border-bottom:1px solid #f0ddd5;font-size:12px;color:#25190f;">${badge}${a.name}</td>` +
+          `<td style="padding:8px;border-bottom:1px solid #f0ddd5;font-size:12px;color:#25190f;">${badge}${a.name}` +
+            `<div style="font-size:10px;color:#89726c;font-weight:600;margin-top:2px;">${analisisCreatividad(a)}</div></td>` +
+          celdaDer(num(a.impressions)) +
           celdaDer(eur(a.spend)) +
           `<td style="padding:8px;border-bottom:1px solid #f0ddd5;font-size:13px;color:#7d2b13;font-weight:700;text-align:right;">${num(a.leads)}</td>` +
           celdaDer(a.cpl != null ? eur(a.cpl) : '—', esMejor ? 'color:#2e7d32;font-weight:700;' : '') +
@@ -253,7 +290,7 @@ function buildHtml({ meta, ins, ahora, hours }) {
       }).join('');
       return `<p style="margin:20px 0 8px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#89726c;font-weight:700;">🎨 Creatividades · ${titulo}</p>` +
         `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">` +
-        `<tr><th style="${thS.replace('right','left')}">Anuncio</th><th style="${thS}">Gasto</th><th style="${thS}">Leads</th><th style="${thS}">CPL</th><th style="${thS}">€/visita</th><th style="${thS}">CR%</th></tr>` +
+        `<tr><th style="${thS.replace('right','left')}">Anuncio</th><th style="${thS}">Impr.</th><th style="${thS}">Gasto</th><th style="${thS}">Leads</th><th style="${thS}">CPL</th><th style="${thS}">€/visita</th><th style="${thS}">CR%</th></tr>` +
         adFilas + `</table>`;
     };
     const hayCreatividades = (meta.adsBallet && meta.adsBallet.length) || (meta.adsBarre && meta.adsBarre.length);
@@ -280,16 +317,35 @@ function buildHtml({ meta, ins, ahora, hours }) {
           : `<span style="color:#bcb0ab;font-size:13px;">—</span>`) +
         `</td></tr>`;
     };
-    const renoFila = ins.reno.hoyCount > 0 ? filaReg('🔄','Renovaciones','pagadas hoy',ins.reno.hoyCount,ins.reno.hoyNombres) : '';
-    insBloque =
+    const thS2 = 'padding:7px 14px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#89726c;border-bottom:2px solid #7d2b13;';
+    const tablaSection = (filas) =>
       `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">` +
-      `<tr><th style="padding:7px 14px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#89726c;border-bottom:2px solid #7d2b13;">Categoría · hoy</th>` +
-      `<th style="padding:7px 14px;text-align:right;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#89726c;border-bottom:2px solid #7d2b13;">Nuevos</th></tr>` +
-      filaReg('👧','Puertas Abiertas','niñas',ins.pa.hoyCount,ins.pa.hoyNombres) +
-      filaReg('👩','Puertas Abiertas','adultas',ins.paa.hoyCount,ins.paa.hoyNombres) +
-      filaReg('✅','Matrículas pagadas','nuevas hoy',ins.isc.hoyCount,ins.isc.hoyNombres) +
-      renoFila + `</table>` +
-      `<p style="margin:12px 0 0;font-size:11px;color:#89726c;">Totales acumulados — PA niñas: <strong>${ins.pa.total}</strong> · PA adultas: <strong>${ins.paa.total}</strong> · Matrículas: <strong>${ins.isc.total}</strong></p>`;
+      `<tr><th style="${thS2}text-align:left;">Categoría · hoy</th>` +
+      `<th style="${thS2}text-align:right;">Nuevos</th></tr>` +
+      filas + `</table>`;
+    const subtitulo = (emoji, txt, color) =>
+      `<p style="margin:20px 0 10px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:${color};font-weight:700;border-left:3px solid ${color};padding-left:8px;">${emoji} ${txt}</p>`;
+
+    // Ballet
+    const balletFilas =
+      filaReg('👧','Puertas Abiertas','niñas ballet',ins.ballet.paNinas.hoyCount,ins.ballet.paNinas.hoyNombres) +
+      filaReg('👩','Puertas Abiertas','adultas ballet',ins.ballet.paaAdultas.hoyCount,ins.ballet.paaAdultas.hoyNombres) +
+      filaReg('✅','Matrículas','nuevas hoy',ins.ballet.isc.hoyCount,ins.ballet.isc.hoyNombres) +
+      (ins.ballet.reno.hoyCount > 0 ? filaReg('🔄','Renovaciones','pagadas hoy',ins.ballet.reno.hoyCount,ins.ballet.reno.hoyNombres) : '');
+
+    // Barre
+    const barreFilas =
+      filaReg('👩','Puertas Abiertas','adultas barre',ins.barre.paa.hoyCount,ins.barre.paa.hoyNombres) +
+      filaReg('✅','Matrículas','nuevas hoy',ins.barre.isc.hoyCount,ins.barre.isc.hoyNombres) +
+      (ins.barre.reno.hoyCount > 0 ? filaReg('🔄','Renovaciones','pagadas hoy',ins.barre.reno.hoyCount,ins.barre.reno.hoyNombres) : '');
+
+    insBloque =
+      subtitulo('🩰','Ballet','#7d2b13') +
+      tablaSection(balletFilas) +
+      `<p style="margin:8px 0 0;font-size:11px;color:#89726c;">Totales — PA niñas: <strong>${ins.ballet.paNinas.total}</strong> · PA adultas: <strong>${ins.ballet.paaAdultas.total}</strong> · Matrículas: <strong>${ins.ballet.isc.total}</strong></p>` +
+      subtitulo('🏋️','Barre &amp; Pilates','#2b5c7d') +
+      tablaSection(barreFilas) +
+      `<p style="margin:8px 0 0;font-size:11px;color:#89726c;">Totales — PA adultas: <strong>${ins.barre.paa.total}</strong> · Matrículas: <strong>${ins.barre.isc.total}</strong></p>`;
   } else {
     insBloque = `<p style="margin:0;font-size:13px;color:#b00020;">⚠️ No se pudieron leer los inscritos${ins.error ? ` — ${ins.error}` : ''}.</p>`;
   }
@@ -326,7 +382,7 @@ function buildSubject({ meta, ins }) {
   const leads    = meta.ok ? meta.rows.reduce((s, r) => s + r.leads, 0) : 0;
   const gasto    = meta.ok ? meta.rows.reduce((s, r) => s + r.spend, 0) : 0;
   const cpl      = leads > 0 ? eur(gasto / leads) : '—';
-  const nuevosPA = ins.ok ? ins.pa.hoyCount + ins.paa.hoyCount : 0;
+  const nuevosPA = ins.ok ? ins.ballet.paNinas.hoyCount + ins.ballet.paaAdultas.hoyCount + ins.barre.paa.hoyCount : 0;
   const hora     = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' });
   const paTxt    = nuevosPA > 0 ? ` · +${nuevosPA} PA` : '';
   return `📊 ${hora} · ${leads} leads · CPL ${cpl}${paTxt}`;
@@ -369,7 +425,7 @@ if (DRY) {
       console.log(`\nCreatividades ${titulo} (${ads.length}):`);
       ads.forEach((a, i) => {
         const tag = i === 0 ? '🥇' : i === ads.length - 1 ? '⚠️' : '  ';
-        console.log(`  ${tag} ${a.name}: ${eur(a.spend)} · ${a.leads} leads · CPL ${a.cpl != null ? eur(a.cpl) : '—'} · €/visita ${a.costeLpv != null ? eur(a.costeLpv) : '—'} · CR ${a.crLead != null ? pct(a.crLead) : '—'}`);
+        console.log(`  ${tag} ${a.name} [${analisisCreatividad(a)}]: ${num(a.impressions)} impr · ${eur(a.spend)} · ${a.leads} leads · CPL ${a.cpl != null ? eur(a.cpl) : '—'} · €/visita ${a.costeLpv != null ? eur(a.costeLpv) : '—'} · CR ${a.crLead != null ? pct(a.crLead) : '—'}`);
       });
     };
     dumpAds('Ballet', meta.adsBallet);
@@ -377,11 +433,17 @@ if (DRY) {
   } else console.log(`ERROR: ${meta.error}`);
   console.log('\n=== SUPABASE ===');
   if (ins.ok) {
-    console.log(`PA ninas hoy:    ${ins.pa.hoyCount}${ins.pa.hoyNombres.length ? ' — ' + ins.pa.hoyNombres.join(', ') : ''}`);
-    console.log(`PA adultas hoy:  ${ins.paa.hoyCount}${ins.paa.hoyNombres.length ? ' — ' + ins.paa.hoyNombres.join(', ') : ''}`);
-    console.log(`Matriculas hoy:  ${ins.isc.hoyCount}${ins.isc.hoyNombres.length ? ' — ' + ins.isc.hoyNombres.join(', ') : ''}`);
-    console.log(`Renovaciones hoy: ${ins.reno.hoyCount}${ins.reno.hoyNombres.length ? ' — ' + ins.reno.hoyNombres.join(', ') : ''}`);
-    console.log(`Totales: PA ninas ${ins.pa.total} · PA adultas ${ins.paa.total} · matriculas ${ins.isc.total}`);
+    console.log('--- Ballet ---');
+    console.log(`PA niñas hoy:        ${ins.ballet.paNinas.hoyCount}${ins.ballet.paNinas.hoyNombres.length ? ' — ' + ins.ballet.paNinas.hoyNombres.join(', ') : ''}`);
+    console.log(`PA adultas hoy:      ${ins.ballet.paaAdultas.hoyCount}${ins.ballet.paaAdultas.hoyNombres.length ? ' — ' + ins.ballet.paaAdultas.hoyNombres.join(', ') : ''}`);
+    console.log(`Matrículas hoy:      ${ins.ballet.isc.hoyCount}${ins.ballet.isc.hoyNombres.length ? ' — ' + ins.ballet.isc.hoyNombres.join(', ') : ''}`);
+    console.log(`Renovaciones hoy:    ${ins.ballet.reno.hoyCount}${ins.ballet.reno.hoyNombres.length ? ' — ' + ins.ballet.reno.hoyNombres.join(', ') : ''}`);
+    console.log(`Totales ballet: PA niñas ${ins.ballet.paNinas.total} · PA adultas ${ins.ballet.paaAdultas.total} · matrículas ${ins.ballet.isc.total}`);
+    console.log('--- Barre & Pilates ---');
+    console.log(`PA adultas hoy:      ${ins.barre.paa.hoyCount}${ins.barre.paa.hoyNombres.length ? ' — ' + ins.barre.paa.hoyNombres.join(', ') : ''}`);
+    console.log(`Matrículas hoy:      ${ins.barre.isc.hoyCount}${ins.barre.isc.hoyNombres.length ? ' — ' + ins.barre.isc.hoyNombres.join(', ') : ''}`);
+    console.log(`Renovaciones hoy:    ${ins.barre.reno.hoyCount}${ins.barre.reno.hoyNombres.length ? ' — ' + ins.barre.reno.hoyNombres.join(', ') : ''}`);
+    console.log(`Totales barre: PA adultas ${ins.barre.paa.total} · matrículas ${ins.barre.isc.total}`);
   } else console.log(`ERROR: ${ins.error}`);
   console.log('\n(--dry: no se ha enviado nada)');
 } else {
