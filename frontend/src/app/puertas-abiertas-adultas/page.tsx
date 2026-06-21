@@ -608,10 +608,10 @@ export default function PuertasAbiertasAdultas() {
           style={{ backgroundColor: C.burgundy }}
         >
           <h2 className="text-2xl sm:text-3xl mb-3" style={{ fontFamily: fSerif, color: C.cream }}>
-            Venga, elige tu hora antes de que se llenen los grupos
+            ¿Te apuntas a probar?
           </h2>
           <p className="text-sm sm:text-base mb-7 max-w-md mx-auto" style={{ color: C.blush }}>
-            Si estás leyendo esto, aún quedan huecos libres para el 24 de julio. No lo dejes para el final, ¡tengo muchas ganas de conocerte!
+            Si estás leyendo esto, aún quedan plazas libres para el 24 de julio. Reserva la tuya gratis ahora y ven a conocer el estudio sin ningún compromiso.
           </p>
           <button
             onClick={() => handleReservaClick("cta_final")}
