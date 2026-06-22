@@ -4469,8 +4469,11 @@ export default function AdminDashboard() {
               : { bg: "#e7f7ec", fg: "#1f7a3d", bar: "#1f9d4d", txt: "Seguir", icon: "play_circle" };
 
             // Cálculo por grupo de niñas.
+            // Las renovaciones ya PAGADAS son clientas seguras → cuentan al 100%.
+            // Solo las pendientes de pago llevan la probabilidad de renovar del escenario.
             const ninasCalc = (d?.ninas ?? []).map(g => {
-              const yaDentro = g.renovaciones * t.renov;
+              const renovPendientes = Math.max(0, g.renovaciones - g.renovaciones_pagadas);
+              const yaDentro = g.renovaciones_pagadas + renovPendientes * t.renov;
               const nuevas = (g.pa_confirma * t.showC + g.pa_pendiente * t.showP) * t.inscN;
               const proy = yaDentro + nuevas;
               const ocup = g.capacidad > 0 ? proy / g.capacidad : 0;
@@ -4611,7 +4614,7 @@ export default function AdminDashboard() {
                             {/* Desglose */}
                             <div className="grid grid-cols-4 gap-2 text-center">
                               {[
-                                { l: "Renuevan", v: fmt(g.yaDentro), sub: `de ${g.renovaciones}` },
+                                { l: "Renuevan", v: fmt(g.yaDentro), sub: `${g.renovaciones_pagadas}✓ de ${g.renovaciones}` },
                                 { l: "Nuevas P.A.", v: fmt(g.nuevas), sub: `${g.pa_confirma}✓ ${g.pa_pendiente}?` },
                                 { l: "Proyección", v: fmt(g.proy), sub: `/ ${g.capacidad}` },
                                 { l: "Libres", v: g.libres <= 0 ? "0" : fmt(g.libres), sub: g.libres <= 0 ? "lleno" : "plazas" },
@@ -4671,8 +4674,8 @@ export default function AdminDashboard() {
                         ¿Cómo se calcula? (escenario {t.label.toLowerCase()})
                       </summary>
                       <div className="text-xs mt-3 space-y-1.5 leading-relaxed" style={{ color: "#56423d" }}>
-                        <p><strong>Proyección = renovaciones×{pct(t.renov)} + (confirmadas×{pct(t.showC)} + pendientes×{pct(t.showP)}) × {pct(t.inscN)}</strong> (niñas).</p>
-                        <p>· <strong>Renovaciones</strong>: alumnas actuales que vuelven ({pct(t.renov)} renuevan).</p>
+                        <p><strong>Proyección = (renov. pagadas×100% + renov. pendientes×{pct(t.renov)}) + (confirmadas×{pct(t.showC)} + pendientes×{pct(t.showP)}) × {pct(t.inscN)}</strong> (niñas).</p>
+                        <p>· <strong>Renovaciones</strong>: las que ya han pagado cuentan al 100% (clientas seguras); las pendientes de pago, al {pct(t.renov)}. El ✓ del recuadro indica cuántas ya pagaron.</p>
                         <p>· <strong>Asistencia</strong>: de las reservas de P.A., asisten {pct(t.showC)} de las confirmadas y {pct(t.showP)} de las pendientes (benchmark de eventos gratis).</p>
                         <p>· <strong>Inscripción</strong>: de quienes asisten y prueban, se apuntan {pct(t.inscN)} (niñas) / {pct(t.inscA)} (adultas).</p>
                         <p className="pt-1" style={{ color: "#89726c" }}>Cambia el escenario arriba para ver el rango pesimista-optimista. Los datos se leen en vivo de Renovaciones y Puertas Abiertas: si Andrea cambia algo allí, pulsa Actualizar.</p>
