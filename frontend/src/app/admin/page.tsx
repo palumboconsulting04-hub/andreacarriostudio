@@ -4487,7 +4487,7 @@ export default function AdminDashboard() {
             const nuevasAdultas = (at.pa_confirma * t.showC + at.pa_pendiente * t.showP) * t.inscA;
             const ocupAdultas = capAdultas > 0 ? nuevasAdultas / capAdultas : 0;
 
-            const fmt = (n: number) => (Math.round(n * 10) / 10).toLocaleString("es-ES");
+            const fmt = (n: number) => Math.round(n).toLocaleString("es-ES");
             const pct = (n: number) => `${Math.round(n * 100)}%`;
             const hora = d ? new Date(d.generated_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "";
 
@@ -4614,7 +4614,7 @@ export default function AdminDashboard() {
                                 { l: "Renuevan", v: fmt(g.yaDentro), sub: `de ${g.renovaciones}` },
                                 { l: "Nuevas P.A.", v: fmt(g.nuevas), sub: `${g.pa_confirma}✓ ${g.pa_pendiente}?` },
                                 { l: "Proyección", v: fmt(g.proy), sub: `/ ${g.capacidad}` },
-                                { l: "Libres", v: fmt(g.libres), sub: g.libres <= 0 ? "lleno" : "plazas" },
+                                { l: "Libres", v: g.libres <= 0 ? "0" : fmt(g.libres), sub: g.libres <= 0 ? "lleno" : "plazas" },
                               ].map(c => (
                                 <div key={c.l} className="rounded-xl py-2" style={{ backgroundColor: "#fff8f5" }}>
                                   <p className="text-base font-bold" style={{ color: c.l === "Libres" && g.libres <= 0 ? "#b71c1c" : "#7d2b13" }}>{c.v}</p>
