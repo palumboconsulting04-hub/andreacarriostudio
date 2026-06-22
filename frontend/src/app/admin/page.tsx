@@ -4456,9 +4456,9 @@ export default function AdminDashboard() {
             // inscN/inscA: % de asistentes que acaban inscribiéndose (niñas tienen
             //   más intención que adultas).
             const ESC = {
-              prudente:  { renov: 0.90, showC: 0.60, showP: 0.20, inscN: 0.35, inscA: 0.20, label: "Prudente" },
-              realista:  { renov: 0.90, showC: 0.70, showP: 0.30, inscN: 0.45, inscA: 0.30, label: "Realista" },
-              optimista: { renov: 0.90, showC: 0.80, showP: 0.40, inscN: 0.60, inscA: 0.45, label: "Optimista" },
+              prudente:  { renov: 0.90, showC: 0.60, showP: 0.20, inscN: 0.40, inscA: 0.25, label: "Prudente" },
+              realista:  { renov: 0.90, showC: 0.70, showP: 0.30, inscN: 0.50, inscA: 0.35, label: "Realista" },
+              optimista: { renov: 0.90, showC: 0.80, showP: 0.40, inscN: 0.65, inscA: 0.50, label: "Optimista" },
             } as const;
             const t = ESC[previsionEscenario];
             const d = previsionData;
