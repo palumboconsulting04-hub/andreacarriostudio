@@ -635,6 +635,23 @@ export default function AdminDashboard() {
   const [renovDeleteId, setRenovDeleteId] = useState<string | null>(null);
   const [renovEditId, setRenovEditId] = useState<string | null>(null);
 
+  // ── Previsión de ocupación (cuándo pausar campañas) ──
+  type PrevNina = {
+    grupo: string; sub: string; capacidad: number;
+    renovaciones: number; renovaciones_pagadas: number;
+    pa_confirma: number; pa_pendiente: number; pa_no_viene: number;
+  };
+  type PrevAdulta = { key: string; label: string; capacidad: number; pa_confirma: number; pa_pendiente: number };
+  type PrevisionData = {
+    ninas: PrevNina[];
+    adultas: PrevAdulta[];
+    adultas_total: { pa_confirma: number; pa_pendiente: number };
+    generated_at: string;
+  };
+  const [previsionData, setPrevisionData] = useState<PrevisionData | null>(null);
+  const [previsionLoading, setPrevisionLoading] = useState(false);
+  const [previsionEscenario, setPrevisionEscenario] = useState<"prudente" | "realista" | "optimista">("realista");
+
   // ── Pagos manuales (cuotas mensuales en efectivo/bizum) ──
   type PagoManual = {
     id: string;
@@ -944,6 +961,19 @@ export default function AdminDashboard() {
       .then(({ data }) => setRenovData((data ?? []) as RenovacionRow[]))
       .catch(() => setRenovData([]))
       .finally(() => setRenovLoading(false));
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const cargarPrevision = () => {
+    setPrevisionLoading(true);
+    fetch("/api/admin/previsiones")
+      .then(r => r.json())
+      .then(({ data }) => setPrevisionData((data ?? null) as PrevisionData | null))
+      .catch(() => setPrevisionData(null))
+      .finally(() => setPrevisionLoading(false));
+  };
+  useEffect(() => {
+    if (activeSection !== "Previsión") return;
+    cargarPrevision();
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -1744,6 +1774,7 @@ export default function AdminDashboard() {
     { icon: "autorenew", label: "Renovaciones" },
     { icon: "insights", label: "Marketing" },
     { icon: "filter_alt", label: "Embudo" },
+    { icon: "online_prediction", label: "Previsión" },
     { icon: "receipt_long", label: "Costes" },
     { icon: "trending_up", label: "Ventas" },
     { icon: "account_balance", label: "Finanzas" },
@@ -4417,6 +4448,242 @@ export default function AdminDashboard() {
           })()}
 
           {/* ── Embudo de inscripción (anónimo) ── */}
+          {activeSection === "Previsión" && (() => {
+            // ── Parámetros del modelo, anclados a benchmarks del sector ──
+            // renov: % de alumnas actuales que renuevan (Andrea: "casi todas").
+            // showC/showP: % de confirmadas/pendientes de P.A. que de verdad asisten
+            //   (eventos gratis: 60-70% asisten; pendientes mucho menos).
+            // inscN/inscA: % de asistentes que acaban inscribiéndose (niñas tienen
+            //   más intención que adultas).
+            const ESC = {
+              prudente:  { renov: 0.90, showC: 0.60, showP: 0.20, inscN: 0.35, inscA: 0.20, label: "Prudente" },
+              realista:  { renov: 0.90, showC: 0.70, showP: 0.30, inscN: 0.45, inscA: 0.30, label: "Realista" },
+              optimista: { renov: 0.90, showC: 0.80, showP: 0.40, inscN: 0.60, inscA: 0.45, label: "Optimista" },
+            } as const;
+            const t = ESC[previsionEscenario];
+            const d = previsionData;
+
+            const semaforo = (ocup: number) =>
+              ocup >= 0.95 ? { bg: "#fde7e7", fg: "#b71c1c", bar: "#d3392b", txt: "Pausar", icon: "pause_circle" }
+              : ocup >= 0.75 ? { bg: "#fff3e0", fg: "#e65100", bar: "#ef8b1a", txt: "Vigilar", icon: "visibility" }
+              : { bg: "#e7f7ec", fg: "#1f7a3d", bar: "#1f9d4d", txt: "Seguir", icon: "play_circle" };
+
+            // Cálculo por grupo de niñas.
+            const ninasCalc = (d?.ninas ?? []).map(g => {
+              const yaDentro = g.renovaciones * t.renov;
+              const nuevas = (g.pa_confirma * t.showC + g.pa_pendiente * t.showP) * t.inscN;
+              const proy = yaDentro + nuevas;
+              const ocup = g.capacidad > 0 ? proy / g.capacidad : 0;
+              return { ...g, yaDentro, nuevas, proy, ocup, libres: g.capacidad - proy, sem: semaforo(ocup) };
+            });
+            const rojos = ninasCalc.filter(g => g.ocup >= 0.95);
+            const amarillos = ninasCalc.filter(g => g.ocup >= 0.75 && g.ocup < 0.95);
+            const capNinas = ninasCalc.reduce((s, g) => s + g.capacidad, 0);
+            const proyNinas = ninasCalc.reduce((s, g) => s + g.proy, 0);
+
+            // Cálculo adultas (capacidad enorme; el límite es el volumen, no las plazas).
+            const capAdultas = (d?.adultas ?? []).reduce((s, a) => s + a.capacidad, 0);
+            const at = d?.adultas_total ?? { pa_confirma: 0, pa_pendiente: 0 };
+            const nuevasAdultas = (at.pa_confirma * t.showC + at.pa_pendiente * t.showP) * t.inscA;
+            const ocupAdultas = capAdultas > 0 ? nuevasAdultas / capAdultas : 0;
+
+            const fmt = (n: number) => (Math.round(n * 10) / 10).toLocaleString("es-ES");
+            const pct = (n: number) => `${Math.round(n * 100)}%`;
+            const hora = d ? new Date(d.generated_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "";
+
+            return (
+              <section className="space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-headline-md text-headline-md text-primary">Previsión de ocupación</h3>
+                    <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
+                      Cuándo pausar cada campaña, según renovaciones + reservas de Puertas Abiertas.
+                      {d && !previsionLoading ? ` · Actualizado a las ${hora}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    onClick={cargarPrevision}
+                    className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full border transition-colors hover:bg-surface-container-high"
+                    style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}
+                  >
+                    <Icon name="refresh" className={`text-sm ${previsionLoading ? "animate-spin" : ""}`} />
+                    Actualizar
+                  </button>
+                </div>
+
+                {/* Selector de escenario */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Escenario</p>
+                  <div className="inline-flex rounded-xl border p-1" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                    {(["prudente", "realista", "optimista"] as const).map(e => (
+                      <button
+                        key={e}
+                        onClick={() => setPrevisionEscenario(e)}
+                        className="text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors capitalize"
+                        style={previsionEscenario === e
+                          ? { backgroundColor: "#7d2b13", color: "#fff8f5" }
+                          : { backgroundColor: "transparent", color: "#7d2b13" }}
+                      >
+                        {ESC[e].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {!d && previsionLoading && (
+                  <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Calculando previsión…</p>
+                )}
+                {!d && !previsionLoading && (
+                  <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>No se pudo cargar la previsión.</p>
+                )}
+
+                {d && (
+                  <>
+                    {/* Recomendación global */}
+                    <div className="rounded-2xl p-5 border" style={
+                      rojos.length > 0
+                        ? { backgroundColor: "#fde7e7", borderColor: "#f3b1b1" }
+                        : amarillos.length > 0
+                          ? { backgroundColor: "#fff3e0", borderColor: "#f0c98a" }
+                          : { backgroundColor: "#e7f7ec", borderColor: "#a8dcb8" }
+                    }>
+                      <div className="flex items-start gap-3">
+                        <Icon name={rojos.length > 0 ? "campaign" : "check_circle"} className="text-2xl mt-0.5"
+                          style={{ color: rojos.length > 0 ? "#b71c1c" : amarillos.length > 0 ? "#e65100" : "#1f7a3d" }} />
+                        <div className="text-sm leading-relaxed" style={{ color: "#25190f" }}>
+                          {rojos.length > 0 ? (
+                            <>
+                              <strong>Pausa la campaña de niñas.</strong> {rojos.length === 1 ? "El grupo" : "Los grupos"}{" "}
+                              <strong>{rojos.map(g => g.grupo).join(", ")}</strong> {rojos.length === 1 ? "está" : "están"} al límite
+                              ({rojos.map(g => pct(g.ocup)).join(", ")}). Seguir gastando genera lista de espera.
+                            </>
+                          ) : amarillos.length > 0 ? (
+                            <>
+                              <strong>Vigila de cerca.</strong> {amarillos.map(g => g.grupo).join(", ")} se {amarillos.length === 1 ? "acerca" : "acercan"} al lleno.
+                              Aún hay margen, pero queda poco.
+                            </>
+                          ) : (
+                            <><strong>Sigue empujando niñas.</strong> Todos los grupos tienen plazas de sobra en este escenario.</>
+                          )}
+                          <div className="mt-2 pt-2 border-t" style={{ borderColor: "rgba(0,0,0,0.08)" }}>
+                            <strong style={{ color: "#1f7a3d" }}>Adultas: volcar presupuesto aquí.</strong>{" "}
+                            Proyección ~{fmt(nuevasAdultas)} inscritas sobre {capAdultas} plazas ({pct(ocupAdultas)}). Margen amplísimo: el límite es el volumen de tráfico, no las plazas.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* KPIs globales niñas */}
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: "Plazas niñas", value: capNinas, icon: "event_seat" },
+                        { label: "Proyección", value: fmt(proyNinas), icon: "groups" },
+                        { label: "Ocupación", value: capNinas > 0 ? pct(proyNinas / capNinas) : "—", icon: "donut_large" },
+                      ].map(k => (
+                        <div key={k.label} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
+                          <Icon name={k.icon} className="text-xl mb-1" style={{ color: "#7d2b13" }} />
+                          <p className="text-2xl font-bold" style={{ color: "#7d2b13" }}>{previsionLoading ? "—" : k.value}</p>
+                          <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{k.label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Tarjetas por grupo de niñas */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Niñas · por grupo</p>
+                      <div className="space-y-3">
+                        {ninasCalc.map(g => (
+                          <div key={g.grupo} className="rounded-2xl p-4 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff" }}>
+                            <div className="flex items-center justify-between gap-3 mb-3">
+                              <div>
+                                <p className="font-semibold" style={{ color: "#25190f" }}>{g.grupo}</p>
+                                <p className="text-[11px]" style={{ color: "#89726c" }}>{g.sub} · {g.capacidad} plazas</p>
+                              </div>
+                              <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: g.sem.bg, color: g.sem.fg }}>
+                                <Icon name={g.sem.icon} className="text-sm" />
+                                {g.sem.txt} · {pct(g.ocup)}
+                              </span>
+                            </div>
+                            {/* Barra de ocupación */}
+                            <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ backgroundColor: "#f0eae6" }}>
+                              <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.round(g.ocup * 100))}%`, backgroundColor: g.sem.bar }} />
+                            </div>
+                            {/* Desglose */}
+                            <div className="grid grid-cols-4 gap-2 text-center">
+                              {[
+                                { l: "Renuevan", v: fmt(g.yaDentro), sub: `de ${g.renovaciones}` },
+                                { l: "Nuevas P.A.", v: fmt(g.nuevas), sub: `${g.pa_confirma}✓ ${g.pa_pendiente}?` },
+                                { l: "Proyección", v: fmt(g.proy), sub: `/ ${g.capacidad}` },
+                                { l: "Libres", v: fmt(g.libres), sub: g.libres <= 0 ? "lleno" : "plazas" },
+                              ].map(c => (
+                                <div key={c.l} className="rounded-xl py-2" style={{ backgroundColor: "#fff8f5" }}>
+                                  <p className="text-base font-bold" style={{ color: c.l === "Libres" && g.libres <= 0 ? "#b71c1c" : "#7d2b13" }}>{c.v}</p>
+                                  <p className="text-[10px] font-semibold" style={{ color: "#89726c" }}>{c.l}</p>
+                                  <p className="text-[10px]" style={{ color: "#b8a7a0" }}>{c.sub}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Adultas */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Adultas · por disciplina</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {(d.adultas ?? []).map(a => {
+                          const nuevas = (a.pa_confirma * t.showC + a.pa_pendiente * t.showP) * t.inscA;
+                          const ocup = a.capacidad > 0 ? nuevas / a.capacidad : 0;
+                          return (
+                            <div key={a.key} className="rounded-2xl p-4 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff" }}>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="font-semibold" style={{ color: "#25190f" }}>{a.label}</p>
+                                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: "#e7f7ec", color: "#1f7a3d" }}>
+                                  {pct(ocup)} · margen
+                                </span>
+                              </div>
+                              <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ backgroundColor: "#f0eae6" }}>
+                                <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round(ocup * 100))}%`, backgroundColor: "#1f9d4d" }} />
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 text-center">
+                                {[
+                                  { l: "Interés", v: `${a.pa_confirma + a.pa_pendiente}`, sub: `${a.pa_confirma}✓ ${a.pa_pendiente}?` },
+                                  { l: "Proyección", v: fmt(nuevas), sub: "inscritas" },
+                                  { l: "Plazas", v: `${a.capacidad}`, sub: "capacidad" },
+                                ].map(c => (
+                                  <div key={c.l} className="rounded-xl py-2" style={{ backgroundColor: "#fff8f5" }}>
+                                    <p className="text-base font-bold" style={{ color: "#7d2b13" }}>{c.v}</p>
+                                    <p className="text-[10px] font-semibold" style={{ color: "#89726c" }}>{c.l}</p>
+                                    <p className="text-[10px]" style={{ color: "#b8a7a0" }}>{c.sub}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Nota metodológica */}
+                    <details className="rounded-2xl p-4 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                      <summary className="cursor-pointer text-sm font-semibold" style={{ color: "#7d2b13" }}>
+                        ¿Cómo se calcula? (escenario {t.label.toLowerCase()})
+                      </summary>
+                      <div className="text-xs mt-3 space-y-1.5 leading-relaxed" style={{ color: "#56423d" }}>
+                        <p><strong>Proyección = renovaciones×{pct(t.renov)} + (confirmadas×{pct(t.showC)} + pendientes×{pct(t.showP)}) × {pct(t.inscN)}</strong> (niñas).</p>
+                        <p>· <strong>Renovaciones</strong>: alumnas actuales que vuelven ({pct(t.renov)} renuevan).</p>
+                        <p>· <strong>Asistencia</strong>: de las reservas de P.A., asisten {pct(t.showC)} de las confirmadas y {pct(t.showP)} de las pendientes (benchmark de eventos gratis).</p>
+                        <p>· <strong>Inscripción</strong>: de quienes asisten y prueban, se apuntan {pct(t.inscN)} (niñas) / {pct(t.inscA)} (adultas).</p>
+                        <p className="pt-1" style={{ color: "#89726c" }}>Cambia el escenario arriba para ver el rango pesimista-optimista. Los datos se leen en vivo de Renovaciones y Puertas Abiertas: si Andrea cambia algo allí, pulsa Actualizar.</p>
+                      </div>
+                    </details>
+                  </>
+                )}
+              </section>
+            );
+          })()}
+
           {activeSection === "Embudo" && (() => {
             const top = funnelData[0]?.count ?? 0;
             const fin = funnelData[funnelData.length - 1]?.count ?? 0;
