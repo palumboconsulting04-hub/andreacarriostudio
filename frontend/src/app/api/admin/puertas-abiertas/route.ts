@@ -53,6 +53,60 @@ export async function GET() {
 const LLAMADA_VALIDA = new Set(["sin_llamar", "realizada", "no_contesta", "no_disponible"]);
 const CONFIRMACION_VALIDA = new Set(["pendiente", "confirma", "no_viene"]);
 
+// Etiquetas de grupo válidas (las mismas que el formulario público).
+const GRUPOS_VALIDOS = new Set([
+  "Pre-Ballet · 3–6 años",
+  "Ballet 1 · 7–9 años",
+  "Ballet 2 · 10–14 años",
+]);
+
+// Alta manual de una reserva (Andrea apunta a mano una niña que se ha
+// inscrito por otra vía: en persona, por teléfono, etc.). Solo admin.
+export async function POST(req: NextRequest) {
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+  const body = await req.json().catch(() => null);
+  const nombre = String(body?.nombre ?? "").trim();
+  const telefono = String(body?.telefono ?? "").trim();
+  const ninasRaw = Array.isArray(body?.ninas) ? body.ninas : [];
+  const ninas = ninasRaw
+    .map((n: { nombre?: string; edad?: string }) => ({
+      nombre: String(n?.nombre ?? "").trim(),
+      edad: String(n?.edad ?? "").trim(),
+    }))
+    .filter((n: { nombre: string; edad: string }) => n.nombre && GRUPOS_VALIDOS.has(n.edad));
+
+  if (!nombre || !telefono || ninas.length === 0) {
+    return NextResponse.json(
+      { error: "Faltan datos: contacto, teléfono y al menos una niña con grupo válido." },
+      { status: 400 },
+    );
+  }
+
+  const confirmacion = CONFIRMACION_VALIDA.has(String(body?.confirmacion))
+    ? String(body.confirmacion)
+    : "confirma";
+
+  const { data, error } = await supabaseAdmin
+    .from("puertas_abiertas")
+    .insert({
+      nombre,
+      apellido: String(body?.apellido ?? "").trim(),
+      email: String(body?.email ?? "").trim(),
+      telefono,
+      ninas,
+      origen: "manual",
+      confirmacion,
+    })
+    .select()
+    .single();
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ data: { ...data, ya_inscrita: false } });
+}
+
 // Actualiza una reserva (origen, notas, estado de llamada y confirmación). Solo admin.
 export async function PATCH(req: NextRequest) {
   if (!(await isAdmin())) {

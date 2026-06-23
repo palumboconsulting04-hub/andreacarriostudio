@@ -506,6 +506,52 @@ export default function AdminDashboard() {
   // Panel de resumen por edad (para el cierre de campaña).
   const [puertasResumenOpen, setPuertasResumenOpen] = useState(false);
 
+  // Alta manual de una niña (Andrea la apunta a mano).
+  const [puertasAddOpen, setPuertasAddOpen] = useState(false);
+  const [addNina, setAddNina] = useState("");
+  const [addGrupo, setAddGrupo] = useState("Pre-Ballet · 3–6 años");
+  const [addContacto, setAddContacto] = useState("");
+  const [addTel, setAddTel] = useState("");
+  const [addConf, setAddConf] = useState("confirma");
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState("");
+
+  const resetAddForm = () => {
+    setAddNina(""); setAddGrupo("Pre-Ballet · 3–6 años"); setAddContacto("");
+    setAddTel(""); setAddConf("confirma"); setAddError("");
+  };
+
+  const handleAddPuertaManual = async () => {
+    if (addSaving) return;
+    if (!addNina.trim() || !addContacto.trim() || !addTel.trim()) {
+      setAddError("Rellena el nombre de la niña, el contacto y el teléfono.");
+      return;
+    }
+    setAddSaving(true);
+    setAddError("");
+    try {
+      const res = await fetch("/api/admin/puertas-abiertas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: addContacto.trim(),
+          telefono: addTel.trim(),
+          confirmacion: addConf,
+          ninas: [{ nombre: addNina.trim(), edad: addGrupo }],
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setAddError(json.error || "No se pudo guardar."); return; }
+      setPuertasData(prev => [json.data as PuertaRow, ...prev]);
+      resetAddForm();
+      setPuertasAddOpen(false);
+    } catch {
+      setAddError("Error de conexión. Inténtalo de nuevo.");
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
   const handleDeletePuerta = async (id: string) => {
     const res = await fetch(`/api/admin/puertas-abiertas?id=${id}`, { method: "DELETE" });
     if (res.ok) setPuertasData(prev => prev.filter(r => r.id !== id));
@@ -3175,16 +3221,127 @@ export default function AdminDashboard() {
                       {puertasData.length} {puertasData.length === 1 ? "reserva" : "reservas"} · {totalNinas} niña{totalNinas === 1 ? "" : "s"}
                     </p>
                   </div>
-                  <a
-                    href="/puertas-abiertas"
-                    target="_blank"
-                    className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full border transition-colors hover:bg-surface-container-high"
-                    style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}
-                  >
-                    <Icon name="open_in_new" className="text-sm" />
-                    Ver página pública
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { resetAddForm(); setPuertasAddOpen(true); }}
+                      className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}
+                    >
+                      <Icon name="add" className="text-sm" />
+                      Añadir niña
+                    </button>
+                    <a
+                      href="/puertas-abiertas"
+                      target="_blank"
+                      className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full border transition-colors hover:bg-surface-container-high"
+                      style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}
+                    >
+                      <Icon name="open_in_new" className="text-sm" />
+                      Ver página pública
+                    </a>
+                  </div>
                 </div>
+
+                {/* Modal: alta manual de una niña */}
+                {puertasAddOpen && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ backgroundColor: "rgba(37,25,15,0.5)" }}
+                    onClick={() => setPuertasAddOpen(false)}
+                  >
+                    <div
+                      className="w-full max-w-md rounded-3xl p-6 shadow-2xl"
+                      style={{ backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-headline-md text-headline-md text-primary">Añadir niña a mano</h4>
+                        <button onClick={() => setPuertasAddOpen(false)} style={{ color: "#89726c" }}>
+                          <Icon name="close" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Nombre de la niña</label>
+                          <input
+                            value={addNina}
+                            onChange={e => setAddNina(e.target.value)}
+                            placeholder="Nombre y apellido de la niña"
+                            className="w-full mt-1 px-4 py-2.5 rounded-xl border text-sm"
+                            style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff", color: "#25190f" }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Grupo</label>
+                          <select
+                            value={addGrupo}
+                            onChange={e => setAddGrupo(e.target.value)}
+                            className="w-full mt-1 px-4 py-2.5 rounded-xl border text-sm cursor-pointer"
+                            style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff", color: "#25190f" }}
+                          >
+                            <option value="Pre-Ballet · 3–6 años">Pre-Ballet · 3–6 años</option>
+                            <option value="Ballet 1 · 7–9 años">Ballet 1 · 7–9 años</option>
+                            <option value="Ballet 2 · 10–14 años">Ballet 2 · 10–14 años</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Contacto (madre/padre)</label>
+                          <input
+                            value={addContacto}
+                            onChange={e => setAddContacto(e.target.value)}
+                            placeholder="Nombre del contacto"
+                            className="w-full mt-1 px-4 py-2.5 rounded-xl border text-sm"
+                            style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff", color: "#25190f" }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Teléfono</label>
+                          <input
+                            value={addTel}
+                            onChange={e => setAddTel(e.target.value)}
+                            placeholder="Teléfono (WhatsApp)"
+                            type="tel"
+                            className="w-full mt-1 px-4 py-2.5 rounded-xl border text-sm"
+                            style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff", color: "#25190f" }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Estado</label>
+                          <select
+                            value={addConf}
+                            onChange={e => setAddConf(e.target.value)}
+                            className="w-full mt-1 px-4 py-2.5 rounded-xl border text-sm cursor-pointer"
+                            style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff", color: "#25190f" }}
+                          >
+                            <option value="confirma">Confirmada (viene seguro)</option>
+                            <option value="pendiente">Pendiente</option>
+                          </select>
+                        </div>
+
+                        {addError && <p className="text-sm" style={{ color: "#b71c1c" }}>{addError}</p>}
+
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={() => setPuertasAddOpen(false)}
+                            className="flex-1 py-2.5 rounded-xl border text-sm font-semibold"
+                            style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={handleAddPuertaManual}
+                            disabled={addSaving}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+                            style={{ backgroundColor: "#7d2b13", color: "#fff8f5", opacity: addSaving ? 0.7 : 1 }}
+                          >
+                            {addSaving ? "Guardando…" : "Añadir"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* KPIs rápidos */}
                 <div className="grid grid-cols-3 gap-3">
