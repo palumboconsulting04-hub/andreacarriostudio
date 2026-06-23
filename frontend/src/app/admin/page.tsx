@@ -3726,6 +3726,22 @@ export default function AdminDashboard() {
               { value: "ambas", label: "Las dos" },
             ].map(d => ({ ...d, n: adultasData.filter(r => r.disciplina === d.value).length }));
 
+            // Reservas agrupadas por anuncio/campaña de Meta (las que mejor convierten).
+            const porAnuncio = (() => {
+              const m = new Map<string, { total: number; confirmadas: number }>();
+              for (const r of adultasData) {
+                const key = fuenteAdulta(r).detalle || "Directo / sin campaña";
+                const e = m.get(key) ?? { total: 0, confirmadas: 0 };
+                e.total++;
+                if (r.confirmacion === "confirma") e.confirmadas++;
+                m.set(key, e);
+              }
+              return Array.from(m.entries())
+                .map(([nombre, v]) => ({ nombre, ...v }))
+                .sort((a, b) => b.total - a.total);
+            })();
+            const maxAnuncio = Math.max(1, ...porAnuncio.map(a => a.total));
+
             return (
               <section className="space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -3771,6 +3787,49 @@ export default function AdminDashboard() {
                         <p className="text-xs mt-1 font-semibold" style={{ color: "#7d2b13" }}>{d.label}</p>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* Reservas por anuncio / campaña de Meta */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>
+                    Reservas por anuncio · de dónde vienen
+                  </p>
+                  <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                    {adultasLoading ? (
+                      <div className="p-6 text-center text-sm" style={{ color: "#89726c" }}>Cargando…</div>
+                    ) : porAnuncio.length === 0 ? (
+                      <div className="p-6 text-center text-sm" style={{ color: "#89726c" }}>Aún no hay reservas.</div>
+                    ) : (
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr style={{ backgroundColor: "#fff0eb" }}>
+                            {["Anuncio / campaña", "Reservas", "Confirmadas"].map((h, hi) => (
+                              <th key={hi} className={`px-4 py-2.5 text-xs font-semibold uppercase tracking-widest ${hi === 0 ? "text-left" : "text-center"}`} style={{ color: "#89726c" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {porAnuncio.map((a, i) => (
+                            <tr key={a.nombre} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                              <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium capitalize" style={{ color: "#25190f" }}>{a.nombre}</span>
+                                  {i === 0 && a.total > 1 && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ backgroundColor: "#ffdbd1", color: "#7d2b13" }}>TOP</span>
+                                  )}
+                                </div>
+                                <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "#f0e0d8" }}>
+                                  <div className="h-full rounded-full" style={{ width: `${(a.total / maxAnuncio) * 100}%`, backgroundColor: "#7d2b13" }} />
+                                </div>
+                              </td>
+                              <td className="px-4 py-2.5 text-center text-lg font-bold whitespace-nowrap" style={{ color: "#7d2b13" }}>{a.total}</td>
+                              <td className="px-4 py-2.5 text-center whitespace-nowrap" style={{ color: "#1f7a3d" }}>{a.confirmadas}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 </div>
 
