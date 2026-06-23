@@ -608,6 +608,12 @@ export default function AdminDashboard() {
     llamada: string;
     confirmacion: string;
     ya_inscrita?: boolean;
+    utm_source: string | null;
+    utm_medium: string | null;
+    utm_campaign: string | null;
+    utm_content: string | null;
+    utm_term: string | null;
+    fbclid: string | null;
   };
   const [adultasData, setAdultasData] = useState<PuertaAdultaRow[]>([]);
   const [adultasLoading, setAdultasLoading] = useState(false);
@@ -3683,6 +3689,28 @@ export default function AdminDashboard() {
                 `Te escribo para confirmarte el horario. ¿Te viene bien?`;
               return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
             };
+            // Extrae el nombre legible de la campaña/anuncio de Meta.
+            // Los UTM vienen desordenados (a veces el nombre está en campaign,
+            // otras en content y otras en source), así que cogemos el primer
+            // valor con letras (los que son solo dígitos son IDs internos de Meta).
+            const fuenteAdulta = (r: PuertaAdultaRow): { detalle: string | null; tooltip: string } => {
+              const limpio = (s: string | null | undefined) => {
+                const v = (s || "").trim();
+                if (!v || /^[0-9]+$/.test(v)) return ""; // vacío o solo dígitos (ID) = no legible
+                return v.replace(/[_-]+/g, " ").trim();
+              };
+              const mapaSource: Record<string, string> = { ig: "Instagram", fb: "Facebook", facebook: "Facebook", instagram: "Instagram", meta: "Meta" };
+              const rawSrc = (r.utm_source || "").toLowerCase();
+              const srcLegible = mapaSource[rawSrc] || limpio(r.utm_source);
+              const detalle = limpio(r.utm_content) || limpio(r.utm_campaign) || srcLegible || null;
+              const tooltip = [
+                r.utm_source && `Fuente: ${r.utm_source}`,
+                r.utm_medium && `Medio: ${r.utm_medium}`,
+                r.utm_campaign && `Campaña: ${r.utm_campaign}`,
+                r.utm_content && `Anuncio: ${r.utm_content}`,
+              ].filter(Boolean).join("\n") || "Sin datos de campaña";
+              return { detalle, tooltip };
+            };
             const q = adultasSearch.toLowerCase();
             const filtered = adultasData.filter(r =>
               (!q ||
@@ -3835,19 +3863,31 @@ export default function AdminDashboard() {
                                   };
                                   const key = (r.origen || "").toLowerCase();
                                   const c = colors[key] ?? colors[""];
+                                  const fuente = fuenteAdulta(r);
                                   return (
-                                    <select
-                                      value={["ads", "escuela", "directo"].includes(key) ? key : ""}
-                                      onChange={e => updateAdultaOrigen(r.id, e.target.value)}
-                                      className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none"
-                                      style={{ backgroundColor: c.bg, color: c.fg }}
-                                      title="Cambiar el origen de esta inscrita"
-                                    >
-                                      <option value="ads">Publicidad</option>
-                                      <option value="escuela">Escuela</option>
-                                      <option value="directo">Directo</option>
-                                      <option value="">Sin dato</option>
-                                    </select>
+                                    <div className="space-y-1">
+                                      <select
+                                        value={["ads", "escuela", "directo"].includes(key) ? key : ""}
+                                        onChange={e => updateAdultaOrigen(r.id, e.target.value)}
+                                        className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none"
+                                        style={{ backgroundColor: c.bg, color: c.fg }}
+                                        title="Cambiar el origen de esta inscrita"
+                                      >
+                                        <option value="ads">Publicidad</option>
+                                        <option value="escuela">Escuela</option>
+                                        <option value="directo">Directo</option>
+                                        <option value="">Sin dato</option>
+                                      </select>
+                                      {fuente.detalle && (
+                                        <p
+                                          className="text-[11px] leading-tight max-w-[150px] truncate cursor-help"
+                                          style={{ color: "#89726c" }}
+                                          title={fuente.tooltip}
+                                        >
+                                          {fuente.detalle}
+                                        </p>
+                                      )}
+                                    </div>
                                   );
                                 })()}
                               </td>
