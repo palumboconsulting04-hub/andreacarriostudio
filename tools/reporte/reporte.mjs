@@ -157,15 +157,16 @@ async function getInscritos(sinceMs, todayMs) {
   const BALLET_IDS = new Set(['ballet-i','ballet-ii','ballet-adultos','pre-ballet']);
   const BARRE_IDS  = new Set(['barre-fit','pilates-mat']);
   // puertas_abiertas_adultas usa texto libre en `disciplina`
-  const esBallet_paa = d => !d || BALLET_IDS.has(d) || d === 'ballet-nina' || (d && d.toLowerCase().includes('ballet'));
-  const esBarre_paa  = d => d && (BARRE_IDS.has(d) || d.toLowerCase().includes('barre') || d.toLowerCase().includes('pilates'));
+  const esBallet_paa = d => !!d && (BALLET_IDS.has(d) || d === 'ballet-nina' || d.toLowerCase().includes('ballet'));
+  // Todo lo demás (pilates, barre, ambas, sin elegir) son adultas → Barre & Pilates.
+  const esBarre_paa  = d => !esBallet_paa(d);
 
   try {
     const [pa, paa, isc] = await Promise.all([
       sbFetch('puertas_abiertas?select=nombre,apellido,email,created_at&order=created_at.desc')
         .catch(() => sbFetch('puertas_abiertas?select=created_at&order=created_at.desc')),
-      sbFetch('puertas_abiertas_adultas?select=nombre,apellido,email,created_at,disciplina&order=created_at.desc')
-        .catch(() => sbFetch('puertas_abiertas_adultas?select=created_at&order=created_at.desc')),
+      sbFetch('puertas_abiertas_adultas?select=nombre,email,created_at,disciplina&order=created_at.desc')
+        .catch(() => sbFetch('puertas_abiertas_adultas?select=created_at,disciplina&order=created_at.desc')),
       sbFetch('iscrizioni?select=created_at,stato,nome,cognome,nome_alumna,email,matricula,disciplina_id&order=created_at.desc'),
     ]);
 
@@ -191,8 +192,20 @@ async function getInscritos(sinceMs, todayMs) {
     });
     const renoSnap = list => ({ hoyCount: list.length, hoyNombres: fmtNames(list) });
 
+    // Reservas REALES de hoy por disciplina (para el coste real por reserva).
+    const paaHoy = paa.filter(isToday);
+    const cd = d => paaHoy.filter(r => (r.disciplina || '').toLowerCase() === d).length;
+    const regHoy = {
+      pilates:      cd('pilates'),
+      barre:        cd('barre'),
+      ambas:        cd('ambas'),
+      adultasTotal: paaHoy.length,
+      ninas:        pa.filter(isToday).length,
+    };
+
     return {
       ok: true,
+      regHoy,
       ballet: {
         paNinas:    snap(pa),
         paaAdultas: snap(paa_ballet),
@@ -298,7 +311,45 @@ function buildHtml({ meta, ins, ahora, hours }) {
       ? `<p style="margin:8px 0 0;font-size:10px;color:#bcb0ab;line-height:1.5;">€/visita = coste por visita a la página de destino · CR% = leads por cada 100 visitas a la página</p>`
       : '';
     const creatividades = tablaCreatividades('Ballet · Pre_lancio', meta.adsBallet) + tablaCreatividades('Barre Fit', meta.adsBarre) + leyenda;
-    metaBloque = tarjetas + tablaCampanas + creatividades;
+
+    // ── Coste REAL por reserva: gasto de Meta ÷ reservas reales de la BD ──
+    // (No el CPL de Meta, que cuenta también los clics de botón y sale inflado.)
+    let costeRealBox = '';
+    if (ins.ok && ins.regHoy) {
+      const rg = ins.regHoy;
+      const gastoDe = pred => meta.rows.filter(r => pred((r.name || '').toLowerCase())).reduce((s, r) => s + r.spend, 0);
+      const gPil = gastoDe(n => n.includes('pilates'));
+      const gBar = gastoDe(n => n.includes('barre'));
+      const gNin = gastoDe(n => !n.includes('pilates') && !n.includes('barre'));
+      const rPil = rg.pilates + rg.ambas / 2; // "ambas" se reparte a medias
+      const rBar = rg.barre + rg.ambas / 2;
+      const hayNinas = gNin > 0 || rg.ninas > 0;
+      const gTot = gPil + gBar + (hayNinas ? gNin : 0);
+      const rTot = rg.adultasTotal + (hayNinas ? rg.ninas : 0);
+      const reg1 = r => (Number.isInteger(r) ? String(r) : r.toFixed(1).replace('.', ','));
+      const cpr = (g, r) => (r > 0 ? eur(g / r) : '—');
+      const thCR = 'padding:7px 8px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#89726c;border-bottom:2px solid #d98c6a;';
+      const filaCR = (label, g, r, hi = false) =>
+        `<tr>` +
+        `<td style="padding:8px;border-bottom:1px solid #f3d9cf;font-size:12px;color:#25190f;${hi ? 'font-weight:700;' : ''}">${label}</td>` +
+        `<td style="padding:8px;border-bottom:1px solid #f3d9cf;font-size:12px;color:#56423d;text-align:right;">${eur(g)}</td>` +
+        `<td style="padding:8px;border-bottom:1px solid #f3d9cf;font-size:12px;color:#56423d;text-align:right;">${reg1(r)}</td>` +
+        `<td style="padding:8px;border-bottom:1px solid #f3d9cf;font-size:13px;color:#7d2b13;font-weight:700;text-align:right;">${cpr(g, r)}</td></tr>`;
+      costeRealBox =
+        `<div style="background:#fff0eb;border:1px solid #f3c9b8;border-radius:12px;padding:14px 14px 6px;margin-bottom:20px;">` +
+        `<p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#7d2b13;">💡 Coste REAL por reserva <span style="font-weight:400;color:#89726c;">— las que de verdad entraron en tu base de datos</span></p>` +
+        `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">` +
+        `<tr><th style="${thCR}text-align:left;">Disciplina</th><th style="${thCR}text-align:right;">Gasto</th><th style="${thCR}text-align:right;">Reservas reales</th><th style="${thCR}text-align:right;">€ / reserva</th></tr>` +
+        filaCR('Pilates Mat', gPil, rPil) +
+        filaCR('Barre Fit', gBar, rBar) +
+        (hayNinas ? filaCR('Ballet niñas', gNin, rg.ninas) : '') +
+        filaCR('TOTAL', gTot, rTot, true) +
+        `</table>` +
+        `<p style="margin:8px 0 0;font-size:10px;color:#bcb0ab;line-height:1.5;">El CPL de Meta (tabla de abajo) cuenta también los clics de botón, por eso sale más bajo. Este es el coste de verdad. "Ambas" se reparte a medias entre Pilates y Barre. A primera hora hay pocas reservas; el dato se afina a lo largo del día.</p>` +
+        `</div>`;
+    }
+
+    metaBloque = tarjetas + costeRealBox + tablaCampanas + creatividades;
   } else {
     metaBloque = `<p style="margin:0;font-size:13px;color:#b00020;">⚠️ No se pudieron leer los datos de Meta${meta.error ? ` — ${meta.error}` : ''}.</p>`;
   }
@@ -370,7 +421,7 @@ function buildHtml({ meta, ins, ahora, hours }) {
     ${insBloque}
   </td></tr>
   <tr><td style="background:#fff8f5;border-top:1px solid #f0ddd5;padding:16px 28px;text-align:center;">
-    <p style="margin:0;font-size:11px;color:#89726c;">Informe generado automáticamente cada ${hours} h · <a href="https://andreacarriostudio.es" style="color:#7d2b13;text-decoration:none;">andreacarriostudio.es</a></p>
+    <p style="margin:0;font-size:11px;color:#89726c;">Informe automático de Andrea Carrió Studio · <a href="https://andreacarriostudio.es" style="color:#7d2b13;text-decoration:none;">andreacarriostudio.es</a></p>
   </td></tr>
 </table>
 </td></tr>
