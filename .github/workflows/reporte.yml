@@ -1,13 +1,11 @@
 name: Informe automático
 
 # Envía el informe (Meta Ads + inscritos) por correo con Resend.
-# Cada 3 h en horario diurno + un cierre de día. GitHub usa UTC; en España
-# (verano UTC+2) equivale a las 9:00, 12:00, 15:00, 18:00, 21:00 y 23:59.
-# En invierno se desplaza 1 h.
+# 4 envíos al día. GitHub usa UTC; en España (verano UTC+2) equivale a las
+# 8:00, 13:00, 18:00 y 22:00. En invierno se desplaza 1 h.
 on:
   schedule:
-    - cron: '0 7,10,13,16,19 * * *'   # 9, 12, 15, 18, 21 h (España, verano)
-    - cron: '59 21 * * *'             # 23:59 h (España, verano): cierre del día
+    - cron: '0 6,11,16,20 * * *'   # 8, 13, 18, 22 h (España, verano)
   workflow_dispatch: {}   # permite lanzarlo a mano desde la pestaña "Actions"
 
 jobs:
