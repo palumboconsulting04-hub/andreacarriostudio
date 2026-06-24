@@ -72,6 +72,35 @@ async function crearEspejo(renov: RenovacionDB): Promise<string | null> {
   return isc.id;
 }
 
+// Normaliza un nombre para comparar: sin acentos, en minúsculas y sin espacios
+// duplicados (para que "María " y "Maria" se consideren la misma persona).
+function normNombre(s: string | null | undefined): string {
+  return (s || "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+// ¿La alumna de esta renovación ya tiene una inscripción web REAL (pago de Stripe)?
+// Si la tiene, NO hay que crear espejo: ya aparece en calendario, asistencia y
+// clientas, y duplicarla descuadraría las cuentas. Se compara por nombre de la
+// alumna (normalizado) dentro de la misma disciplina.
+async function tieneInscripcionWebReal(renov: RenovacionDB): Promise<boolean> {
+  const disciplina_id = GRUPO_A_DISCIPLINA[renov.grupo];
+  if (!disciplina_id) return false;
+  const { data } = await supabaseAdmin
+    .from("iscrizioni")
+    .select("id, nome_alumna, cognome_alumna")
+    .eq("disciplina_id", disciplina_id)
+    .not("stripe_payment_intent_id", "is", null);
+  if (!data) return false;
+  const objetivo = normNombre(`${renov.nombre} ${renov.apellidos ?? ""}`);
+  return data.some(
+    (i: { id: string; nome_alumna: string | null; cognome_alumna: string | null }) =>
+      i.id !== renov.iscrizione_id &&
+      normNombre(`${i.nome_alumna ?? ""} ${i.cognome_alumna ?? ""}`) === objetivo,
+  );
+}
+
 // Mantiene sincronizada la inscripción espejo según el estado de pago y el grupo.
 // Pagada sin espejo → crea. No pagada con espejo → borra. Grupo cambiado → recrea.
 async function sincronizarEspejo(renovId: string): Promise<void> {
@@ -89,6 +118,19 @@ async function sincronizarEspejo(renovId: string): Promise<void> {
   const debeTenerEspejo = r.estado_pago === "pagado" && r.metodo_pago !== "web";
 
   if (debeTenerEspejo) {
+    // Blindaje anti-duplicado: si la alumna ya pagó por la web (inscripción real
+    // de Stripe), NO debe tener espejo aunque el método quedara sin marcar. Se
+    // corrige el método a "web" y se borra cualquier espejo que se hubiera creado.
+    if (await tieneInscripcionWebReal(r)) {
+      if (r.iscrizione_id) {
+        await supabaseAdmin.from("iscrizioni").delete().eq("id", r.iscrizione_id);
+      }
+      await supabaseAdmin
+        .from("renovaciones")
+        .update({ metodo_pago: "web", iscrizione_id: null })
+        .eq("id", r.id);
+      return;
+    }
     if (r.iscrizione_id) {
       // Ya tiene espejo: comprobar que la disciplina coincide con el grupo actual.
       const { data: isc } = await supabaseAdmin
