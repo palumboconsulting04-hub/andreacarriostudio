@@ -37,7 +37,7 @@ export async function GET() {
       .from("orari")
       .select("posti_totali, attivo, discipline(nome)")
       .eq("attivo", true),
-    supabaseAdmin.from("renovaciones").select("grupo, estado_pago"),
+    supabaseAdmin.from("renovaciones").select("grupo, estado_pago, estado_contacto"),
     supabaseAdmin.from("puertas_abiertas").select("ninas, confirmacion"),
     supabaseAdmin.from("puertas_abiertas_adultas").select("disciplina, confirmacion"),
   ]);
@@ -66,7 +66,7 @@ export async function GET() {
   }
 
   // ── Niñas: renovaciones por grupo ──
-  const renov = (renovRes.data ?? []) as { grupo: string; estado_pago: string }[];
+  const renov = (renovRes.data ?? []) as { grupo: string; estado_pago: string; estado_contacto: string | null }[];
   // ── Niñas: puertas abiertas (cada niña lleva su grupo en `edad`) ──
   const puertas = (puertasRes.data ?? []) as {
     ninas: { nombre: string; edad: string }[] | null;
@@ -75,8 +75,15 @@ export async function GET() {
 
   const ninas = GRUPOS_NINAS.map(g => {
     const renovGrupo = renov.filter(r => r.grupo === g.grupo);
-    const renovTotal = renovGrupo.length;
     const renovPagadas = renovGrupo.filter(r => r.estado_pago === "pagado").length;
+    // Pendientes que AÚN pueden renovar = sin pagar y que no han dicho "no renueva".
+    const renovPendientesPosibles = renovGrupo.filter(
+      r => r.estado_pago !== "pagado" && r.estado_contacto !== "no_renueva",
+    ).length;
+    // Descartadas = han dicho "no renueva" y no han pagado (no cuentan en la previsión).
+    const renovDescartadas = renovGrupo.filter(
+      r => r.estado_pago !== "pagado" && r.estado_contacto === "no_renueva",
+    ).length;
     // Cuenta cada niña cuyo grupo (campo edad) coincide, por estado de confirmación.
     let paConfirma = 0, paPendiente = 0, paNoViene = 0;
     for (const p of puertas) {
@@ -91,8 +98,11 @@ export async function GET() {
       grupo: g.grupo,
       sub: g.sub,
       capacidad: capMax[g.disciplina] ?? 0,
-      renovaciones: renovTotal,
+      // "renovaciones" = solo las que cuentan (pagadas + pendientes que pueden volver).
+      // Las que han dicho "no renueva" quedan fuera para no inflar la previsión.
+      renovaciones: renovPagadas + renovPendientesPosibles,
       renovaciones_pagadas: renovPagadas,
+      renovaciones_descartadas: renovDescartadas,
       pa_confirma: paConfirma,
       pa_pendiente: paPendiente,
       pa_no_viene: paNoViene,

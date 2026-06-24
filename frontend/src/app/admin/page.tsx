@@ -691,7 +691,7 @@ export default function AdminDashboard() {
   // ── Previsión de ocupación (cuándo pausar campañas) ──
   type PrevNina = {
     grupo: string; sub: string; capacidad: number;
-    renovaciones: number; renovaciones_pagadas: number;
+    renovaciones: number; renovaciones_pagadas: number; renovaciones_descartadas: number;
     pa_confirma: number; pa_pendiente: number; pa_no_viene: number;
   };
   type PrevAdulta = { key: string; label: string; capacidad: number; pa_confirma: number; pa_pendiente: number };
@@ -4952,7 +4952,12 @@ export default function AdminDashboard() {
                             {ninas.map((g, i) => (
                               <tr key={g.grupo} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
                                 <td className="px-3 py-2.5"><span className="font-medium" style={{ color: "#25190f" }}>{g.grupo}</span></td>
-                                <td className="text-center px-3 py-2.5 font-bold" style={{ color: "#7d2b13" }}>{g.renovaciones}</td>
+                                <td className="text-center px-3 py-2.5 font-bold" style={{ color: "#7d2b13" }}>
+                                  {g.renovaciones}
+                                  {g.renovaciones_descartadas > 0 && (
+                                    <span className="block text-[10px] font-normal" style={{ color: "#b71c1c" }}>{g.renovaciones_descartadas} no renuevan (fuera)</span>
+                                  )}
+                                </td>
                                 <td className="text-center px-3 py-2.5" style={{ color: "#1f7a3d" }}>{g.renovaciones_pagadas}</td>
                                 <td className="text-center px-3 py-2.5" style={{ color: "#89726c" }}>{g.renovaciones - g.renovaciones_pagadas}</td>
                                 <td className="text-center px-3 py-2.5">
