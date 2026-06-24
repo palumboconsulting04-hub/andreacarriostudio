@@ -4881,8 +4881,8 @@ export default function AdminDashboard() {
                                 <td className="text-center px-3 py-2.5" style={{ color: "#1f7a3d" }}>{g.renovaciones_pagadas}</td>
                                 <td className="text-center px-3 py-2.5" style={{ color: "#89726c" }}>{g.renovaciones - g.renovaciones_pagadas}</td>
                                 <td className="text-center px-3 py-2.5">
-                                  <span className="font-bold" style={{ color: "#7d2b13" }}>{g.pa_confirma + g.pa_pendiente}</span>
-                                  <span className="text-[11px] ml-1" style={{ color: "#89726c" }}>({g.pa_confirma}✓ {g.pa_pendiente}?)</span>
+                                  <p className="font-bold" style={{ color: "#7d2b13" }}>{g.pa_confirma + g.pa_pendiente}</p>
+                                  <p className="text-[10px]" style={{ color: "#89726c" }}>{g.pa_confirma} confirman · {g.pa_pendiente} por confirmar</p>
                                 </td>
                               </tr>
                             ))}
@@ -4893,8 +4893,8 @@ export default function AdminDashboard() {
                                 <td className="text-center px-3 py-2.5" style={{ color: "#b8a7a0" }}>—</td>
                                 <td className="text-center px-3 py-2.5" style={{ color: "#b8a7a0" }}>—</td>
                                 <td className="text-center px-3 py-2.5">
-                                  <span className="font-bold" style={{ color: "#7d2b13" }}>{fmt(a.pa_confirma + a.pa_pendiente)}</span>
-                                  <span className="text-[11px] ml-1" style={{ color: "#89726c" }}>({fmt(a.pa_confirma)}✓ {fmt(a.pa_pendiente)}?)</span>
+                                  <p className="font-bold" style={{ color: "#7d2b13" }}>{fmt(a.pa_confirma + a.pa_pendiente)}</p>
+                                  <p className="text-[10px]" style={{ color: "#89726c" }}>{fmt(a.pa_confirma)} confirman · {fmt(a.pa_pendiente)} por confirmar</p>
                                 </td>
                               </tr>
                             ))}
@@ -4902,7 +4902,7 @@ export default function AdminDashboard() {
                         </table>
                       </div>
                       <p className="text-[11px] mt-2" style={{ color: "#89726c" }}>
-                        ✓ confirmadas/pagadas · ? pendientes. Se leen en vivo de Renovaciones y Puertas Abiertas: cuando una alumna paga o se apunta alguien nuevo, pulsa Actualizar y la previsión se recalcula sola.
+                        "Confirman" = han dicho que vienen · "Por confirmar" = aún no han contestado. Se leen en vivo de Renovaciones y Puertas Abiertas: cuando una alumna paga o se apunta alguien nuevo, pulsa Actualizar y la previsión se recalcula sola.
                       </p>
                     </div>
 
