@@ -702,7 +702,6 @@ export default function AdminDashboard() {
   };
   const [previsionData, setPrevisionData] = useState<PrevisionData | null>(null);
   const [previsionLoading, setPrevisionLoading] = useState(false);
-  const [previsionEscenario, setPrevisionEscenario] = useState<"prudente" | "realista" | "optimista">("realista");
 
   // ── Pagos manuales (cuotas mensuales en efectivo/bizum) ──
   type PagoManual = {
@@ -4722,39 +4721,35 @@ export default function AdminDashboard() {
             // inscN/inscA: % de asistentes que acaban inscribiéndose (niñas tienen
             //   más intención que adultas).
             const ESC = {
-              prudente:  { renov: 0.90, showC: 0.60, showP: 0.20, inscN: 0.40, inscA: 0.25, label: "Prudente" },
-              realista:  { renov: 0.90, showC: 0.70, showP: 0.30, inscN: 0.50, inscA: 0.35, label: "Realista" },
-              optimista: { renov: 0.90, showC: 0.80, showP: 0.40, inscN: 0.65, inscA: 0.50, label: "Optimista" },
+              prudente:  { renov: 0.85, showC: 0.60, showP: 0.20, inscN: 0.40, inscA: 0.25, label: "Prudente", hint: "el caso malo" },
+              realista:  { renov: 0.90, showC: 0.70, showP: 0.30, inscN: 0.50, inscA: 0.35, label: "Realista", hint: "lo más probable" },
+              optimista: { renov: 0.95, showC: 0.80, showP: 0.40, inscN: 0.65, inscA: 0.50, label: "Optimista", hint: "el caso bueno" },
             } as const;
-            const t = ESC[previsionEscenario];
+            type Esc = typeof ESC[keyof typeof ESC];
+            const escenarios = [ESC.prudente, ESC.realista, ESC.optimista];
             const d = previsionData;
 
-            const semaforo = (ocup: number) =>
-              ocup >= 0.95 ? { bg: "#fde7e7", fg: "#b71c1c", bar: "#d3392b", txt: "Pausar", icon: "pause_circle" }
-              : ocup >= 0.75 ? { bg: "#fff3e0", fg: "#e65100", bar: "#ef8b1a", txt: "Vigilar", icon: "visibility" }
-              : { bg: "#e7f7ec", fg: "#1f7a3d", bar: "#1f9d4d", txt: "Seguir", icon: "play_circle" };
+            // Proyección de un grupo de niñas en un escenario:
+            // renovaciones ya pagadas (100%) + pendientes (×renov) + nuevas de Puertas Abiertas.
+            const proyNina = (g: PrevNina, e: Esc) => {
+              const renovPend = Math.max(0, g.renovaciones - g.renovaciones_pagadas);
+              const yaDentro = g.renovaciones_pagadas + renovPend * e.renov;
+              const nuevas = (g.pa_confirma * e.showC + g.pa_pendiente * e.showP) * e.inscN;
+              return yaDentro + nuevas;
+            };
+            // Proyección de una disciplina adulta en un escenario (solo nuevas de P.A.).
+            const proyAdulta = (a: PrevAdulta, e: Esc) =>
+              (a.pa_confirma * e.showC + a.pa_pendiente * e.showP) * e.inscA;
 
-            // Cálculo por grupo de niñas.
-            // Las renovaciones ya PAGADAS son clientas seguras → cuentan al 100%.
-            // Solo las pendientes de pago llevan la probabilidad de renovar del escenario.
-            const ninasCalc = (d?.ninas ?? []).map(g => {
-              const renovPendientes = Math.max(0, g.renovaciones - g.renovaciones_pagadas);
-              const yaDentro = g.renovaciones_pagadas + renovPendientes * t.renov;
-              const nuevas = (g.pa_confirma * t.showC + g.pa_pendiente * t.showP) * t.inscN;
-              const proy = yaDentro + nuevas;
-              const ocup = g.capacidad > 0 ? proy / g.capacidad : 0;
-              return { ...g, yaDentro, nuevas, proy, ocup, libres: g.capacidad - proy, sem: semaforo(ocup) };
+            const ninas = d?.ninas ?? [];
+            const adultas = d?.adultas ?? [];
+
+            // Totales por escenario (niñas + adultas).
+            const totales = escenarios.map(e => {
+              const tn = ninas.reduce((s, g) => s + proyNina(g, e), 0);
+              const ta = adultas.reduce((s, a) => s + proyAdulta(a, e), 0);
+              return { e, ninas: tn, adultas: ta, total: tn + ta };
             });
-            const rojos = ninasCalc.filter(g => g.ocup >= 0.95);
-            const amarillos = ninasCalc.filter(g => g.ocup >= 0.75 && g.ocup < 0.95);
-            const capNinas = ninasCalc.reduce((s, g) => s + g.capacidad, 0);
-            const proyNinas = ninasCalc.reduce((s, g) => s + g.proy, 0);
-
-            // Cálculo adultas (capacidad enorme; el límite es el volumen, no las plazas).
-            const capAdultas = (d?.adultas ?? []).reduce((s, a) => s + a.capacidad, 0);
-            const at = d?.adultas_total ?? { pa_confirma: 0, pa_pendiente: 0 };
-            const nuevasAdultas = (at.pa_confirma * t.showC + at.pa_pendiente * t.showP) * t.inscA;
-            const ocupAdultas = capAdultas > 0 ? nuevasAdultas / capAdultas : 0;
 
             const fmt = (n: number) => Math.round(n).toLocaleString("es-ES");
             const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -4764,9 +4759,9 @@ export default function AdminDashboard() {
               <section className="space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="font-headline-md text-headline-md text-primary">Previsión de ocupación</h3>
+                    <h3 className="font-headline-md text-headline-md text-primary">Previsión: ¿cuántas alumnas tendré?</h3>
                     <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
-                      Cuándo pausar cada campaña, según renovaciones + reservas de Puertas Abiertas.
+                      Renovaciones + reservas de Puertas Abiertas, en 3 escenarios.
                       {d && !previsionLoading ? ` · Actualizado a las ${hora}` : ""}
                     </p>
                   </div>
@@ -4780,25 +4775,6 @@ export default function AdminDashboard() {
                   </button>
                 </div>
 
-                {/* Selector de escenario */}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Escenario</p>
-                  <div className="inline-flex rounded-xl border p-1" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
-                    {(["prudente", "realista", "optimista"] as const).map(e => (
-                      <button
-                        key={e}
-                        onClick={() => setPrevisionEscenario(e)}
-                        className="text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors capitalize"
-                        style={previsionEscenario === e
-                          ? { backgroundColor: "#7d2b13", color: "#fff8f5" }
-                          : { backgroundColor: "transparent", color: "#7d2b13" }}
-                      >
-                        {ESC[e].label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {!d && previsionLoading && (
                   <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Calculando previsión…</p>
                 )}
@@ -4808,143 +4784,167 @@ export default function AdminDashboard() {
 
                 {d && (
                   <>
-                    {/* Recomendación global */}
-                    <div className="rounded-2xl p-5 border" style={
-                      rojos.length > 0
-                        ? { backgroundColor: "#fde7e7", borderColor: "#f3b1b1" }
-                        : amarillos.length > 0
-                          ? { backgroundColor: "#fff3e0", borderColor: "#f0c98a" }
-                          : { backgroundColor: "#e7f7ec", borderColor: "#a8dcb8" }
-                    }>
-                      <div className="flex items-start gap-3">
-                        <Icon name={rojos.length > 0 ? "campaign" : "check_circle"} className="text-2xl mt-0.5"
-                          style={{ color: rojos.length > 0 ? "#b71c1c" : amarillos.length > 0 ? "#e65100" : "#1f7a3d" }} />
-                        <div className="text-sm leading-relaxed" style={{ color: "#25190f" }}>
-                          {rojos.length > 0 ? (
-                            <>
-                              <strong>Pausa la campaña de niñas.</strong> {rojos.length === 1 ? "El grupo" : "Los grupos"}{" "}
-                              <strong>{rojos.map(g => g.grupo).join(", ")}</strong> {rojos.length === 1 ? "está" : "están"} al límite
-                              ({rojos.map(g => pct(g.ocup)).join(", ")}). Seguir gastando genera lista de espera.
-                            </>
-                          ) : amarillos.length > 0 ? (
-                            <>
-                              <strong>Vigila de cerca.</strong> {amarillos.map(g => g.grupo).join(", ")} se {amarillos.length === 1 ? "acerca" : "acercan"} al lleno.
-                              Aún hay margen, pero queda poco.
-                            </>
-                          ) : (
-                            <><strong>Sigue empujando niñas.</strong> Todos los grupos tienen plazas de sobra en este escenario.</>
-                          )}
-                          <div className="mt-2 pt-2 border-t" style={{ borderColor: "rgba(0,0,0,0.08)" }}>
-                            <strong style={{ color: "#1f7a3d" }}>Adultas: volcar presupuesto aquí.</strong>{" "}
-                            Proyección ~{fmt(nuevasAdultas)} inscritas sobre {capAdultas} plazas ({pct(ocupAdultas)}). Margen amplísimo: el límite es el volumen de tráfico, no las plazas.
+                    {/* 1. Los 3 totales (la respuesta: cuántas alumnas) */}
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                      {totales.map(tt => {
+                        const destacado = tt.e.label === "Realista";
+                        return (
+                          <div key={tt.e.label} className="rounded-2xl p-3 sm:p-5 text-center border"
+                            style={destacado ? { backgroundColor: "#7d2b13", borderColor: "#7d2b13" } : { backgroundColor: "#fff8f5", borderColor: "#dcc1b9" }}>
+                            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-widest" style={{ color: destacado ? "#ffdbd1" : "#89726c" }}>{tt.e.label}</p>
+                            <p className="text-3xl sm:text-5xl font-bold my-1" style={{ color: destacado ? "#fff8f5" : "#7d2b13" }}>{previsionLoading ? "—" : fmt(tt.total)}</p>
+                            <p className="text-[11px] sm:text-xs font-semibold" style={{ color: destacado ? "#ffdbd1" : "#7d2b13" }}>alumnas</p>
+                            <div className="mt-2 pt-2 border-t text-[10px] sm:text-[11px]" style={{ borderColor: destacado ? "rgba(255,255,255,0.2)" : "#e7d6cf", color: destacado ? "#ffdbd1" : "#89726c" }}>
+                              {fmt(tt.ninas)} niñas · {fmt(tt.adultas)} adultas
+                            </div>
+                            <p className="text-[10px] mt-1" style={{ color: destacado ? "rgba(255,255,255,0.6)" : "#b8a7a0" }}>{tt.e.hint}</p>
                           </div>
-                        </div>
-                      </div>
+                        );
+                      })}
                     </div>
 
-                    {/* KPIs globales niñas */}
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { label: "Plazas niñas", value: capNinas, icon: "event_seat" },
-                        { label: "Proyección", value: fmt(proyNinas), icon: "groups" },
-                        { label: "Ocupación", value: capNinas > 0 ? pct(proyNinas / capNinas) : "—", icon: "donut_large" },
-                      ].map(k => (
-                        <div key={k.label} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
-                          <Icon name={k.icon} className="text-xl mb-1" style={{ color: "#7d2b13" }} />
-                          <p className="text-2xl font-bold" style={{ color: "#7d2b13" }}>{previsionLoading ? "—" : k.value}</p>
-                          <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{k.label}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Tarjetas por grupo de niñas */}
+                    {/* 2. Alumnas previstas por disciplina y escenario */}
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Niñas · por grupo</p>
-                      <div className="space-y-3">
-                        {ninasCalc.map(g => (
-                          <div key={g.grupo} className="rounded-2xl p-4 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff" }}>
-                            <div className="flex items-center justify-between gap-3 mb-3">
-                              <div>
-                                <p className="font-semibold" style={{ color: "#25190f" }}>{g.grupo}</p>
-                                <p className="text-[11px]" style={{ color: "#89726c" }}>{g.sub} · {g.capacidad} plazas</p>
-                              </div>
-                              <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: g.sem.bg, color: g.sem.fg }}>
-                                <Icon name={g.sem.icon} className="text-sm" />
-                                {g.sem.txt} · {pct(g.ocup)}
-                              </span>
-                            </div>
-                            {/* Barra de ocupación */}
-                            <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ backgroundColor: "#f0eae6" }}>
-                              <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.round(g.ocup * 100))}%`, backgroundColor: g.sem.bar }} />
-                            </div>
-                            {/* Desglose */}
-                            <div className="grid grid-cols-4 gap-2 text-center">
-                              {[
-                                { l: "Renuevan", v: fmt(g.yaDentro), sub: `${g.renovaciones_pagadas}✓ de ${g.renovaciones}` },
-                                { l: "Nuevas P.A.", v: fmt(g.nuevas), sub: `${g.pa_confirma}✓ ${g.pa_pendiente}?` },
-                                { l: "Proyección", v: fmt(g.proy), sub: `/ ${g.capacidad}` },
-                                { l: "Libres", v: g.libres <= 0 ? "0" : fmt(g.libres), sub: g.libres <= 0 ? "lleno" : "plazas" },
-                              ].map(c => (
-                                <div key={c.l} className="rounded-xl py-2" style={{ backgroundColor: "#fff8f5" }}>
-                                  <p className="text-base font-bold" style={{ color: c.l === "Libres" && g.libres <= 0 ? "#b71c1c" : "#7d2b13" }}>{c.v}</p>
-                                  <p className="text-[10px] font-semibold" style={{ color: "#89726c" }}>{c.l}</p>
-                                  <p className="text-[10px]" style={{ color: "#b8a7a0" }}>{c.sub}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Adultas */}
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Adultas · por disciplina</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {(d.adultas ?? []).map(a => {
-                          const nuevas = (a.pa_confirma * t.showC + a.pa_pendiente * t.showP) * t.inscA;
-                          const ocup = a.capacidad > 0 ? nuevas / a.capacidad : 0;
-                          return (
-                            <div key={a.key} className="rounded-2xl p-4 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff" }}>
-                              <div className="flex items-center justify-between mb-2">
-                                <p className="font-semibold" style={{ color: "#25190f" }}>{a.label}</p>
-                                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: "#e7f7ec", color: "#1f7a3d" }}>
-                                  {pct(ocup)} · margen
-                                </span>
-                              </div>
-                              <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ backgroundColor: "#f0eae6" }}>
-                                <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round(ocup * 100))}%`, backgroundColor: "#1f9d4d" }} />
-                              </div>
-                              <div className="grid grid-cols-3 gap-2 text-center">
-                                {[
-                                  { l: "Interés", v: fmt(a.pa_confirma + a.pa_pendiente), sub: `${fmt(a.pa_confirma)}✓ ${fmt(a.pa_pendiente)}?` },
-                                  { l: "Proyección", v: fmt(nuevas), sub: "inscritas" },
-                                  { l: "Plazas", v: `${a.capacidad}`, sub: "capacidad" },
-                                ].map(c => (
-                                  <div key={c.l} className="rounded-xl py-2" style={{ backgroundColor: "#fff8f5" }}>
-                                    <p className="text-base font-bold" style={{ color: "#7d2b13" }}>{c.v}</p>
-                                    <p className="text-[10px] font-semibold" style={{ color: "#89726c" }}>{c.l}</p>
-                                    <p className="text-[10px]" style={{ color: "#b8a7a0" }}>{c.sub}</p>
-                                  </div>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Alumnas previstas por disciplina</p>
+                      <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr style={{ backgroundColor: "#fff0eb" }}>
+                              <th className="text-left px-3 py-2.5 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Niñas</th>
+                              {escenarios.map(e => <th key={e.label} className="text-center px-2 py-2.5 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{e.label}</th>)}
+                              <th className="text-center px-2 py-2.5 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Plazas</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ninas.map((g, i) => (
+                              <tr key={g.grupo} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                                <td className="px-3 py-2.5">
+                                  <span className="font-medium" style={{ color: "#25190f" }}>{g.grupo}</span>
+                                  <span className="text-[11px] ml-1" style={{ color: "#89726c" }}>{g.sub}</span>
+                                </td>
+                                {escenarios.map(e => {
+                                  const p = proyNina(g, e);
+                                  const lleno = g.capacidad > 0 && p >= g.capacidad;
+                                  return (
+                                    <td key={e.label} className="text-center px-2 py-2.5 font-bold" style={{ color: lleno ? "#b71c1c" : "#7d2b13" }}>
+                                      {fmt(p)}{lleno ? " ⚠" : ""}
+                                    </td>
+                                  );
+                                })}
+                                <td className="text-center px-2 py-2.5" style={{ color: "#89726c" }}>{g.capacidad}</td>
+                              </tr>
+                            ))}
+                            <tr style={{ backgroundColor: "#fff0eb" }}>
+                              <th className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }} colSpan={5}>Adultas</th>
+                            </tr>
+                            {adultas.map((a, i) => (
+                              <tr key={a.key} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                                <td className="px-3 py-2.5 font-medium" style={{ color: "#25190f" }}>{a.label}</td>
+                                {escenarios.map(e => (
+                                  <td key={e.label} className="text-center px-2 py-2.5 font-bold" style={{ color: "#7d2b13" }}>{fmt(proyAdulta(a, e))}</td>
                                 ))}
-                              </div>
-                            </div>
-                          );
-                        })}
+                                <td className="text-center px-2 py-2.5 text-[11px]" style={{ color: "#1f7a3d" }}>amplio</td>
+                              </tr>
+                            ))}
+                            <tr style={{ borderTop: "2px solid #dcc1b9", backgroundColor: "#fff0eb" }}>
+                              <td className="px-3 py-3 font-bold uppercase text-xs tracking-widest" style={{ color: "#7d2b13" }}>Total alumnas</td>
+                              {totales.map(tt => (
+                                <td key={tt.e.label} className="text-center px-2 py-3 text-lg font-bold" style={{ color: "#7d2b13" }}>{fmt(tt.total)}</td>
+                              ))}
+                              <td></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-[11px] mt-2" style={{ color: "#89726c" }}>
+                        ⚠ = el grupo supera sus plazas en ese escenario (lleno → conviene pausar esa campaña).
+                      </p>
+                    </div>
+
+                    {/* 3. Datos reales (los ingredientes del cálculo) */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Datos reales · de aquí salen los cálculos</p>
+                      <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr style={{ backgroundColor: "#fff0eb" }}>
+                              {["Grupo", "Renovación", "Ya pagadas", "Pendientes", "P. Abiertas"].map((h, hi) => (
+                                <th key={hi} className={`px-3 py-2.5 text-xs font-semibold uppercase tracking-widest ${hi === 0 ? "text-left" : "text-center"}`} style={{ color: "#89726c" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ninas.map((g, i) => (
+                              <tr key={g.grupo} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                                <td className="px-3 py-2.5"><span className="font-medium" style={{ color: "#25190f" }}>{g.grupo}</span></td>
+                                <td className="text-center px-3 py-2.5 font-bold" style={{ color: "#7d2b13" }}>{g.renovaciones}</td>
+                                <td className="text-center px-3 py-2.5" style={{ color: "#1f7a3d" }}>{g.renovaciones_pagadas}</td>
+                                <td className="text-center px-3 py-2.5" style={{ color: "#89726c" }}>{g.renovaciones - g.renovaciones_pagadas}</td>
+                                <td className="text-center px-3 py-2.5">
+                                  <span className="font-bold" style={{ color: "#7d2b13" }}>{g.pa_confirma + g.pa_pendiente}</span>
+                                  <span className="text-[11px] ml-1" style={{ color: "#89726c" }}>({g.pa_confirma}✓ {g.pa_pendiente}?)</span>
+                                </td>
+                              </tr>
+                            ))}
+                            {adultas.map(a => (
+                              <tr key={a.key} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: "#fdf6f2" }}>
+                                <td className="px-3 py-2.5 font-medium" style={{ color: "#25190f" }}>{a.label}</td>
+                                <td className="text-center px-3 py-2.5" style={{ color: "#b8a7a0" }}>—</td>
+                                <td className="text-center px-3 py-2.5" style={{ color: "#b8a7a0" }}>—</td>
+                                <td className="text-center px-3 py-2.5" style={{ color: "#b8a7a0" }}>—</td>
+                                <td className="text-center px-3 py-2.5">
+                                  <span className="font-bold" style={{ color: "#7d2b13" }}>{fmt(a.pa_confirma + a.pa_pendiente)}</span>
+                                  <span className="text-[11px] ml-1" style={{ color: "#89726c" }}>({fmt(a.pa_confirma)}✓ {fmt(a.pa_pendiente)}?)</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-[11px] mt-2" style={{ color: "#89726c" }}>
+                        ✓ confirmadas/pagadas · ? pendientes. Se leen en vivo de Renovaciones y Puertas Abiertas: cuando una alumna paga o se apunta alguien nuevo, pulsa Actualizar y la previsión se recalcula sola.
+                      </p>
+                    </div>
+
+                    {/* 4. Tabla de referencia: porcentajes de cada escenario */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Porcentajes usados en cada escenario</p>
+                      <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr style={{ backgroundColor: "#fff0eb" }}>
+                              <th className="text-left px-3 py-2.5 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Concepto</th>
+                              {escenarios.map(e => <th key={e.label} className="text-center px-2 py-2.5 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{e.label}</th>)}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { l: "Renuevan (año pasado, sin pagar aún)", get: (e: Esc) => pct(e.renov) },
+                              { l: "Ya pagadas (renovación)", get: () => "100%" },
+                              { l: "Asisten · P.A. confirmadas", get: (e: Esc) => pct(e.showC) },
+                              { l: "Asisten · P.A. pendientes", get: (e: Esc) => pct(e.showP) },
+                              { l: "Se apuntan niñas (de las que prueban)", get: (e: Esc) => pct(e.inscN) },
+                              { l: "Se apuntan adultas (de las que prueban)", get: (e: Esc) => pct(e.inscA) },
+                            ].map((row, i) => (
+                              <tr key={row.l} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                                <td className="px-3 py-2 text-[13px]" style={{ color: "#56423d" }}>{row.l}</td>
+                                {escenarios.map(e => <td key={e.label} className="text-center px-2 py-2 font-semibold" style={{ color: "#7d2b13" }}>{row.get(e)}</td>)}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
 
-                    {/* Nota metodológica */}
+                    {/* 5. Explicación sencilla */}
                     <details className="rounded-2xl p-4 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
-                      <summary className="cursor-pointer text-sm font-semibold" style={{ color: "#7d2b13" }}>
-                        ¿Cómo se calcula? (escenario {t.label.toLowerCase()})
-                      </summary>
-                      <div className="text-xs mt-3 space-y-1.5 leading-relaxed" style={{ color: "#56423d" }}>
-                        <p><strong>Proyección = (renov. pagadas×100% + renov. pendientes×{pct(t.renov)}) + (confirmadas×{pct(t.showC)} + pendientes×{pct(t.showP)}) × {pct(t.inscN)}</strong> (niñas).</p>
-                        <p>· <strong>Renovaciones</strong>: las que ya han pagado cuentan al 100% (clientas seguras); las pendientes de pago, al {pct(t.renov)}. El ✓ del recuadro indica cuántas ya pagaron.</p>
-                        <p>· <strong>Asistencia</strong>: de las reservas de P.A., asisten {pct(t.showC)} de las confirmadas y {pct(t.showP)} de las pendientes (benchmark de eventos gratis).</p>
-                        <p>· <strong>Inscripción</strong>: de quienes asisten y prueban, se apuntan {pct(t.inscN)} (niñas) / {pct(t.inscA)} (adultas).</p>
-                        <p className="pt-1" style={{ color: "#89726c" }}>Cambia el escenario arriba para ver el rango pesimista-optimista. Los datos se leen en vivo de Renovaciones y Puertas Abiertas: si Andrea cambia algo allí, pulsa Actualizar.</p>
+                      <summary className="cursor-pointer text-sm font-semibold" style={{ color: "#7d2b13" }}>¿Cómo se calculan estos números?</summary>
+                      <div className="text-[13px] mt-3 space-y-2 leading-relaxed" style={{ color: "#56423d" }}>
+                        <p><strong>Niñas</strong> = las que renuevan del año pasado + las nuevas que vienen de Puertas Abiertas.</p>
+                        <p className="pl-3">· Renovación: las que <strong>ya pagaron</strong> cuentan al 100% (seguras). Las que <strong>aún no</strong>, según el escenario (85 / 90 / 95%).</p>
+                        <p className="pl-3">· Nuevas: de las apuntadas a P.A., primero estimamos cuántas <strong>vienen</strong> a probar y, de esas, cuántas <strong>se apuntan</strong> (40 / 50 / 65%). Son porcentajes distintos a los de renovación, porque aún no te conocen.</p>
+                        <p><strong>Adultas</strong> = solo las nuevas de Puertas Abiertas (todavía no hay renovación). Las que piden "las dos" se reparten a medias entre Pilates y Barre.</p>
+                        <p className="pt-1" style={{ color: "#89726c" }}>El <strong>Prudente</strong> es el caso malo, el <strong>Realista</strong> lo más probable y el <strong>Optimista</strong> el caso bueno. Todos los porcentajes están en la tabla de arriba.</p>
                       </div>
                     </details>
                   </>
