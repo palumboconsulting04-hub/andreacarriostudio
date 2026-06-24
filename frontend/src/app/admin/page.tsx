@@ -450,6 +450,7 @@ export default function AdminDashboard() {
   const [ocupacionMedia, setOcupacionMedia] = useState(0);
   const [ocupacionDisciplinas, setOcupacionDisciplinas] = useState<OcupacionDisciplina[]>([]);
   const [nuevasInscripcionesMes, setNuevasInscripcionesMes] = useState(0);
+  const [nuevasInscripcionesHoy, setNuevasInscripcionesHoy] = useState(0);
   const [avgPricePerStudent, setAvgPricePerStudent] = useState(0);
 
   // Sofia chat
@@ -1565,11 +1566,22 @@ export default function AdminDashboard() {
         return d.getMonth() === tm && d.getFullYear() === ty;
       }).length;
       setNuevasInscripcionesMes(nuevasEstesMes);
+      const td = now2.getDate();
+      const nuevasHoy = allIsc.filter(i => {
+        const d = new Date(i.created_at);
+        return d.getDate() === td && d.getMonth() === tm && d.getFullYear() === ty;
+      }).length;
+      setNuevasInscripcionesHoy(nuevasHoy);
 
-      // Precio medio por alumna (sobre todas las pagato)
-      const pagati = allIsc.filter(i => isPaid(i.stato));
-      const totalPagati = pagati.reduce((s, i) => s + (pm[`${i.piano_id}:${i.disciplina_id}`] ?? 0), 0);
-      setAvgPricePerStudent(pagati.length > 0 ? totalPagati / pagati.length : 0);
+      // Ticket medio = precio del bono medio por alumna con plaza. Incluye las de
+      // "matrícula pagada" (su bono arranca en septiembre, pero ya tienen plan), no
+      // solo las de bono activo. Solo cuenta planes con precio conocido (excluye los
+      // espejos de renovación sin plan, que tienen precio 0).
+      const conPlaza = allIsc.filter(i => isPaid(i.stato) || i.stato === "matricula_pagada");
+      const preciosPlaza = conPlaza
+        .map(i => pm[`${i.piano_id}:${i.disciplina_id}`] ?? 0)
+        .filter(p => p > 0);
+      setAvgPricePerStudent(preciosPlaza.length > 0 ? preciosPlaza.reduce((s, p) => s + p, 0) / preciosPlaza.length : 0);
 
       // Ocupación por disciplina
       // ocupados = alumnas únicas (Set de iscrizione_id)
@@ -2095,22 +2107,19 @@ export default function AdminDashboard() {
                   </p>
                 </button>
 
-                {/* Interesadas */}
-                <button
-                  onClick={() => { setKpiDrawer("pendientes"); fetchKpiStudents({ stato: "attesa" }); }}
-                  className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
-                >
+                {/* Inscripciones Hoy */}
+                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Interesadas <InfoTip text="Personas apuntadas que aún no han pagado online (por ejemplo, eligieron pagar en la escuela). Pendientes de convertir." /></p>
-                    <div className="p-2 rounded-full" style={{ backgroundColor: "#fff3e0", color: "#e65100" }}>
-                      <Icon name="person_search" className="text-base" />
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Inscripciones Hoy <InfoTip text="Altas nuevas registradas hoy (matrículas y bonos). Se reinicia cada día a medianoche." /></p>
+                    <div className="p-2 rounded-full" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>
+                      <Icon name="today" className="text-base" />
                     </div>
                   </div>
-                  <p className="text-3xl font-bold" style={{ color: "#e65100" }}>{loading ? "—" : pendingCount}</p>
+                  <p className="text-3xl font-bold" style={{ color: nuevasInscripcionesHoy > 0 ? "#2e7d32" : "#7d2b13" }}>{loading ? "—" : nuevasInscripcionesHoy}</p>
                   <p className="text-xs mt-2" style={{ color: "#89726c" }}>
-                    {loading ? "—" : pendingCount > 0 ? `${pendingAmount}€ potencial → convertir` : "Sin contactos pendientes"}
+                    {new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long" })}
                   </p>
-                </button>
+                </div>
 
                 {/* Ocupación Media */}
                 <button
