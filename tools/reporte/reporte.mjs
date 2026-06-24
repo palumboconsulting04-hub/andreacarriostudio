@@ -251,7 +251,8 @@ async function getReservas3d() {
 // skill meta-ads-auditor. Analiza SIEMPRE los últimos 3 días (más señal que un
 // solo día). Solo corre si hay clave configurada.
 async function analisisIA({ meta, reservas }) {
-  if (!ANTHROPIC_KEY || !meta.ok) return '';
+  if (!ANTHROPIC_KEY) return 'ERR::falta la clave ANTHROPIC_API_KEY (el secret no llega al script — revisa el nombre)';
+  if (!meta.ok) return 'ERR::no se pudieron leer los datos de Meta';
   const reg1 = r => (Number.isInteger(r) ? String(r) : r.toFixed(1).replace('.', ','));
 
   let realTxt = 'Reservas reales: no disponibles.';
@@ -300,11 +301,11 @@ async function analisisIA({ meta, reservas }) {
       body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 700, system, messages: [{ role: 'user', content: userMsg }] }),
     });
     const data = await res.json();
-    if (!res.ok) { console.error('IA error:', JSON.stringify(data)); return ''; }
+    if (!res.ok) { console.error('IA error:', JSON.stringify(data)); return `ERR::API ${res.status} — ${JSON.stringify(data).slice(0, 300)}`; }
     return (data?.content?.[0]?.text || '').trim();
   } catch (e) {
     console.error('IA fetch fail:', e.message);
-    return '';
+    return `ERR::fallo de conexión — ${e.message}`;
   }
 }
 
@@ -559,7 +560,13 @@ let analisis = '';
 if (RUN_IA) {
   // El agente analiza una ventana de 3 días (más señal que un solo día).
   const [meta3d, reservas3d] = await Promise.all([getMeta('last_3d'), getReservas3d()]);
-  analisis = await analisisIA({ meta: meta3d, reservas: reservas3d });
+  const r = await analisisIA({ meta: meta3d, reservas: reservas3d });
+  if (r.startsWith('ERR::')) {
+    // En prueba manual (--ia) mostramos el motivo en el correo para diagnosticar.
+    if (args.includes('--ia')) analisis = `⚠️ Diagnóstico (esto NO es el análisis): ${r.slice(5)}`;
+  } else {
+    analisis = r;
+  }
 }
 
 const subject = buildSubject({ meta, ins });
