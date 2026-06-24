@@ -298,7 +298,7 @@ function InfoTip({ text }: { text: string }) {
           <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
           <div
             onClick={(e) => e.stopPropagation()}
-            className="fixed p-3.5 rounded-xl text-[13px] font-normal normal-case tracking-normal leading-relaxed shadow-2xl"
+            className="fixed p-3.5 rounded-xl text-[13px] font-normal normal-case tracking-normal leading-relaxed shadow-2xl whitespace-pre-line"
             style={{ top: pos.top, left: pos.left, width: pos.width, backgroundColor: "#25190f", color: "#fff8f5", zIndex: 9999 }}
           >
             {text}
@@ -4752,8 +4752,56 @@ export default function AdminDashboard() {
             });
 
             const fmt = (n: number) => Math.round(n).toLocaleString("es-ES");
+            const f1 = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 1 });
             const pct = (n: number) => `${Math.round(n * 100)}%`;
             const hora = d ? new Date(d.generated_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "";
+
+            // Desglose en números de cómo se llega a la proyección de un grupo de niñas.
+            const explicaNina = (g: PrevNina, e: Esc) => {
+              const renovPend = Math.max(0, g.renovaciones - g.renovaciones_pagadas);
+              const renovPendVal = renovPend * e.renov;
+              const subRenov = g.renovaciones_pagadas + renovPendVal;
+              const vienenC = g.pa_confirma * e.showC;
+              const vienenP = g.pa_pendiente * e.showP;
+              const prueban = vienenC + vienenP;
+              const nuevas = prueban * e.inscN;
+              const total = subRenov + nuevas;
+              return [
+                `Cómo sale el ${fmt(total)} (${e.label.toLowerCase()}):`,
+                ``,
+                `RENOVACIÓN (del año pasado):`,
+                `• ${g.renovaciones_pagadas} ya pagadas = ${g.renovaciones_pagadas} (cuentan al 100%)`,
+                `• ${renovPend} sin pagar × ${pct(e.renov)} que renuevan = ${f1(renovPendVal)}`,
+                `   Subtotal renovación: ${f1(subRenov)}`,
+                ``,
+                `NUEVAS (Puertas Abiertas):`,
+                `• ${g.pa_confirma} confirman × ${pct(e.showC)} que vienen = ${f1(vienenC)}`,
+                `• ${g.pa_pendiente} por confirmar × ${pct(e.showP)} que vienen = ${f1(vienenP)}`,
+                `   Vienen a probar: ${f1(prueban)}`,
+                `• De esas se apunta el ${pct(e.inscN)} = ${f1(nuevas)}`,
+                ``,
+                `TOTAL = ${f1(subRenov)} + ${f1(nuevas)} ≈ ${fmt(total)}`,
+              ].join("\n");
+            };
+
+            // Desglose en números para una disciplina adulta (solo nuevas de P.A.).
+            const explicaAdulta = (a: PrevAdulta, e: Esc) => {
+              const vienenC = a.pa_confirma * e.showC;
+              const vienenP = a.pa_pendiente * e.showP;
+              const prueban = vienenC + vienenP;
+              const nuevas = prueban * e.inscA;
+              return [
+                `Cómo sale el ${fmt(nuevas)} (${e.label.toLowerCase()}):`,
+                ``,
+                `NUEVAS (Puertas Abiertas):`,
+                `• ${f1(a.pa_confirma)} confirman × ${pct(e.showC)} que vienen = ${f1(vienenC)}`,
+                `• ${f1(a.pa_pendiente)} por confirmar × ${pct(e.showP)} que vienen = ${f1(vienenP)}`,
+                `   Vienen a probar: ${f1(prueban)}`,
+                `• De esas se apunta el ${pct(e.inscA)} = ${f1(nuevas)}`,
+                ``,
+                `TOTAL ≈ ${fmt(nuevas)}`,
+              ].join("\n");
+            };
 
             return (
               <section className="space-y-5">
@@ -4827,7 +4875,10 @@ export default function AdminDashboard() {
                                   const lleno = g.capacidad > 0 && p >= g.capacidad;
                                   return (
                                     <td key={e.label} className="text-center px-2 py-2.5 font-bold" style={{ color: lleno ? "#b71c1c" : "#7d2b13" }}>
-                                      {fmt(p)}{lleno ? " ⚠" : ""}
+                                      <span className="inline-flex items-center justify-center gap-1">
+                                        {fmt(p)}{lleno ? " ⚠" : ""}
+                                        <InfoTip text={explicaNina(g, e)} />
+                                      </span>
                                     </td>
                                   );
                                 })}
@@ -4841,7 +4892,12 @@ export default function AdminDashboard() {
                               <tr key={a.key} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
                                 <td className="px-3 py-2.5 font-medium" style={{ color: "#25190f" }}>{a.label}</td>
                                 {escenarios.map(e => (
-                                  <td key={e.label} className="text-center px-2 py-2.5 font-bold" style={{ color: "#7d2b13" }}>{fmt(proyAdulta(a, e))}</td>
+                                  <td key={e.label} className="text-center px-2 py-2.5 font-bold" style={{ color: "#7d2b13" }}>
+                                    <span className="inline-flex items-center justify-center gap-1">
+                                      {fmt(proyAdulta(a, e))}
+                                      <InfoTip text={explicaAdulta(a, e)} />
+                                    </span>
+                                  </td>
                                 ))}
                                 <td className="text-center px-2 py-2.5 text-[11px]" style={{ color: "#1f7a3d" }}>amplio</td>
                               </tr>
