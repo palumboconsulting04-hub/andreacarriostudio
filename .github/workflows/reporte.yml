@@ -6,7 +6,12 @@ name: Informe automático
 on:
   schedule:
     - cron: '0 6,11,16,20 * * *'   # 8, 13, 18, 22 h (España, verano)
-  workflow_dispatch: {}   # permite lanzarlo a mano desde la pestaña "Actions"
+  workflow_dispatch:      # permite lanzarlo a mano desde la pestaña "Actions"
+    inputs:
+      forzar_analisis:
+        description: 'Forzar el análisis IA (Opus) en esta ejecución de prueba'
+        type: boolean
+        default: false
 
 jobs:
   enviar-informe:
@@ -27,4 +32,4 @@ jobs:
           FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
           REPORT_TO: ${{ secrets.REPORT_TO }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: node tools/reporte/reporte.mjs --hours 3
+        run: node tools/reporte/reporte.mjs --hours 3 ${{ inputs.forzar_analisis && '--ia' || '' }}
