@@ -53,11 +53,13 @@ interface Props {
   iscrizioneId: string;
   disciplinaId: DisciplinaId;
   nombre: string;
+  // Modo previsualización (solo admin): no guarda nada en la base de datos.
+  preview?: boolean;
 }
 
 type Step = "gracias" | "form" | "done";
 
-export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Props) {
+export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre, preview }: Props) {
   const [step, setStep] = useState<Step>("gracias");
   const [enviando, setEnviando] = useState(false);
 
@@ -78,6 +80,8 @@ export default function Paso5Gracias({ iscrizioneId, disciplinaId, nombre }: Pro
   const handleSubmit = async () => {
     setEnviando(true);
     try {
+      // En previsualización no se escribe nada: directo a la pantalla final.
+      if (preview) { setStep("done"); return; }
       const profilo: ProfiloMarketing = { iscrizione_id: iscrizioneId };
       if (como) profilo.come_ci_hai_conosciuto = como;
       if (redSocial) profilo.red_social = redSocial;
