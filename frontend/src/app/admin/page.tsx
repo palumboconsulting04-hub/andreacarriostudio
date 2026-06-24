@@ -1519,8 +1519,13 @@ export default function AdminDashboard() {
 
       // Build price map: `${piano_id}:${disciplina_id}` → prezzo
       const pm: Record<string, number> = {};
-      for (const p of (r7.data ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
+      const precioPorDisc: Record<string, number> = {};
+      for (const p of (r7.data ?? []) as { id: string; disciplina_id: string; prezzo: number }[]) {
         pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
+        // Precio del bono por disciplina, para alumnas sin plan asignado (los
+        // espejos de renovación que pagan la cuota en efectivo/bizum).
+        if (p.prezzo > 0) precioPorDisc[p.disciplina_id] = Math.max(precioPorDisc[p.disciplina_id] ?? 0, p.prezzo);
+      }
 
       const now2 = new Date();
       const tm = now2.getMonth(), ty = now2.getFullYear();
@@ -1579,7 +1584,12 @@ export default function AdminDashboard() {
       // espejos de renovación sin plan, que tienen precio 0).
       const conPlaza = allIsc.filter(i => isPaid(i.stato) || i.stato === "matricula_pagada");
       const preciosPlaza = conPlaza
-        .map(i => pm[`${i.piano_id}:${i.disciplina_id}`] ?? 0)
+        .map(i => {
+          const conPlan = pm[`${i.piano_id}:${i.disciplina_id}`] ?? 0;
+          // Las alumnas sin plan (espejos de renovación que pagan en efectivo)
+          // cuentan con el precio típico de su disciplina, no como 0.
+          return conPlan > 0 ? conPlan : (precioPorDisc[i.disciplina_id] ?? 0);
+        })
         .filter(p => p > 0);
       setAvgPricePerStudent(preciosPlaza.length > 0 ? preciosPlaza.reduce((s, p) => s + p, 0) / preciosPlaza.length : 0);
 
