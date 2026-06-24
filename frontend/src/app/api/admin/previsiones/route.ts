@@ -104,13 +104,16 @@ export async function GET() {
   const contar = (pred: (d: string | null) => boolean, conf: string) =>
     adultasLeads.filter(l => pred(l.disciplina) && (conf === "pendiente" ? l.confirmacion !== "confirma" && l.confirmacion !== "no_viene" : l.confirmacion === conf)).length;
 
+  // Las "ambas" (quieren probar las dos) se reparten a partes iguales entre
+  // Pilates y Barre, para no contar a la misma persona en las dos disciplinas.
+  const ambasConfirma = contar(x => x === "ambas", "confirma");
+  const ambasPendiente = contar(x => x === "ambas", "pendiente");
   const adultas = DISC_ADULTAS.map(d => ({
     key: d.key,
     label: d.label,
     capacidad: capSum[d.disciplina] ?? 0,
-    // "ambas" cuenta como interés potencial en esta disciplina también.
-    pa_confirma: contar(x => x === d.key || x === "ambas", "confirma"),
-    pa_pendiente: contar(x => x === d.key || x === "ambas", "pendiente"),
+    pa_confirma: contar(x => x === d.key, "confirma") + ambasConfirma / 2,
+    pa_pendiente: contar(x => x === d.key, "pendiente") + ambasPendiente / 2,
   }));
 
   // Total de leads adultas únicos (sin doble conteo de "ambas").

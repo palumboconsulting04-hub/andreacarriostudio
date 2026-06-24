@@ -4917,7 +4917,7 @@ export default function AdminDashboard() {
                               </div>
                               <div className="grid grid-cols-3 gap-2 text-center">
                                 {[
-                                  { l: "Interés", v: `${a.pa_confirma + a.pa_pendiente}`, sub: `${a.pa_confirma}✓ ${a.pa_pendiente}?` },
+                                  { l: "Interés", v: fmt(a.pa_confirma + a.pa_pendiente), sub: `${fmt(a.pa_confirma)}✓ ${fmt(a.pa_pendiente)}?` },
                                   { l: "Proyección", v: fmt(nuevas), sub: "inscritas" },
                                   { l: "Plazas", v: `${a.capacidad}`, sub: "capacidad" },
                                 ].map(c => (
