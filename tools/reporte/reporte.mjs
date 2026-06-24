@@ -247,10 +247,62 @@ async function getReservas3d() {
   } catch { return null; }
 }
 
+const DISC_NOMBRE = {
+  'pre-ballet': 'Pre-Ballet (niñas)', 'ballet-i': 'Ballet I (niñas)', 'ballet-ii': 'Ballet II (niñas)',
+  'ballet-adultos': 'Ballet adultos', 'pilates-mat': 'Pilates Mat', 'barre-fit': 'Barre Fit',
+};
+
+// ESTADO DEL NEGOCIO: ocupación y hueco por disciplina (el objetivo es llenar plazas).
+async function getEstadoNegocio() {
+  if (!SUPA_URL || !SUPA_KEY) return null;
+  const SUM_DISC = new Set(['pilates-mat', 'barre-fit']); // franjas sueltas = suma; resto (niñas) = máx
+  const PLAZA = new Set(['pagato', 'pagado', 'activa', 'matricula_pagada']);
+  const since3d = Date.now() - 3 * 24 * 3600_000;
+  try {
+    const [orari, isc] = await Promise.all([
+      sbFetch('orari?select=disciplina_id,posti_totali&attivo=eq.true'),
+      sbFetch('iscrizioni?select=disciplina_id,stato,created_at'),
+    ]);
+    const cap = {};
+    for (const o of orari) {
+      const d = o.disciplina_id; if (!d) continue;
+      const p = o.posti_totali || 0;
+      cap[d] = SUM_DISC.has(d) ? (cap[d] || 0) + p : Math.max(cap[d] || 0, p);
+    }
+    const plaza = isc.filter(i => PLAZA.has(i.stato));
+    const porDisc = {};
+    for (const d of Object.keys(cap)) {
+      const ocup = plaza.filter(i => i.disciplina_id === d).length;
+      const mat3d = plaza.filter(i => i.disciplina_id === d && i.created_at && new Date(i.created_at).getTime() >= since3d).length;
+      porDisc[d] = { capacidad: cap[d], ocupados: ocup, libres: Math.max(0, cap[d] - ocup), mat3d };
+    }
+    return { porDisc, totalOcupados: plaza.length };
+  } catch { return null; }
+}
+
+// MEMORIA: último informe guardado (para comparar) y guardar el nuevo.
+async function getUltimoInforme() {
+  if (!SUPA_URL || !SUPA_KEY) return null;
+  try {
+    const r = await sbFetch('informes_agente?select=created_at,analisis&order=created_at.desc&limit=1');
+    return r && r[0] ? r[0] : null;
+  } catch { return null; }
+}
+async function guardarInforme(analisis, metricas) {
+  if (!SUPA_URL || !SUPA_KEY || !analisis) return;
+  try {
+    await fetch(`${SUPA_URL}/rest/v1/informes_agente`, {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ analisis, metricas }),
+    });
+  } catch { /* no bloquea el informe */ }
+}
+
 // ── EL AGENTE ── Análisis escrito por IA (Claude Haiku) con la metodología del
 // skill meta-ads-auditor. Analiza SIEMPRE los últimos 3 días (más señal que un
 // solo día). Solo corre si hay clave configurada.
-async function analisisIA({ meta, reservas }) {
+async function analisisIA({ meta, reservas, estado, ultimo }) {
   if (!ANTHROPIC_KEY) return 'ERR::falta la clave ANTHROPIC_API_KEY (el secret no llega al script — revisa el nombre)';
   if (!meta.ok) return 'ERR::no se pudieron leer los datos de Meta';
   const reg1 = r => (Number.isInteger(r) ? String(r) : r.toFixed(1).replace('.', ','));
@@ -274,12 +326,27 @@ async function analisisIA({ meta, reservas }) {
   const ads = [...(meta.adsBallet || []), ...(meta.adsBarre || [])].filter(a => a.spend > 0).sort((a, b) => b.spend - a.spend)
     .map(a => `  · ${a.name} [${analisisCreatividad(a)}]: ${eur(a.spend)}, ${num(a.impressions)} impr, ${a.leads} leads Meta`).join('\n') || '  (sin anuncios con gasto)';
 
+  let negocioTxt = 'Estado del negocio: no disponible.';
+  if (estado) {
+    const lineas = Object.entries(estado.porDisc)
+      .map(([d, v]) => `  · ${DISC_NOMBRE[d] || d}: ${v.ocupados}/${v.capacidad} plazas (${v.libres} libres)${v.mat3d ? `, +${v.mat3d} en 3 días` : ''}`)
+      .join('\n');
+    negocioTxt = `ESTADO DEL NEGOCIO (alumnas con plaza vs capacidad — el objetivo es llenar):\n${lineas}\n  · Total alumnas con plaza: ${estado.totalOcupados}.`;
+  }
+  let memoriaTxt = 'Es la PRIMERA medición: no hay informe anterior para comparar.';
+  if (ultimo && ultimo.analisis) {
+    const cuando = new Date(ultimo.created_at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' });
+    memoriaTxt = `INFORME ANTERIOR (${cuando}) — compáralo con los datos de hoy para "¿Cómo vamos?":\n"""\n${ultimo.analisis}\n"""`;
+  }
+
   const system =
     `Eres el BOSS del proyecto y el Paid Media & Marketing Manager de Andrea Carrió Studio (escuela de danza local en Valencia, zona Alfahuir). NO eres un lector de métricas: tienes el control del negocio, con visión macro (negocio) y micro (campañas). Auditas, cuestionas y diriges la estrategia hacia el crecimiento. Actúas como socio estratégico.\n\n` +
     `CONTEXTO: campañas de Meta Ads de "Puertas Abiertas" (clases de prueba gratis; objetivo = reservas). Es captación de leads: NUNCA uses ROAS.\n\n` +
     `LA VERDAD DEL NEGOCIO (innegociable):\n` +
     `- Razona SIEMPRE con el COSTE REAL por reserva (las que entran en la base de datos), NUNCA con el "CPL" de Meta (inflado: cuenta clics de botón).\n` +
-    `- NO INVENTES NADA. Usa solo los datos que te paso. Si algo no está (datos demográficos, ubicación/placement, creatividad real, histórico, o el informe anterior para comparar), dilo en una línea ("dato no disponible aún") en vez de inventarlo. Inventar = romper la confianza.\n\n` +
+    `- ANCLA la inversión al ESTADO DEL NEGOCIO que te paso: mete presupuesto donde HAY HUECO (plazas libres) y el coste real es bajo; no donde ya está lleno. El objetivo es llenar plazas, no gastar por gastar.\n` +
+    `- Usa el INFORME ANTERIOR (si te lo paso) para responder "¿Cómo vamos?" con comparativa real (mejor/peor/igual que la última vez).\n` +
+    `- NO INVENTES NADA. Usa solo los datos que te paso. Si algo no está (datos demográficos, ubicación/placement, creatividad real, histórico), dilo en una línea ("dato no disponible aún") en vez de inventarlo. Inventar = romper la confianza.\n\n` +
     `TONO: ultra directo, al grano, alto impacto. Sin introducciones, sin relleno, sin lenguaje corporativo blando. Claro y accionable.\n\n` +
     `ESTRUCTURA OBLIGATORIA (responde a las 4, en este orden, cada una en negrita y con viñetas debajo):\n` +
     `**¿Qué pasó?** — el hecho/dato clave (con el coste real).\n` +
@@ -296,8 +363,9 @@ async function analisisIA({ meta, reservas }) {
   const userMsg =
     `Datos de los ÚLTIMOS 3 DÍAS:\n\n` +
     `${realTxt}\n\nCAMPAÑAS (Meta, 3 días):\n${camps}\n\nANUNCIOS (Meta, 3 días):\n${ads}\n\n` +
-    `NO dispones aún de: datos demográficos (edad/género), ubicación/placement (Reels/Stories/Feed), la creatividad real (vídeo/imagen/copy), histórico anterior, la tabla de previsiones ni el informe previo. No inventes nada de eso.\n\n` +
-    `Dame tu análisis de estos 3 días siguiendo TUS reglas (las 4 preguntas, tono directo, barra visual e idea proactiva).`;
+    `${negocioTxt}\n\n${memoriaTxt}\n\n` +
+    `NO dispones aún de: datos demográficos (edad/género), ubicación/placement (Reels/Stories/Feed) ni la creatividad real (vídeo/imagen/copy). No inventes nada de eso.\n\n` +
+    `Dame tu análisis siguiendo TUS reglas (las 4 preguntas, tono directo, barra visual e idea proactiva), anclando la inversión al estado del negocio y comparando con el informe anterior.`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -563,14 +631,18 @@ const esDiaAnalisis = Math.floor(Date.now() / 86400000) % 2 === 0;
 const RUN_IA = !!ANTHROPIC_KEY && (args.includes('--ia') || (madridHour >= 21 && esDiaAnalisis));
 let analisis = '';
 if (RUN_IA) {
-  // El agente analiza una ventana de 3 días (más señal que un solo día).
-  const [meta3d, reservas3d] = await Promise.all([getMeta('last_3d'), getReservas3d()]);
-  const r = await analisisIA({ meta: meta3d, reservas: reservas3d });
+  // El agente analiza 3 días de anuncios + el estado del negocio + el informe anterior.
+  const [meta3d, reservas3d, estado, ultimo] = await Promise.all([
+    getMeta('last_3d'), getReservas3d(), getEstadoNegocio(), getUltimoInforme(),
+  ]);
+  const r = await analisisIA({ meta: meta3d, reservas: reservas3d, estado, ultimo });
   if (r.startsWith('ERR::')) {
     // En prueba manual (--ia) mostramos el motivo en el correo para diagnosticar.
     if (args.includes('--ia')) analisis = `⚠️ Diagnóstico (esto NO es el análisis): ${r.slice(5)}`;
   } else {
     analisis = r;
+    // Guarda el informe en la memoria (no durante --dry, para no ensuciarla).
+    if (!DRY) await guardarInforme(r, { reservas: reservas3d, estado: estado?.porDisc || null });
   }
 }
 
