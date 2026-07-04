@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { SLOTS, EVENTO } from "@/lib/jornada";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -624,6 +625,20 @@ export default function AdminDashboard() {
   const [adultasNotasDraft, setAdultasNotasDraft] = useState<Record<string, string>>({});
   const [adultasNotasSaved, setAdultasNotasSaved] = useState<string | null>(null);
 
+  type JornadaRow = {
+    id: string; created_at: string; nombre: string; telefono: string;
+    email: string | null; bloque: string; slot_id: string; asistio: boolean | null;
+  };
+  const [jornadaData, setJornadaData] = useState<JornadaRow[]>([]);
+  const [jornadaLoading, setJornadaLoading] = useState(false);
+  const marcarAsistio = async (id: string, asistio: boolean | null) => {
+    setJornadaData(prev => prev.map(r => r.id === id ? { ...r, asistio } : r));
+    await fetch("/api/admin/reservas-jornada", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, asistio }),
+    });
+  };
+
   const handleDeleteAdulta = async (id: string) => {
     const res = await fetch(`/api/admin/puertas-abiertas-adultas?id=${id}`, { method: "DELETE" });
     if (res.ok) setAdultasData(prev => prev.filter(r => r.id !== id));
@@ -1013,6 +1028,16 @@ export default function AdminDashboard() {
       .then(({ data }) => setRenovData((data ?? []) as RenovacionRow[]))
       .catch(() => setRenovData([]))
       .finally(() => setRenovLoading(false));
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeSection !== "Jornada 24J") return;
+    setJornadaLoading(true);
+    fetch("/api/admin/reservas-jornada")
+      .then(r => r.json())
+      .then(({ data }) => setJornadaData((data ?? []) as JornadaRow[]))
+      .catch(() => setJornadaData([]))
+      .finally(() => setJornadaLoading(false));
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cargarPrevision = () => {
@@ -1844,6 +1869,7 @@ export default function AdminDashboard() {
     { icon: "group", label: "Clientas" },
     { icon: "celebration", label: "Puertas Abiertas" },
     { icon: "self_improvement", label: "P.A. Adultas" },
+    { icon: "event_available", label: "Jornada 24J" },
     { icon: "autorenew", label: "Renovaciones" },
     { icon: "insights", label: "Marketing" },
     { icon: "filter_alt", label: "Embudo" },
@@ -4061,6 +4087,80 @@ export default function AdminDashboard() {
                     {filtered.length} {filtered.length === 1 ? "reserva" : "reservas"}
                   </p>
                 )}
+              </section>
+            );
+          })()}
+
+          {/* ── Jornada 24J: reservas y asistencia ── */}
+          {activeSection === "Jornada 24J" && (() => {
+            const waHref = (tel: string, nombre: string) => {
+              let t = (tel || "").replace(/\D/g, "");
+              if (t.startsWith("00")) t = t.slice(2);
+              if (t.length === 9) t = "34" + t;
+              return `https://wa.me/${t}?text=${encodeURIComponent(`¡Hola ${nombre}! Soy Andrea, de Andrea Carrió Studio.`)}`;
+            };
+            const total = jornadaData.length;
+            const vinieron = jornadaData.filter(r => r.asistio === true).length;
+            const noVino = jornadaData.filter(r => r.asistio === false).length;
+            return (
+              <section className="space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-headline-md text-headline-md text-primary">{EVENTO.titulo} · {EVENTO.fecha}</h3>
+                    <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>{total} reservas · control de asistencia</p>
+                  </div>
+                  <a href="/reservar-jornada" target="_blank" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full border transition-colors hover:bg-surface-container-high" style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}>
+                    <Icon name="open_in_new" className="text-sm" /> Página de reserva
+                  </a>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Reservas", value: total, color: "#7d2b13" },
+                    { label: "Vinieron", value: vinieron, color: "#1f7a3d" },
+                    { label: "No vinieron", value: noVino, color: "#b71c1c" },
+                  ].map(k => (
+                    <div key={k.label} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
+                      <p className="text-2xl font-bold" style={{ color: k.color }}>{jornadaLoading ? "—" : k.value}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{k.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {jornadaLoading ? (
+                  <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Cargando…</p>
+                ) : SLOTS.map(slot => {
+                  const gente = jornadaData.filter(r => r.slot_id === slot.id);
+                  return (
+                    <div key={slot.id} className="rounded-2xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
+                      <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#fff0eb" }}>
+                        <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>
+                          {slot.bloque === "ninas" ? "🌅" : "🌆"} {slot.titulo} · {slot.hora}
+                        </p>
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: gente.length >= slot.tope ? "#fde7e7" : "#e7f7ec", color: gente.length >= slot.tope ? "#b71c1c" : "#1f7a3d" }}>
+                          {gente.length}/{slot.tope}
+                        </span>
+                      </div>
+                      {gente.length === 0 ? (
+                        <p className="px-4 py-3 text-sm" style={{ color: "#bcb0ab" }}>Sin reservas.</p>
+                      ) : gente.map(r => (
+                        <div key={r.id} className="px-4 py-2.5 flex items-center justify-between gap-3" style={{ borderTop: "1px solid #f0ddd5" }}>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate" style={{ color: "#25190f" }}>{r.nombre}</p>
+                            <p className="text-xs truncate" style={{ color: "#89726c" }}>{r.telefono}{r.email ? ` · ${r.email}` : ""}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <a href={waHref(r.telefono, r.nombre)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp">
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
+                            </a>
+                            <button onClick={() => marcarAsistio(r.id, r.asistio === true ? null : true)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === true ? "#1f7a3d" : "#e7f7ec", color: r.asistio === true ? "#ffffff" : "#1f7a3d" }} title="Marcar que vino">✔</button>
+                            <button onClick={() => marcarAsistio(r.id, r.asistio === false ? null : false)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === false ? "#b71c1c" : "#fde7e7", color: r.asistio === false ? "#ffffff" : "#b71c1c" }} title="Marcar que no vino">✖</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
               </section>
             );
           })()}
