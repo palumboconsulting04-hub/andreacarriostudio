@@ -631,6 +631,7 @@ export default function AdminDashboard() {
   };
   const [jornadaData, setJornadaData] = useState<JornadaRow[]>([]);
   const [jornadaLoading, setJornadaLoading] = useState(false);
+  const [jornadaOpenSlot, setJornadaOpenSlot] = useState<string | null>(null);
   const marcarAsistio = async (id: string, asistio: boolean | null) => {
     setJornadaData(prev => prev.map(r => r.id === id ? { ...r, asistio } : r));
     await fetch("/api/admin/reservas-jornada", {
@@ -4129,35 +4130,63 @@ export default function AdminDashboard() {
 
                 {jornadaLoading ? (
                   <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Cargando…</p>
-                ) : SLOTS.map(slot => {
-                  const gente = jornadaData.filter(r => r.slot_id === slot.id);
+                ) : (["ninas", "adultas"] as const).map(bloque => {
+                  const slotsBloque = SLOTS.filter(s => s.bloque === bloque);
+                  if (slotsBloque.length === 0) return null;
                   return (
-                    <div key={slot.id} className="rounded-2xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
-                      <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#fff0eb" }}>
-                        <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>
-                          {slot.bloque === "ninas" ? "🌅" : "🌆"} {slot.titulo} · {slot.hora}
-                        </p>
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: gente.length >= slot.tope ? "#fde7e7" : "#e7f7ec", color: gente.length >= slot.tope ? "#b71c1c" : "#1f7a3d" }}>
-                          {gente.length}/{slot.tope}
-                        </span>
+                    <div key={bloque}>
+                      <p className="text-xs font-bold uppercase tracking-widest mb-2 mt-1" style={{ color: "#89726c" }}>
+                        {bloque === "ninas" ? "🌅 Mañana · Niñas" : "🌆 Tarde · Adultas"}
+                      </p>
+                      <div className="space-y-2.5">
+                        {slotsBloque.map(slot => {
+                          const gente = jornadaData.filter(r => r.slot_id === slot.id);
+                          const pct = Math.min(100, Math.round((gente.length / slot.tope) * 100));
+                          const lleno = gente.length >= slot.tope;
+                          const barColor = lleno ? "#b71c1c" : pct >= 80 ? "#e8a33d" : "#1f9d4d";
+                          const abierto = jornadaOpenSlot === slot.id;
+                          return (
+                            <div key={slot.id} className="rounded-2xl border overflow-hidden" style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff" }}>
+                              {/* Bloque de calendario: hora grande + barra de llenado. Clic para ver la gente. */}
+                              <button onClick={() => setJornadaOpenSlot(abierto ? null : slot.id)} className="w-full text-left px-4 py-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div>
+                                    <span className="text-base font-bold" style={{ color: "#25190f" }}>{slot.hora}</span>
+                                    <span className="text-sm ml-2" style={{ color: "#56423d" }}>{slot.titulo}</span>
+                                  </div>
+                                  <span className="text-sm font-bold flex items-center gap-1.5" style={{ color: lleno ? "#b71c1c" : "#7d2b13" }}>
+                                    {lleno ? "COMPLETO" : `${gente.length}/${slot.tope}`}
+                                    <Icon name={abierto ? "expand_less" : "expand_more"} className="text-base" style={{ color: "#89726c" }} />
+                                  </span>
+                                </div>
+                                <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "#f0eae6" }}>
+                                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                                </div>
+                              </button>
+                              {/* Gente del turno (al abrir): WhatsApp + check-in */}
+                              {abierto && (gente.length === 0 ? (
+                                <p className="px-4 pb-3 text-sm" style={{ color: "#bcb0ab" }}>Sin reservas todavía.</p>
+                              ) : gente.map(r => (
+                                <div key={r.id} className="px-4 py-2.5 flex items-center justify-between gap-3" style={{ borderTop: "1px solid #f0ddd5" }}>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium truncate" style={{ color: "#25190f" }}>
+                                      {r.asistio === true ? "✅ " : r.asistio === false ? "❌ " : ""}{r.nombre}
+                                    </p>
+                                    <p className="text-xs truncate" style={{ color: "#89726c" }}>{r.telefono}{r.email ? ` · ${r.email}` : ""}</p>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <a href={waHref(r.telefono, r.nombre)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp">
+                                      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
+                                    </a>
+                                    <button onClick={() => marcarAsistio(r.id, r.asistio === true ? null : true)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === true ? "#1f7a3d" : "#e7f7ec", color: r.asistio === true ? "#ffffff" : "#1f7a3d" }} title="Marcar que vino">✔</button>
+                                    <button onClick={() => marcarAsistio(r.id, r.asistio === false ? null : false)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === false ? "#b71c1c" : "#fde7e7", color: r.asistio === false ? "#ffffff" : "#b71c1c" }} title="Marcar que no vino">✖</button>
+                                  </div>
+                                </div>
+                              )))}
+                            </div>
+                          );
+                        })}
                       </div>
-                      {gente.length === 0 ? (
-                        <p className="px-4 py-3 text-sm" style={{ color: "#bcb0ab" }}>Sin reservas.</p>
-                      ) : gente.map(r => (
-                        <div key={r.id} className="px-4 py-2.5 flex items-center justify-between gap-3" style={{ borderTop: "1px solid #f0ddd5" }}>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate" style={{ color: "#25190f" }}>{r.nombre}</p>
-                            <p className="text-xs truncate" style={{ color: "#89726c" }}>{r.telefono}{r.email ? ` · ${r.email}` : ""}</p>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <a href={waHref(r.telefono, r.nombre)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp">
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
-                            </a>
-                            <button onClick={() => marcarAsistio(r.id, r.asistio === true ? null : true)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === true ? "#1f7a3d" : "#e7f7ec", color: r.asistio === true ? "#ffffff" : "#1f7a3d" }} title="Marcar que vino">✔</button>
-                            <button onClick={() => marcarAsistio(r.id, r.asistio === false ? null : false)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === false ? "#b71c1c" : "#fde7e7", color: r.asistio === false ? "#ffffff" : "#b71c1c" }} title="Marcar que no vino">✖</button>
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   );
                 })}
