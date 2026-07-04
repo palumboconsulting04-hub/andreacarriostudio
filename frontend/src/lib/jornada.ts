@@ -21,10 +21,10 @@ export const SLOTS: Slot[] = [
   { id: "nin-pre-2",    bloque: "ninas",   titulo: "Pre-Ballet (3–6)",        hora: "11:00–12:00", tope: 12 },
   { id: "nin-ballet",   bloque: "ninas",   titulo: "Ballet 1 y 2 (7–14)",     hora: "12:00–13:00", tope: 12 },
   // 🌆 Tarde · Adultas (17:30–21:30) — Barre y Pilates alternos
-  { id: "adu-barre-1",  bloque: "adultas", titulo: "Barre Fit",               hora: "17:30–18:30", tope: 14 },
-  { id: "adu-pilates-1",bloque: "adultas", titulo: "Pilates Mat",             hora: "18:30–19:30", tope: 14 },
-  { id: "adu-barre-2",  bloque: "adultas", titulo: "Barre Fit",               hora: "19:30–20:30", tope: 14 },
-  { id: "adu-pilates-2",bloque: "adultas", titulo: "Pilates Mat",             hora: "20:30–21:30", tope: 14 },
+  { id: "adu-barre-1",  bloque: "adultas", titulo: "Barre Fit",               hora: "17:30–18:30", tope: 12 },
+  { id: "adu-pilates-1",bloque: "adultas", titulo: "Pilates Mat",             hora: "18:30–19:30", tope: 12 },
+  { id: "adu-barre-2",  bloque: "adultas", titulo: "Barre Fit",               hora: "19:30–20:30", tope: 12 },
+  { id: "adu-pilates-2",bloque: "adultas", titulo: "Pilates Mat",             hora: "20:30–21:30", tope: 12 },
 ];
 
 export const slotById = (id: string): Slot | undefined => SLOTS.find(s => s.id === id);
