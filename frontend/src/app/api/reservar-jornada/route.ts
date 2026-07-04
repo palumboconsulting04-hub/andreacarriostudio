@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
   if (!nombre || !telefono || !slot) {
     return NextResponse.json({ error: "Faltan datos o el turno no existe." }, { status: 400 });
   }
+  if (!email || !/\S+@\S+\.\S+/.test(email)) {
+    return NextResponse.json({ error: "El email es obligatorio." }, { status: 400 });
+  }
 
   // Control de tope: no dejar reservar por encima de la capacidad del turno.
   const { count, error: countErr } = await supabaseAdmin

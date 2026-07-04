@@ -34,7 +34,8 @@ export default function ReservarJornada() {
   };
   useEffect(cargar, []);
 
-  const formValido = nombre.trim() && telefono.trim() && slotId;
+  const emailOk = /\S+@\S+\.\S+/.test(email.trim());
+  const formValido = nombre.trim() && telefono.trim() && emailOk && slotId;
 
   const handleSubmit = async () => {
     if (!formValido || enviando) return;
@@ -140,7 +141,7 @@ export default function ReservarJornada() {
         <div className="rounded-3xl p-6 shadow-sm space-y-3" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>
           <input style={inputStyle} placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} />
           <input style={inputStyle} placeholder="WhatsApp" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
-          <input style={inputStyle} placeholder="Email (opcional)" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          <input style={inputStyle} placeholder="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
           <button
             onClick={handleSubmit}
