@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { SLOTS, slotById } from "@/lib/jornada";
 
+// Normaliza un teléfono a solo dígitos en formato español, para comparar.
+function normTel(t: string | null | undefined): string {
+  let d = (t || "").replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.length === 9) d = "34" + d;
+  return d;
+}
+
+// Match por teléfono: si esta persona ya está en Puertas Abiertas (niñas o adultas)
+// y NO tenía email (no se lo pedimos entonces), le rellenamos el correo ahora.
+async function enriquecerEmail(telefono: string, email: string) {
+  const objetivo = normTel(telefono);
+  if (!email || objetivo.length < 11) return;
+  for (const tabla of ["puertas_abiertas", "puertas_abiertas_adultas"] as const) {
+    const { data } = await supabaseAdmin.from(tabla).select("id, telefono, email");
+    for (const r of data ?? []) {
+      if (normTel(r.telefono) === objetivo && !(r.email && String(r.email).trim())) {
+        await supabaseAdmin.from(tabla).update({ email }).eq("id", r.id);
+      }
+    }
+  }
+}
+
 // Plazas ocupadas por turno (sin datos personales). Para pintar la disponibilidad.
 export async function GET() {
   const { data, error } = await supabaseAdmin.from("reservas_jornada").select("slot_id");
@@ -43,6 +66,10 @@ export async function POST(req: NextRequest) {
     nombre, telefono, email: email || null, slot_id, bloque: slot.bloque,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Cruce por teléfono: rellena el email en su ficha de Puertas Abiertas si faltaba.
+  // No bloquea la reserva si algo falla.
+  if (email) { try { await enriquecerEmail(telefono, email); } catch { /* ignorar */ } }
 
   return NextResponse.json({ ok: true });
 }
