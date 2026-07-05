@@ -156,12 +156,19 @@ async function generar(tema) {
     '}',
   ].join('\n');
 
+  const guiaIntencion = {
+    compra: 'INTENCIÓN DEL ARTÍCULO: COMPRA (el lector está casi decidido). Resuelve sus últimas dudas y objeciones y, hacia el final, anímale con naturalidad y calidez a dar el paso y reservar su plaza. Cierre orientado a la acción, sin agobiar.',
+    informativo: 'INTENCIÓN DEL ARTÍCULO: INFORMATIVO (el lector compara y valora opciones). Sé objetiva, responde sus dudas y ayúdale a decidir; puedes mencionar el servicio sin presionar.',
+    educativo: 'INTENCIÓN DEL ARTÍCULO: EDUCATIVO (contenido de valor). Enseña y aporta de verdad, genera confianza. Nada de venta: que el valor hable por sí solo y deje buena impresión.',
+  }[tema.intencion] || '';
+
   let userMsg = [
     `Escribe el artículo para el blog sobre este tema:`,
     `- Keyword objetivo (secundaria, informacional): "${tema.keyword}"`,
     `- Título orientativo: "${tema.titulo}"`,
     `- Disciplina: ${tema.servicio}`,
     `- Ángulo y dudas a resolver: ${tema.angulo}`,
+    guiaIntencion ? `- ${guiaIntencion}` : ``,
     ``,
     `Público: madres que buscan actividad para su hija (ballet) o mujeres adultas interesadas (pilates/barre). Aporta valor real y responde lo que de verdad se preguntan.`,
   ].join('\n');
@@ -230,7 +237,7 @@ function construir(art, servicio, destino) {
     let art, palabras = 0, html = '', motivo = '';
     try {
       art = await generar(tema);
-      const r = construir(art, servicio, tema.destino);
+      const r = construir(art, servicio, (tema.intencion === 'compra') ? 'reservas' : 'servicio');
       html = r.html; palabras = r.palabras;
       if (palabras < 600) motivo = `artículo corto (${palabras} palabras)`;
       if (!art.faqs || art.faqs.length < 3) motivo = 'faltan preguntas frecuentes';
