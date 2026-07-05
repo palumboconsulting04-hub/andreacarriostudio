@@ -1,0 +1,255 @@
+#!/usr/bin/env node
+// generar-articulo.mjs — Andrea Carrió Studio
+// Publica automáticamente un artículo al día en WordPress a partir de la cola
+// de temas (temas.json). La IA (Claude) escribe SOLO el texto; el HTML, los
+// enlaces internos, el CTA y el schema FAQ los pone este script (diseño fijo).
+//
+// Salvaguardas:
+//  - Toma el primer tema de la cola cuyo slug NO exista ya en WordPress.
+//  - Si la generación falla o sale corta (<600 palabras) -> se guarda como
+//    BORRADOR en vez de publicarse en vivo. Nunca sale contenido roto solo.
+//  - Si la cola está agotada -> avisa por email y no inventa nada.
+//  - Envía un email en cada publicación (con el enlace) para poder retirarlo.
+//
+// Uso:
+//   node tools/articulos/generar-articulo.mjs           # genera y publica 1
+//   node tools/articulos/generar-articulo.mjs --draft   # lo deja en borrador
+//   node tools/articulos/generar-articulo.mjs --dry      # no toca WordPress
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+function loadEnvFile(path) {
+  try {
+    const raw = readFileSync(path, 'utf8');
+    for (const line of raw.split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
+      if (!m) continue;
+      let val = m[2].trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
+        val = val.slice(1, -1);
+      if (!(m[1] in process.env)) process.env[m[1]] = val;
+    }
+  } catch { /* ok */ }
+}
+loadEnvFile(join(HERE, '.env'));                       // para pruebas locales (no subir)
+loadEnvFile(join(HERE, '..', '..', 'frontend', '.env.local'));
+
+const args   = process.argv.slice(2);
+const DRY    = args.includes('--dry');
+const DRAFT  = args.includes('--draft');
+
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const MODELO   = process.env.ARTICULO_MODELO || 'claude-opus-4-8';
+const WP_BASE  = (process.env.WP_BASE || 'https://andreacarriostudio.es').replace(/\/$/, '');
+const WP_USER  = process.env.WP_USER;
+const WP_APP   = process.env.WP_APP_PASSWORD;
+const RESEND_KEY = process.env.RESEND_API_KEY;
+const FROM     = process.env.FROM_EMAIL || 'noreply@andreacarriostudio.es';
+const TO       = process.env.REPORT_TO  || 'gioacchinopalumbo38@gmail.com';
+
+const WP_AUTH = 'Basic ' + Buffer.from(`${WP_USER}:${WP_APP}`).toString('base64');
+
+// Página de servicio + anchor por disciplina (a donde apuntan los enlaces).
+const SERVICIOS = {
+  ballet:  { url: `${WP_BASE}/ballet-para-ninas/`,                 anchor: 'clases de ballet para niñas en Valencia' },
+  pilates: { url: `${WP_BASE}/clases-de-pilates-valencia-alfahuir/`, anchor: 'clases de Pilates en Valencia' },
+  barre:   { url: `${WP_BASE}/barre-fit-en-valencia/`,             anchor: 'clases de Barre Fit en Valencia' },
+};
+
+// ---------- Sistema de diseño (mismo que los artículos ya publicados) ----------
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const link = (url, a) => `<a href="${url}" style="color:#7d2b13;font-weight:600;">${esc(a)}</a>`;
+const introBox = t => `<div style="background:linear-gradient(135deg,#fff0eb 0%,#fff8f5 100%);border-left:5px solid #7d2b13;border-radius:14px;padding:22px 26px;margin:0 0 10px;"><p style="margin:0;font-size:18px;line-height:1.7;color:#3a2c27;">${t}</p></div>`;
+const h2 = t => `<h2 style="color:#7d2b13;font-size:25px;line-height:1.25;margin:36px 0 14px;padding-bottom:8px;border-bottom:2px solid #ffdbd1;">${esc(t)}</h2>`;
+const p = t => `<p style="font-size:16px;line-height:1.75;color:#3a2c27;">${t}</p>`;
+const card = (e, ti, tx) => `<div style="background:#fff8f5;border:1px solid #f0d9cf;border-left:4px solid #7d2b13;border-radius:12px;padding:14px 18px;margin:0 0 10px;"><span style="font-size:15px;font-weight:700;color:#7d2b13;">${esc(e)}&nbsp; ${esc(ti)}</span><span style="display:block;margin-top:4px;color:#56423d;line-height:1.6;">${esc(tx)}</span></div>`;
+const quote = t => `<div style="background:#fbeee9;border-radius:12px;padding:18px 22px;margin:16px 0;font-style:italic;color:#7d2b13;border-left:4px solid #d98c6a;">${esc(t)}</div>`;
+const cta = (url) => `<div style="background:linear-gradient(135deg,#7d2b13,#9a3a1d);border-radius:16px;padding:28px 24px;margin:30px 0 12px;text-align:center;"><p style="margin:0 0 4px;color:#ffdbd1;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">¿Damos el primer paso?</p><p style="margin:0 0 18px;color:#fff8f5;font-size:18px;line-height:1.5;">Descubre horarios, edades y precios, y ven a conocer el estudio.</p><a href="${url}" style="display:inline-block;background:#fff8f5;color:#7d2b13;padding:15px 34px;border-radius:9999px;text-decoration:none;font-weight:700;font-size:16px;">Ver más →</a></div>`;
+const firma = () => `<p style="font-size:16px;color:#3a2c27;">Un abrazo. 💗<br><strong>Andrea</strong></p>`;
+const faqBlock = (faqs) => {
+  const vis = h2('Preguntas frecuentes') + faqs.map(f => `<div style="border:1px solid #eaddd6;border-radius:12px;padding:14px 18px;margin:0 0 10px;"><p style="margin:0 0 6px;font-weight:700;color:#7d2b13;">${esc(f.q)}</p><p style="margin:0;color:#56423d;line-height:1.6;">${esc(f.a)}</p></div>`).join('');
+  const ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) };
+  return vis + `<script type="application/ld+json">${JSON.stringify(ld)}</script>`;
+};
+
+// ---------- Utilidades ----------
+async function wp(path, opts = {}) {
+  const res = await fetch(`${WP_BASE}/wp-json${path}`, {
+    ...opts,
+    headers: { Authorization: WP_AUTH, 'Content-Type': 'application/json', ...(opts.headers || {}) },
+  });
+  const txt = await res.text();
+  let data; try { data = JSON.parse(txt); } catch { data = txt; }
+  if (!res.ok) throw new Error(`WP ${res.status} ${path}: ${typeof data === 'string' ? data.slice(0, 200) : JSON.stringify(data).slice(0, 200)}`);
+  return data;
+}
+
+async function slugsExistentes() {
+  const set = new Set();
+  const estados = 'publish,draft,future,pending,private';
+  for (let page = 1; page <= 5; page++) {
+    const rows = await wp(`/wp/v2/posts?status=${estados}&per_page=100&page=${page}&_fields=slug&context=edit`).catch(() => []);
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    for (const r of rows) set.add(r.slug);
+    if (rows.length < 100) break;
+  }
+  return set;
+}
+
+async function enviarEmail(subject, html) {
+  if (!RESEND_KEY) { console.log('(sin RESEND_API_KEY, no envío email)'); return; }
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: `Artículos <${FROM}>`, to: [TO], subject, html }),
+    });
+  } catch (e) { console.log('email err:', e.message); }
+}
+
+// ---------- Generación con Claude ----------
+async function generar(tema) {
+  const system = [
+    'Eres redactora SEO experta y escribes con la voz de Andrea, profesora del estudio Andrea Carrió Studio (Valencia, zona Alfahuir).',
+    'Tono 1:1, cercano y personal: hablas en primera persona ("yo", "en mis clases"), NUNCA "nosotros" ni tono corporativo.',
+    'REGLAS DE CONTENIDO:',
+    '- Todo debe ser real y útil, que responda dudas reales del lector. NO inventes datos, cifras, estudios ni testimonios.',
+    '- Nada de promesas milagro. Nada de consejo médico: ante lesiones, dolor persistente o embarazo/posparto, recomienda consultar a un profesional sanitario (matrona, fisio, médico).',
+    '- Español de España, natural y claro. Frases que aporten, sin relleno.',
+    '- La keyword objetivo debe aparecer en el título, en la introducción y alguna vez más de forma natural.',
+    '- Mínimo 600 palabras de texto entre todos los campos. Introducción + 4 a 6 bloques + 3 o 4 preguntas frecuentes.',
+    '- NO escribas enlaces, CTA, ni HTML: solo texto plano en los campos. Los enlaces y el diseño los añade el sistema.',
+    'FORMATO DE SALIDA: devuelve EXCLUSIVAMENTE un objeto JSON válido (sin ```), con este esquema:',
+    '{',
+    '  "titulo": string,               // H1, incluye la keyword',
+    '  "metaTitle": string,            // <=60 car., atractivo, con la keyword',
+    '  "metaDescription": string,      // 140-155 car., con la keyword',
+    '  "excerpt": string,              // 1 frase resumen, DISTINTA de la introducción',
+    '  "intro": string,               // 2-3 frases de enganche (irá en una caja destacada)',
+    '  "bloques": [                    // 4 a 6 bloques',
+    '    { "h2": string, "parrafos": [string, ...], "tarjetas": [ {"emoji": string, "titulo": string, "texto": string}, ... ] }',
+    '  ],                              // "parrafos" y "tarjetas" son opcionales por bloque; usa tarjetas para listas de ideas',
+    '  "cita": string,                // opcional: una frase para destacar como cita, o ""',
+    '  "faqs": [ {"q": string, "a": string}, ... ]  // 3 o 4',
+    '}',
+  ].join('\n');
+
+  const userMsg = [
+    `Escribe el artículo para el blog sobre este tema:`,
+    `- Keyword objetivo (secundaria, informacional): "${tema.keyword}"`,
+    `- Título orientativo: "${tema.titulo}"`,
+    `- Disciplina: ${tema.servicio}`,
+    `- Ángulo y dudas a resolver: ${tema.angulo}`,
+    ``,
+    `Público: madres que buscan actividad para su hija (ballet) o mujeres adultas interesadas (pilates/barre). Aporta valor real y responde lo que de verdad se preguntan.`,
+  ].join('\n');
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({ model: MODELO, max_tokens: 4000, system, messages: [{ role: 'user', content: userMsg }] }),
+  });
+  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = await res.json();
+  let raw = (data.content?.[0]?.text || '').trim();
+  raw = raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  const first = raw.indexOf('{'), last = raw.lastIndexOf('}');
+  if (first < 0 || last < 0) throw new Error('La IA no devolvió JSON');
+  return JSON.parse(raw.slice(first, last + 1));
+}
+
+// ---------- Render + validación ----------
+function construir(art, servicio) {
+  const partes = [introBox(esc(art.intro))];
+  for (const b of (art.bloques || [])) {
+    if (b.h2) partes.push(h2(b.h2));
+    for (const par of (b.parrafos || [])) partes.push(p(esc(par)));
+    for (const t of (b.tarjetas || [])) partes.push(card(t.emoji || '•', t.titulo || '', t.texto || ''));
+  }
+  if (art.cita && art.cita.trim()) partes.push(quote(art.cita));
+  // Enlace interno contextual + CTA -> página de servicio (los pone el sistema).
+  partes.push(p(`Si quieres ver horarios, edades y precios, aquí tienes toda la información de las ${link(servicio.url, servicio.anchor)}.`));
+  partes.push(faqBlock(art.faqs || []));
+  partes.push(cta(servicio.url));
+  partes.push(firma());
+  const html = `<div style="max-width:740px;margin:0 auto;">${partes.join('')}</div>`;
+  const txt = html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ');
+  const palabras = txt.split(/\s+/).filter(Boolean).length;
+  return { html, palabras };
+}
+
+// ---------- Main ----------
+(async () => {
+  try {
+    if (!ANTHROPIC_KEY) throw new Error('Falta ANTHROPIC_API_KEY');
+    if (!DRY && (!WP_USER || !WP_APP)) throw new Error('Faltan WP_USER / WP_APP_PASSWORD');
+
+    const cola = JSON.parse(readFileSync(join(HERE, 'temas.json'), 'utf8')).temas || [];
+    const usados = DRY ? new Set() : await slugsExistentes();
+    const tema = cola.find(t => !usados.has(t.slug));
+
+    if (!tema) {
+      console.log('Cola de temas agotada.');
+      await enviarEmail('📝 Cola de artículos agotada', '<p>Se han publicado todos los temas de <code>temas.json</code>. Añade más temas para que el artículo diario siga funcionando.</p>');
+      return;
+    }
+
+    const servicio = SERVICIOS[tema.servicio] || SERVICIOS.ballet;
+    console.log(`Tema: "${tema.keyword}" (${tema.servicio}) → slug ${tema.slug}`);
+
+    let art, palabras = 0, html = '', motivo = '';
+    try {
+      art = await generar(tema);
+      const r = construir(art, servicio);
+      html = r.html; palabras = r.palabras;
+      if (palabras < 600) motivo = `artículo corto (${palabras} palabras)`;
+      if (!art.faqs || art.faqs.length < 3) motivo = 'faltan preguntas frecuentes';
+    } catch (e) {
+      motivo = `error de generación: ${e.message}`;
+    }
+
+    // Puerta de calidad: si algo falla, borrador (no sale en vivo).
+    const forzarBorrador = DRAFT || !!motivo;
+    const status = forzarBorrador ? 'draft' : 'publish';
+
+    if (DRY) {
+      console.log(`[DRY] ${art?.titulo || '(sin título)'} — ${palabras} palabras — motivo: ${motivo || 'ok'}`);
+      console.log(html.slice(0, 400));
+      return;
+    }
+    if (!html) throw new Error(motivo || 'sin contenido');
+
+    const post = await wp('/wp/v2/posts', {
+      method: 'POST',
+      body: JSON.stringify({ title: art.titulo, slug: tema.slug, status, content: html, excerpt: art.excerpt || '' }),
+    });
+
+    // Rank Math (focus keyword + meta). No es crítico: si falla, seguimos.
+    await wp('/rankmath/v1/updateMeta', {
+      method: 'POST',
+      body: JSON.stringify({ objectID: post.id, objectType: 'post', meta: {
+        rank_math_focus_keyword: tema.keyword,
+        rank_math_title: art.metaTitle || art.titulo,
+        rank_math_description: art.metaDescription || art.excerpt || '',
+      } }),
+    }).catch(e => console.log('Rank Math err (no crítico):', e.message));
+
+    console.log(`${status.toUpperCase()} #${post.id} · ${palabras} palabras · ${post.link}`);
+
+    if (forzarBorrador) {
+      await enviarEmail(`⚠️ Artículo guardado como BORRADOR: ${art.titulo}`,
+        `<p>El artículo <strong>${esc(art.titulo)}</strong> se ha guardado como <strong>borrador</strong> (no publicado) por: <em>${esc(motivo || 'forzado --draft')}</em>.</p><p>Revísalo aquí: <a href="${WP_BASE}/wp-admin/post.php?post=${post.id}&action=edit">editar en WordPress</a>.</p>`);
+    } else {
+      await enviarEmail(`✅ Artículo publicado: ${art.titulo}`,
+        `<p>Se ha publicado automáticamente <strong>${esc(art.titulo)}</strong> (${palabras} palabras).</p><p>Keyword: <code>${esc(tema.keyword)}</code><br>Enlace: <a href="${post.link}">${post.link}</a></p><p>Si no te convence, puedes editarlo o pasarlo a borrador en WordPress.</p>`);
+    }
+  } catch (e) {
+    console.error('FALLO:', e.message);
+    await enviarEmail('❌ Fallo en el artículo diario', `<p>El generador de artículos ha fallado:</p><pre>${esc(e.message)}</pre>`);
+    process.exit(1);
+  }
+})();

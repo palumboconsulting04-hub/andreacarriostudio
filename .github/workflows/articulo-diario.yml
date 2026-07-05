@@ -1,0 +1,38 @@
+name: Artículo diario
+
+# Genera y publica un artículo al día en WordPress desde la cola de temas.
+# GitHub usa UTC; 7:00 UTC = 9:00 en España (verano UTC+2). En invierno = 8:00.
+on:
+  schedule:
+    - cron: '0 7 * * *'     # ~9:00 España (verano)
+  workflow_dispatch:         # lanzar a mano desde la pestaña "Actions"
+    inputs:
+      modo:
+        description: 'normal = publica · borrador = lo deja en borrador · dry = no toca WordPress'
+        type: choice
+        options: [normal, borrador, dry]
+        default: normal
+
+jobs:
+  publicar-articulo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Generar y publicar artículo
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+          REPORT_TO: ${{ secrets.REPORT_TO }}
+        run: |
+          FLAG=""
+          case "${{ inputs.modo }}" in
+            borrador) FLAG="--draft" ;;
+            dry)      FLAG="--dry" ;;
+          esac
+          node tools/articulos/generar-articulo.mjs $FLAG
