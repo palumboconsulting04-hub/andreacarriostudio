@@ -4204,15 +4204,18 @@ export default function AdminDashboard() {
                 })}
 
                 {/* Lista de espera: cuando una disciplina llega a ~10, abrir 2ª fecha */}
-                {jornadaEspera.length > 0 && (
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest mb-1 mt-3" style={{ color: "#89726c" }}>
-                      ⏳ Lista de espera ({jornadaEspera.length})
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-1 mt-3" style={{ color: "#89726c" }}>
+                    ⏳ Lista de espera ({jornadaEspera.length})
+                  </p>
+                  <p className="text-xs mb-3" style={{ color: "#89726c" }}>
+                    Cuando una disciplina llegue a ~10 en espera, merece la pena abrir una 2ª fecha (ya tienes la clase llena).
+                  </p>
+                  {jornadaEspera.length === 0 ? (
+                    <p className="text-sm px-4 py-3 rounded-2xl" style={{ color: "#bcb0ab", backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
+                      Aún no hay nadie en lista de espera. Aparecerán aquí en cuanto una hora se llene y alguien se apunte.
                     </p>
-                    <p className="text-xs mb-3" style={{ color: "#89726c" }}>
-                      Cuando una disciplina llegue a ~10 en espera, merece la pena abrir una 2ª fecha (ya tienes la clase llena).
-                    </p>
-                    {(["barre", "pilates", "ambas", "ninas"] as const).map(interes => {
+                  ) : (["barre", "pilates", "ambas", "ninas"] as const).map(interes => {
                       const label = { barre: "Barre Fit", pilates: "Pilates Mat", ambas: "Las dos", ninas: "Ballet niñas" }[interes];
                       const gente = jornadaEspera.filter(r => r.interes === interes);
                       if (gente.length === 0) return null;
@@ -4241,7 +4244,6 @@ export default function AdminDashboard() {
                       );
                     })}
                   </div>
-                )}
               </section>
             );
           })()}
