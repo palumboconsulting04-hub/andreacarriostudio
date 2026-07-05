@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-
-const INTERES_VALIDO = new Set(["barre", "pilates", "ninas"]);
+import { slotById } from "@/lib/jornada";
 
 function normTel(t: string | null | undefined): string {
   let d = (t || "").replace(/\D/g, "");
@@ -24,23 +23,24 @@ async function enriquecerEmail(telefono: string, email: string) {
   }
 }
 
-// Apunta a alguien a la lista de espera (cuando su disciplina está llena).
+// Apunta a alguien a la lista de espera de una HORA concreta (cuando está llena).
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const nombre = (body?.nombre ?? "").toString().trim();
   const telefono = (body?.telefono ?? "").toString().trim();
   const email = (body?.email ?? "").toString().trim();
-  const interes = (body?.interes ?? "").toString();
+  const slot_id = (body?.slot_id ?? "").toString();
 
-  if (!nombre || !telefono || !INTERES_VALIDO.has(interes)) {
-    return NextResponse.json({ error: "Faltan datos." }, { status: 400 });
+  const slot = slotById(slot_id);
+  if (!nombre || !telefono || !slot) {
+    return NextResponse.json({ error: "Faltan datos o el turno no existe." }, { status: 400 });
   }
   if (!email || !/\S+@\S+\.\S+/.test(email)) {
     return NextResponse.json({ error: "El email es obligatorio." }, { status: 400 });
   }
 
   const { error } = await supabaseAdmin.from("lista_espera_jornada").insert({
-    nombre, telefono, email, interes,
+    nombre, telefono, email, slot_id,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

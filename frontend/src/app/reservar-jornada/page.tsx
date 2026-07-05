@@ -20,11 +20,8 @@ export default function ReservarJornada() {
   const [disp, setDisp] = useState<Record<string, Disp>>({});
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [esEspera, setEsEspera] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [esperaInteres, setEsperaInteres] = useState("");
-  const [esperaEnviando, setEsperaEnviando] = useState(false);
-  const [esperaEnviado, setEsperaEnviado] = useState(false);
-  const [esperaError, setEsperaError] = useState("");
 
   const cargar = () => {
     fetch("/api/reservar-jornada")
@@ -40,45 +37,28 @@ export default function ReservarJornada() {
 
   const emailOk = /\S+@\S+\.\S+/.test(email.trim());
   const formValido = nombre.trim() && telefono.trim() && emailOk && slotId;
-  const esperaValido = nombre.trim() && telefono.trim() && emailOk && esperaInteres;
-
-  const handleEspera = async () => {
-    if (!esperaValido || esperaEnviando) return;
-    setEsperaEnviando(true);
-    setEsperaError("");
-    try {
-      const res = await fetch("/api/lista-espera-jornada", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nombre.trim(), telefono: telefono.trim(), email: email.trim(), interes: esperaInteres }),
-      });
-      if (!res.ok) throw new Error();
-      setEsperaEnviado(true);
-    } catch {
-      setEsperaError("Ha habido un problema. Inténtalo de nuevo.");
-    } finally {
-      setEsperaEnviando(false);
-    }
-  };
+  // Si el turno elegido está lleno → la acción es apuntarse a su lista de espera.
+  const selFull = !!slotId && !!disp[slotId] && disp[slotId].libres <= 0;
 
   const handleSubmit = async () => {
     if (!formValido || enviando) return;
     setEnviando(true);
     setErrorMsg("");
+    const endpoint = selFull ? "/api/lista-espera-jornada" : "/api/reservar-jornada";
     try {
-      const res = await fetch("/api/reservar-jornada", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre: nombre.trim(), telefono: telefono.trim(), email: email.trim(), slot_id: slotId }),
       });
       if (res.status === 409) {
-        const d = await res.json();
-        setErrorMsg(d.message || "Ese turno se ha llenado. Elige otro.");
-        setSlotId("");
+        // El turno se llenó justo ahora: recargamos para que aparezca como COMPLETO.
+        setErrorMsg("Esa hora se acaba de llenar. Vuelve a pulsarla para apuntarte a su lista de espera 👇");
         cargar();
         return;
       }
       if (!res.ok) throw new Error();
+      setEsEspera(selFull);
       setEnviado(true);
     } catch {
       setErrorMsg("Ha habido un problema. Inténtalo de nuevo.");
@@ -89,23 +69,31 @@ export default function ReservarJornada() {
 
   if (enviado) {
     const s = slotById(slotId);
+    if (esEspera) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center px-6 py-16 text-center" style={{ backgroundColor: C.bg }}>
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mb-8 text-4xl" style={{ backgroundColor: C.blush }}>⏳</div>
+          <h2 className="text-4xl sm:text-5xl mb-5" style={{ fontFamily: fSerif, color: C.burgundy }}>¡Estás en la lista!</h2>
+          <p className="text-base max-w-md leading-relaxed mb-2" style={{ color: C.brown }}>
+            Esa hora está completa, pero te he apuntado a su lista de espera:
+          </p>
+          {s && <p className="text-lg font-bold mb-8" style={{ color: C.burgundy, fontFamily: fSans }}>{s.titulo} · {s.hora}</p>}
+          <p className="text-sm max-w-md leading-relaxed" style={{ color: C.brown }}>
+            Si abro otra clase a esa hora, serás de las primeras en saberlo 💕<br /><strong>Andrea</strong>
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 py-16 text-center" style={{ backgroundColor: C.bg }}>
         <div className="w-20 h-20 rounded-full flex items-center justify-center mb-8" style={{ backgroundColor: C.blush }}>
           <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M7 18l8 8L29 10" stroke={C.burgundy} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
         <h2 className="text-4xl sm:text-5xl mb-5" style={{ fontFamily: fSerif, color: C.burgundy }}>¡Hora reservada!</h2>
-        <p className="text-base max-w-md leading-relaxed mb-2" style={{ color: C.brown }}>
-          Te esperamos el <strong>{EVENTO.fecha}</strong>:
-        </p>
-        {s && (
-          <p className="text-lg font-bold mb-8" style={{ color: C.burgundy, fontFamily: fSans }}>
-            {s.titulo} · {s.hora}
-          </p>
-        )}
+        <p className="text-base max-w-md leading-relaxed mb-2" style={{ color: C.brown }}>Te esperamos el <strong>{EVENTO.fecha}</strong>:</p>
+        {s && <p className="text-lg font-bold mb-8" style={{ color: C.burgundy, fontFamily: fSans }}>{s.titulo} · {s.hora}</p>}
         <p className="text-sm max-w-md leading-relaxed" style={{ color: C.brown }}>
-          Si quieres probar también la otra disciplina, puedes reservar otra hora.<br />
-          ¡Nos vemos! <strong>Andrea</strong>
+          Si quieres probar también la otra disciplina, puedes reservar otra hora.<br />¡Nos vemos! <strong>Andrea</strong>
         </p>
       </div>
     );
@@ -125,13 +113,12 @@ export default function ReservarJornada() {
           return (
             <button
               key={id}
-              onClick={() => !lleno && setSlotId(id)}
-              disabled={lleno}
+              onClick={() => setSlotId(id)}
               className="w-full text-left rounded-2xl px-4 py-3 transition-all flex items-center justify-between"
               style={{
                 border: `2px solid ${sel ? C.burgundy : C.border}`,
-                backgroundColor: lleno ? "#f0eae6" : sel ? C.blush : C.cream,
-                opacity: lleno ? 0.6 : 1, cursor: lleno ? "not-allowed" : "pointer", outline: "none",
+                backgroundColor: sel ? (lleno ? "#fde7e7" : C.blush) : (lleno ? "#faf1ee" : C.cream),
+                outline: "none", cursor: "pointer",
               }}
             >
               <span>
@@ -139,7 +126,7 @@ export default function ReservarJornada() {
                 <span className="block text-xs" style={{ color: C.muted }}>{s.hora}</span>
               </span>
               <span className="text-xs font-semibold" style={{ color: lleno ? "#b71c1c" : "#1f7a3d" }}>
-                {lleno ? "COMPLETO" : `${libres} libres`}
+                {lleno ? "COMPLETO · espera" : `${libres} libres`}
               </span>
             </button>
           );
@@ -155,7 +142,7 @@ export default function ReservarJornada() {
       <div className="max-w-md mx-auto">
         <h1 className="text-3xl sm:text-4xl text-center mb-1" style={{ fontFamily: fSerif, color: C.burgundy }}>{EVENTO.titulo}</h1>
         <p className="text-center text-sm mb-1" style={{ color: C.dark, fontFamily: fSans, fontWeight: 600 }}>{EVENTO.fecha} · Valencia (Zona Alfahuir)</p>
-        <p className="text-center text-sm mb-7" style={{ color: C.muted }}>Elige la hora que mejor te venga 👇</p>
+        <p className="text-center text-sm mb-7" style={{ color: C.muted }}>Elige tu hora. Si está completa, te apuntas a su lista de espera 👇</p>
 
         <div className="rounded-3xl p-6 shadow-sm mb-5" style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}>
           {bloque("🌅 NIÑAS · Mañana", "Clases de prueba de ballet para peques.", ["nin-pre-1", "nin-pre-2", "nin-ballet"])}
@@ -167,43 +154,17 @@ export default function ReservarJornada() {
           <input style={inputStyle} placeholder="WhatsApp" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
           <input style={inputStyle} placeholder="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
+          {selFull && !errorMsg && (
+            <p className="text-xs" style={{ color: C.burgundy }}>Esta hora está completa → te apuntarás a su <strong>lista de espera</strong>.</p>
+          )}
           <button
             onClick={handleSubmit}
             disabled={!formValido || enviando}
             className="w-full py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest transition-all"
             style={{ backgroundColor: formValido ? C.burgundy : C.border, color: "#fff8f5", fontFamily: fSans, letterSpacing: "0.08em", cursor: formValido ? "pointer" : "not-allowed", opacity: enviando ? 0.7 : 1 }}
           >
-            {enviando ? "Reservando..." : slotId ? "Reservar esta hora" : "Elige una hora arriba"}
+            {enviando ? "Enviando..." : !slotId ? "Elige una hora arriba" : selFull ? "Apuntarme a la lista de espera" : "Reservar esta hora"}
           </button>
-        </div>
-
-        {/* Lista de espera: para cuando tu disciplina está llena o no te cuadra */}
-        <div className="rounded-3xl p-5 mt-4" style={{ backgroundColor: "#fff0eb", border: `1px solid ${C.border}` }}>
-          {esperaEnviado ? (
-            <p className="text-sm text-center" style={{ color: C.brown }}>
-              ✅ ¡Apuntada a la lista de espera! Te avisaré en cuanto abra una nueva fecha 💕
-            </p>
-          ) : (
-            <>
-              <p className="text-sm font-semibold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>¿Todo lleno o no te cuadra ninguna hora?</p>
-              <p className="text-xs mb-3" style={{ color: C.muted }}>Déjame tus datos (arriba) y qué te gustaría probar, y te aviso en cuanto abra una nueva fecha.</p>
-              <select value={esperaInteres} onChange={e => setEsperaInteres(e.target.value)} style={{ ...inputStyle, marginBottom: "10px" }}>
-                <option value="">¿Qué te gustaría probar?</option>
-                <option value="barre">Barre Fit</option>
-                <option value="pilates">Pilates Mat</option>
-                <option value="ninas">Ballet para niñas</option>
-              </select>
-              {esperaError && <p className="text-sm text-red-600 mb-2">{esperaError}</p>}
-              <button
-                onClick={handleEspera}
-                disabled={!esperaValido || esperaEnviando}
-                className="w-full py-3 rounded-2xl text-sm font-semibold transition-all"
-                style={{ backgroundColor: esperaValido ? C.burgundy : C.border, color: "#fff8f5", fontFamily: fSans, cursor: esperaValido ? "pointer" : "not-allowed", opacity: esperaEnviando ? 0.7 : 1 }}
-              >
-                {esperaEnviando ? "Apuntando..." : "Apuntarme a la lista de espera"}
-              </button>
-            </>
-          )}
         </div>
       </div>
     </div>

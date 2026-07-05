@@ -639,7 +639,7 @@ export default function AdminDashboard() {
       body: JSON.stringify({ id, asistio }),
     });
   };
-  type EsperaRow = { id: string; created_at: string; nombre: string; telefono: string; email: string | null; interes: string; avisado: boolean };
+  type EsperaRow = { id: string; created_at: string; nombre: string; telefono: string; email: string | null; slot_id: string; avisado: boolean };
   const [jornadaEspera, setJornadaEspera] = useState<EsperaRow[]>([]);
   const marcarAvisado = async (id: string, avisado: boolean) => {
     setJornadaEspera(prev => prev.map(r => r.id === id ? { ...r, avisado } : r));
@@ -4215,17 +4215,15 @@ export default function AdminDashboard() {
                     <p className="text-sm px-4 py-3 rounded-2xl" style={{ color: "#bcb0ab", backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
                       Aún no hay nadie en lista de espera. Aparecerán aquí en cuanto una hora se llene y alguien se apunte.
                     </p>
-                  ) : (["barre", "pilates", "ninas"] as const).map(interes => {
-                      const label = { barre: "Barre Fit", pilates: "Pilates Mat", ninas: "Ballet niñas" }[interes];
-                      const gente = jornadaEspera.filter(r => r.interes === interes);
-                      if (gente.length === 0) return null;
+                  ) : SLOTS.filter(slot => jornadaEspera.some(r => r.slot_id === slot.id)).map(slot => {
+                      const gente = jornadaEspera.filter(r => r.slot_id === slot.id);
                       const listo = gente.length >= 10;
                       return (
-                        <div key={interes} className="rounded-2xl border overflow-hidden mb-2.5" style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff" }}>
+                        <div key={slot.id} className="rounded-2xl border overflow-hidden mb-2.5" style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff" }}>
                           <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#fff0eb" }}>
-                            <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>{label}</p>
+                            <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>{slot.bloque === "ninas" ? "🌅" : "🌆"} {slot.titulo} · {slot.hora}</p>
                             <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: listo ? "#e7f7ec" : "#f4f0ee", color: listo ? "#1f7a3d" : "#89726c" }}>
-                              {gente.length} en espera{listo ? " · ¡abre 2ª fecha!" : ""}
+                              {gente.length} en espera{listo ? " · ¡abre otra a esta hora!" : ""}
                             </span>
                           </div>
                           {gente.map(r => (
