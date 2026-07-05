@@ -16,7 +16,7 @@
 //   node tools/articulos/generar-articulo.mjs --draft   # lo deja en borrador
 //   node tools/articulos/generar-articulo.mjs --dry      # no toca WordPress
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -111,6 +111,15 @@ async function enviarEmail(subject, html) {
   } catch (e) { console.log('email err:', e.message); }
 }
 
+// Carga el keyword research de una disciplina (keyword-research/<servicio>*.md), si existe.
+function researchFor(servicio) {
+  try {
+    const dir = join(HERE, 'keyword-research');
+    const f = readdirSync(dir).find(n => n.toLowerCase().startsWith(servicio) && n.endsWith('.md'));
+    return f ? readFileSync(join(dir, f), 'utf8').slice(0, 4000) : '';
+  } catch { return ''; }
+}
+
 // ---------- Generación con Claude ----------
 async function generar(tema) {
   const system = [
@@ -138,7 +147,7 @@ async function generar(tema) {
     '}',
   ].join('\n');
 
-  const userMsg = [
+  let userMsg = [
     `Escribe el artículo para el blog sobre este tema:`,
     `- Keyword objetivo (secundaria, informacional): "${tema.keyword}"`,
     `- Título orientativo: "${tema.titulo}"`,
@@ -147,6 +156,12 @@ async function generar(tema) {
     ``,
     `Público: madres que buscan actividad para su hija (ballet) o mujeres adultas interesadas (pilates/barre). Aporta valor real y responde lo que de verdad se preguntan.`,
   ].join('\n');
+
+  // Guía de keyword research por disciplina (si existe). El modelo puede apartarse
+  // de ella cuando, como experta, tenga un enfoque mejor.
+  const research = researchFor(tema.servicio);
+  if (research) userMsg += `\n\n--- KEYWORD RESEARCH: búsquedas reales sobre ${tema.servicio} (guía) ---\n${research}\n--- fin research ---\n`
+    + 'Prioriza responder estas preguntas y usar estos términos donde encajen de forma natural. PERO si como experta ves un enfoque, una duda o una estructura más útil para el lector, puedes saltarte esta guía.';
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
