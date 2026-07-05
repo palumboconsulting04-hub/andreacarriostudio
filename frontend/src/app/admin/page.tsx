@@ -648,6 +648,12 @@ export default function AdminDashboard() {
       body: JSON.stringify({ id, tipo: "espera", avisado }),
     });
   };
+  const [jornadaDeleteId, setJornadaDeleteId] = useState<string | null>(null);
+  const handleDeleteJornada = async (id: string) => {
+    setJornadaData(prev => prev.filter(r => r.id !== id));
+    setJornadaDeleteId(null);
+    await fetch(`/api/admin/reservas-jornada?id=${id}`, { method: "DELETE" });
+  };
 
   const handleDeleteAdulta = async (id: string) => {
     const res = await fetch(`/api/admin/puertas-abiertas-adultas?id=${id}`, { method: "DELETE" });
@@ -4187,11 +4193,22 @@ export default function AdminDashboard() {
                                     <p className="text-xs truncate" style={{ color: "#89726c" }}>{r.telefono}{r.email ? ` · ${r.email}` : ""}</p>
                                   </div>
                                   <div className="flex items-center gap-1.5 shrink-0">
-                                    <a href={waHref(r.telefono, r.nombre)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp">
-                                      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
-                                    </a>
-                                    <button onClick={() => marcarAsistio(r.id, r.asistio === true ? null : true)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === true ? "#1f7a3d" : "#e7f7ec", color: r.asistio === true ? "#ffffff" : "#1f7a3d" }} title="Marcar que vino">✔</button>
-                                    <button onClick={() => marcarAsistio(r.id, r.asistio === false ? null : false)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === false ? "#b71c1c" : "#fde7e7", color: r.asistio === false ? "#ffffff" : "#b71c1c" }} title="Marcar que no vino">✖</button>
+                                    {jornadaDeleteId === r.id ? (
+                                      <>
+                                        <span className="text-xs" style={{ color: "#b71c1c" }}>¿Borrar?</span>
+                                        <button onClick={() => handleDeleteJornada(r.id)} className="px-2.5 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: "#b71c1c" }}>Sí</button>
+                                        <button onClick={() => setJornadaDeleteId(null)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#f0eae6", color: "#56423d" }}>No</button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <a href={waHref(r.telefono, r.nombre)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp">
+                                          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
+                                        </a>
+                                        <button onClick={() => marcarAsistio(r.id, r.asistio === true ? null : true)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === true ? "#1f7a3d" : "#e7f7ec", color: r.asistio === true ? "#ffffff" : "#1f7a3d" }} title="Marcar que vino">✔</button>
+                                        <button onClick={() => marcarAsistio(r.id, r.asistio === false ? null : false)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === false ? "#b71c1c" : "#fde7e7", color: r.asistio === false ? "#ffffff" : "#b71c1c" }} title="Marcar que no vino">✖</button>
+                                        <button onClick={() => setJornadaDeleteId(r.id)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }} title="Borrar reserva"><Icon name="delete" style={{ fontSize: "16px" }} /></button>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               )))}
