@@ -21,6 +21,10 @@ export default function ReservarJornada() {
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [esperaInteres, setEsperaInteres] = useState("");
+  const [esperaEnviando, setEsperaEnviando] = useState(false);
+  const [esperaEnviado, setEsperaEnviado] = useState(false);
+  const [esperaError, setEsperaError] = useState("");
 
   const cargar = () => {
     fetch("/api/reservar-jornada")
@@ -36,6 +40,26 @@ export default function ReservarJornada() {
 
   const emailOk = /\S+@\S+\.\S+/.test(email.trim());
   const formValido = nombre.trim() && telefono.trim() && emailOk && slotId;
+  const esperaValido = nombre.trim() && telefono.trim() && emailOk && esperaInteres;
+
+  const handleEspera = async () => {
+    if (!esperaValido || esperaEnviando) return;
+    setEsperaEnviando(true);
+    setEsperaError("");
+    try {
+      const res = await fetch("/api/lista-espera-jornada", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: nombre.trim(), telefono: telefono.trim(), email: email.trim(), interes: esperaInteres }),
+      });
+      if (!res.ok) throw new Error();
+      setEsperaEnviado(true);
+    } catch {
+      setEsperaError("Ha habido un problema. Inténtalo de nuevo.");
+    } finally {
+      setEsperaEnviando(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!formValido || enviando) return;
@@ -151,6 +175,36 @@ export default function ReservarJornada() {
           >
             {enviando ? "Reservando..." : slotId ? "Reservar esta hora" : "Elige una hora arriba"}
           </button>
+        </div>
+
+        {/* Lista de espera: para cuando tu disciplina está llena o no te cuadra */}
+        <div className="rounded-3xl p-5 mt-4" style={{ backgroundColor: "#fff0eb", border: `1px solid ${C.border}` }}>
+          {esperaEnviado ? (
+            <p className="text-sm text-center" style={{ color: C.brown }}>
+              ✅ ¡Apuntada a la lista de espera! Te avisaré en cuanto abra una nueva fecha 💕
+            </p>
+          ) : (
+            <>
+              <p className="text-sm font-semibold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>¿Todo lleno o no te cuadra ninguna hora?</p>
+              <p className="text-xs mb-3" style={{ color: C.muted }}>Déjame tus datos (arriba) y qué te gustaría probar, y te aviso en cuanto abra una nueva fecha.</p>
+              <select value={esperaInteres} onChange={e => setEsperaInteres(e.target.value)} style={{ ...inputStyle, marginBottom: "10px" }}>
+                <option value="">¿Qué te gustaría probar?</option>
+                <option value="barre">Barre Fit</option>
+                <option value="pilates">Pilates Mat</option>
+                <option value="ambas">Las dos (Barre y Pilates)</option>
+                <option value="ninas">Ballet para niñas</option>
+              </select>
+              {esperaError && <p className="text-sm text-red-600 mb-2">{esperaError}</p>}
+              <button
+                onClick={handleEspera}
+                disabled={!esperaValido || esperaEnviando}
+                className="w-full py-3 rounded-2xl text-sm font-semibold transition-all"
+                style={{ backgroundColor: esperaValido ? C.burgundy : C.border, color: "#fff8f5", fontFamily: fSans, cursor: esperaValido ? "pointer" : "not-allowed", opacity: esperaEnviando ? 0.7 : 1 }}
+              >
+                {esperaEnviando ? "Apuntando..." : "Apuntarme a la lista de espera"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

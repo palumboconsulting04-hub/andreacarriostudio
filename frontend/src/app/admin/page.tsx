@@ -639,6 +639,15 @@ export default function AdminDashboard() {
       body: JSON.stringify({ id, asistio }),
     });
   };
+  type EsperaRow = { id: string; created_at: string; nombre: string; telefono: string; email: string | null; interes: string; avisado: boolean };
+  const [jornadaEspera, setJornadaEspera] = useState<EsperaRow[]>([]);
+  const marcarAvisado = async (id: string, avisado: boolean) => {
+    setJornadaEspera(prev => prev.map(r => r.id === id ? { ...r, avisado } : r));
+    await fetch("/api/admin/reservas-jornada", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, tipo: "espera", avisado }),
+    });
+  };
 
   const handleDeleteAdulta = async (id: string) => {
     const res = await fetch(`/api/admin/puertas-abiertas-adultas?id=${id}`, { method: "DELETE" });
@@ -1036,8 +1045,11 @@ export default function AdminDashboard() {
     setJornadaLoading(true);
     fetch("/api/admin/reservas-jornada")
       .then(r => r.json())
-      .then(({ data }) => setJornadaData((data ?? []) as JornadaRow[]))
-      .catch(() => setJornadaData([]))
+      .then(({ data, espera }) => {
+        setJornadaData((data ?? []) as JornadaRow[]);
+        setJornadaEspera((espera ?? []) as EsperaRow[]);
+      })
+      .catch(() => { setJornadaData([]); setJornadaEspera([]); })
       .finally(() => setJornadaLoading(false));
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -4190,6 +4202,46 @@ export default function AdminDashboard() {
                     </div>
                   );
                 })}
+
+                {/* Lista de espera: cuando una disciplina llega a ~10, abrir 2ª fecha */}
+                {jornadaEspera.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest mb-1 mt-3" style={{ color: "#89726c" }}>
+                      ⏳ Lista de espera ({jornadaEspera.length})
+                    </p>
+                    <p className="text-xs mb-3" style={{ color: "#89726c" }}>
+                      Cuando una disciplina llegue a ~10 en espera, merece la pena abrir una 2ª fecha (ya tienes la clase llena).
+                    </p>
+                    {(["barre", "pilates", "ambas", "ninas"] as const).map(interes => {
+                      const label = { barre: "Barre Fit", pilates: "Pilates Mat", ambas: "Las dos", ninas: "Ballet niñas" }[interes];
+                      const gente = jornadaEspera.filter(r => r.interes === interes);
+                      if (gente.length === 0) return null;
+                      const listo = gente.length >= 10;
+                      return (
+                        <div key={interes} className="rounded-2xl border overflow-hidden mb-2.5" style={{ borderColor: "#dcc1b9", backgroundColor: "#ffffff" }}>
+                          <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#fff0eb" }}>
+                            <p className="font-semibold text-sm" style={{ color: "#7d2b13" }}>{label}</p>
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: listo ? "#e7f7ec" : "#f4f0ee", color: listo ? "#1f7a3d" : "#89726c" }}>
+                              {gente.length} en espera{listo ? " · ¡abre 2ª fecha!" : ""}
+                            </span>
+                          </div>
+                          {gente.map(r => (
+                            <div key={r.id} className="px-4 py-2.5 flex items-center justify-between gap-3" style={{ borderTop: "1px solid #f0ddd5" }}>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate" style={{ color: "#25190f" }}>{r.avisado ? "📩 " : ""}{r.nombre}</p>
+                                <p className="text-xs truncate" style={{ color: "#89726c" }}>{r.telefono}{r.email ? ` · ${r.email}` : ""}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <a href={waHref(r.telefono, r.nombre)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg></a>
+                                <button onClick={() => marcarAvisado(r.id, !r.avisado)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.avisado ? "#1b4f9c" : "#e6efff", color: r.avisado ? "#ffffff" : "#1b4f9c" }} title="Marcar como avisada">📩</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </section>
             );
           })()}
