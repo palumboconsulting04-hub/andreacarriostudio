@@ -60,6 +60,10 @@ const SERVICIOS = {
   barre:   { url: `${WP_BASE}/barre-fit-en-valencia/`,             anchor: 'clases de Barre Fit en Valencia' },
 };
 
+// Página de reservas (funnel de inscripción). Se usa como destino del CTA cuando
+// el tema tiene intención alta (temas.json -> "destino": "reservas").
+const RESERVAS = process.env.RESERVAS_URL || 'https://reservas.andreacarriostudio.es/';
+
 // ---------- Sistema de diseño (mismo que los artículos ya publicados) ----------
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const link = (url, a) => `<a href="${url}" style="color:#7d2b13;font-weight:600;">${esc(a)}</a>`;
@@ -68,7 +72,12 @@ const h2 = t => `<h2 style="color:#7d2b13;font-size:25px;line-height:1.25;margin
 const p = t => `<p style="font-size:16px;line-height:1.75;color:#3a2c27;">${t}</p>`;
 const card = (e, ti, tx) => `<div style="background:#fff8f5;border:1px solid #f0d9cf;border-left:4px solid #7d2b13;border-radius:12px;padding:14px 18px;margin:0 0 10px;"><span style="font-size:15px;font-weight:700;color:#7d2b13;">${esc(e)}&nbsp; ${esc(ti)}</span><span style="display:block;margin-top:4px;color:#56423d;line-height:1.6;">${esc(tx)}</span></div>`;
 const quote = t => `<div style="background:#fbeee9;border-radius:12px;padding:18px 22px;margin:16px 0;font-style:italic;color:#7d2b13;border-left:4px solid #d98c6a;">${esc(t)}</div>`;
-const cta = (url) => `<div style="background:linear-gradient(135deg,#7d2b13,#9a3a1d);border-radius:16px;padding:28px 24px;margin:30px 0 12px;text-align:center;"><p style="margin:0 0 4px;color:#ffdbd1;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">¿Damos el primer paso?</p><p style="margin:0 0 18px;color:#fff8f5;font-size:18px;line-height:1.5;">Descubre horarios, edades y precios, y ven a conocer el estudio.</p><a href="${url}" style="display:inline-block;background:#fff8f5;color:#7d2b13;padding:15px 34px;border-radius:9999px;text-decoration:none;font-weight:700;font-size:16px;">Ver más →</a></div>`;
+const cta = (url, tipo = 'servicio') => {
+  const t = tipo === 'reservas'
+    ? { k: '¿Lista para empezar?', s: 'Reserva tu plaza en un minuto, sin complicaciones.', b: 'Reservar mi plaza →' }
+    : { k: '¿Damos el primer paso?', s: 'Descubre horarios, edades y precios, y ven a conocer el estudio.', b: 'Ver más →' };
+  return `<div style="background:linear-gradient(135deg,#7d2b13,#9a3a1d);border-radius:16px;padding:28px 24px;margin:30px 0 12px;text-align:center;"><p style="margin:0 0 4px;color:#ffdbd1;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">${t.k}</p><p style="margin:0 0 18px;color:#fff8f5;font-size:18px;line-height:1.5;">${t.s}</p><a href="${url}" style="display:inline-block;background:#fff8f5;color:#7d2b13;padding:15px 34px;border-radius:9999px;text-decoration:none;font-weight:700;font-size:16px;">${t.b}</a></div>`;
+};
 const firma = () => `<p style="font-size:16px;color:#3a2c27;">Un abrazo. 💗<br><strong>Andrea</strong></p>`;
 const faqBlock = (faqs) => {
   const vis = h2('Preguntas frecuentes') + faqs.map(f => `<div style="border:1px solid #eaddd6;border-radius:12px;padding:14px 18px;margin:0 0 10px;"><p style="margin:0 0 6px;font-weight:700;color:#7d2b13;">${esc(f.q)}</p><p style="margin:0;color:#56423d;line-height:1.6;">${esc(f.a)}</p></div>`).join('');
@@ -178,7 +187,7 @@ async function generar(tema) {
 }
 
 // ---------- Render + validación ----------
-function construir(art, servicio) {
+function construir(art, servicio, destino) {
   const partes = [introBox(esc(art.intro))];
   for (const b of (art.bloques || [])) {
     if (b.h2) partes.push(h2(b.h2));
@@ -186,10 +195,12 @@ function construir(art, servicio) {
     for (const t of (b.tarjetas || [])) partes.push(card(t.emoji || '•', t.titulo || '', t.texto || ''));
   }
   if (art.cita && art.cita.trim()) partes.push(quote(art.cita));
-  // Enlace interno contextual + CTA -> página de servicio (los pone el sistema).
+  // Enlace interno contextual -> siempre a la página de servicio (info).
   partes.push(p(`Si quieres ver horarios, edades y precios, aquí tienes toda la información de las ${link(servicio.url, servicio.anchor)}.`));
   partes.push(faqBlock(art.faqs || []));
-  partes.push(cta(servicio.url));
+  // CTA final: a reservas si el tema es de intención alta; si no, a la página de servicio.
+  const aReservas = destino === 'reservas';
+  partes.push(cta(aReservas ? RESERVAS : servicio.url, aReservas ? 'reservas' : 'servicio'));
   partes.push(firma());
   const html = `<div style="max-width:740px;margin:0 auto;">${partes.join('')}</div>`;
   const txt = html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ');
@@ -219,7 +230,7 @@ function construir(art, servicio) {
     let art, palabras = 0, html = '', motivo = '';
     try {
       art = await generar(tema);
-      const r = construir(art, servicio);
+      const r = construir(art, servicio, tema.destino);
       html = r.html; palabras = r.palabras;
       if (palabras < 600) motivo = `artículo corto (${palabras} palabras)`;
       if (!art.faqs || art.faqs.length < 3) motivo = 'faltan preguntas frecuentes';
