@@ -191,7 +191,6 @@ export default function ReservarJornada() {
                 <option value="">¿Qué te gustaría probar?</option>
                 <option value="barre">Barre Fit</option>
                 <option value="pilates">Pilates Mat</option>
-                <option value="ambas">Las dos (Barre y Pilates)</option>
                 <option value="ninas">Ballet para niñas</option>
               </select>
               {esperaError && <p className="text-sm text-red-600 mb-2">{esperaError}</p>}

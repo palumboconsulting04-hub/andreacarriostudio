@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-const INTERES_VALIDO = new Set(["barre", "pilates", "ambas", "ninas"]);
+const INTERES_VALIDO = new Set(["barre", "pilates", "ninas"]);
 
 function normTel(t: string | null | undefined): string {
   let d = (t || "").replace(/\D/g, "");

@@ -4215,8 +4215,8 @@ export default function AdminDashboard() {
                     <p className="text-sm px-4 py-3 rounded-2xl" style={{ color: "#bcb0ab", backgroundColor: "#fff8f5", border: "1px solid #dcc1b9" }}>
                       Aún no hay nadie en lista de espera. Aparecerán aquí en cuanto una hora se llene y alguien se apunte.
                     </p>
-                  ) : (["barre", "pilates", "ambas", "ninas"] as const).map(interes => {
-                      const label = { barre: "Barre Fit", pilates: "Pilates Mat", ambas: "Las dos", ninas: "Ballet niñas" }[interes];
+                  ) : (["barre", "pilates", "ninas"] as const).map(interes => {
+                      const label = { barre: "Barre Fit", pilates: "Pilates Mat", ninas: "Ballet niñas" }[interes];
                       const gente = jornadaEspera.filter(r => r.interes === interes);
                       if (gente.length === 0) return null;
                       const listo = gente.length >= 10;
