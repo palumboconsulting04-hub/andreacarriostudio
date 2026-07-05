@@ -166,6 +166,30 @@ export default function ReservarJornada() {
             {enviando ? "Enviando..." : !slotId ? "Elige una hora arriba" : selFull ? "Apuntarme a la lista de espera" : "Reservar esta hora"}
           </button>
         </div>
+
+        {/* Preguntas frecuentes (plegable, para no distraer de reservar) */}
+        <div className="mt-7">
+          <p className="text-sm font-bold mb-3 text-center" style={{ color: C.burgundy, fontFamily: fSans }}>Preguntas frecuentes</p>
+          <div className="space-y-2">
+            {[
+              ["¿Para quién es esta jornada?", "Para las que os estáis planteando de verdad empezar en septiembre y queréis probar y conocer el estudio antes de decidir. Si es tu caso, este es tu día 💛"],
+              ["¿Es gratis?", "Sí, totalmente. Vienes, pruebas tu clase y conoces el estudio, sin pagar nada."],
+              ["¿Cuánto dura?", "Una horita: la clase de prueba más un ratito de picoteo y charla."],
+              ["¿Qué llevo?", "Solo ropa cómoda. El material lo tengo yo listo en el estudio."],
+              ["¿Y si no encuentro hueco en mi hora?", "Apúntate a la lista de espera de esa hora y te aviso en cuanto abra otra."],
+              ["¿Tengo que apuntarme ese día?", "Para nada, sin compromiso. Y si te encaja, tendrás una oferta especial para dejar tu plaza."],
+              ["¿Dónde es?", "En Calle Motilla del Palancar 34, en la zona de Alfahuir (Valencia), a 5 minutos del Centro Comercial Arena."],
+            ].map(([q, a]) => (
+              <details key={q} className="rounded-2xl px-4 py-3" style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}>
+                <summary className="cursor-pointer text-sm font-semibold flex justify-between items-center gap-2" style={{ color: C.burgundy, fontFamily: fSans, listStyle: "none" }}>
+                  {q}
+                  <span style={{ color: C.muted, fontSize: "0.7rem" }}>▼</span>
+                </summary>
+                <p className="text-sm mt-2 leading-relaxed" style={{ color: C.brown }}>{a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
