@@ -240,12 +240,20 @@ function construir(art, servicio) {
 
     console.log(`${status.toUpperCase()} #${post.id} · ${palabras} palabras · ${post.link}`);
 
+    // El artículo entero va DENTRO del correo (sin el <script> del schema, que
+    // los clientes de email ignoran). El enlace de WordPress queda al pie.
+    const htmlEmail = html.replace(/<script[\s\S]*?<\/script>/g, '');
+    const editar = `${WP_BASE}/wp-admin/post.php?post=${post.id}&action=edit`;
+
     if (forzarBorrador) {
-      await enviarEmail(`⚠️ Artículo guardado como BORRADOR: ${art.titulo}`,
-        `<p>El artículo <strong>${esc(art.titulo)}</strong> se ha guardado como <strong>borrador</strong> (no publicado) por: <em>${esc(motivo || 'forzado --draft')}</em>.</p><p>Revísalo aquí: <a href="${WP_BASE}/wp-admin/post.php?post=${post.id}&action=edit">editar en WordPress</a>.</p>`);
+      await enviarEmail(`⚠️ BORRADOR (revísalo): ${art.titulo}`,
+        `<div style="background:#fff3cd;border:1px solid #e0c97a;border-radius:8px;padding:12px 16px;font-family:sans-serif;color:#665200;margin-bottom:14px;">⚠️ Guardado como <strong>borrador</strong> (no publicado) por: <em>${esc(motivo || 'forzado --draft')}</em>. Aquí lo tienes para revisarlo:</div>`
+        + htmlEmail
+        + `<hr><p style="font-family:sans-serif;font-size:13px;color:#8a8a8a;">${palabras} palabras · keyword: ${esc(tema.keyword)} · <a href="${editar}">abrir en WordPress</a></p>`);
     } else {
-      await enviarEmail(`✅ Artículo publicado: ${art.titulo}`,
-        `<p>Se ha publicado automáticamente <strong>${esc(art.titulo)}</strong> (${palabras} palabras).</p><p>Keyword: <code>${esc(tema.keyword)}</code><br>Enlace: <a href="${post.link}">${post.link}</a></p><p>Si no te convence, puedes editarlo o pasarlo a borrador en WordPress.</p>`);
+      await enviarEmail(`✅ Publicado: ${art.titulo}`,
+        htmlEmail
+        + `<hr><p style="font-family:sans-serif;font-size:13px;color:#8a8a8a;">Publicado automáticamente · ${palabras} palabras · keyword: ${esc(tema.keyword)} · <a href="${post.link}">ver en la web</a> · <a href="${editar}">editar en WordPress</a></p>`);
     }
   } catch (e) {
     console.error('FALLO:', e.message);
