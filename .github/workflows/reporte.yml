@@ -4,9 +4,11 @@ name: Informe automático
 # 4 envíos al día. GitHub usa UTC; en España (verano UTC+2) equivale a las
 # 8:00, 13:00, 18:00 y 22:00. En invierno se desplaza 1 h.
 on:
-  schedule:
-    - cron: '0 6,11,16,20 * * *'   # 8, 13, 18, 22 h (España, verano)
-  workflow_dispatch:      # permite lanzarlo a mano desde la pestaña "Actions"
+  # Envío automático DESACTIVADO (5-jul): sin campañas activas no tiene sentido.
+  # Para reactivarlo, descomenta estas dos líneas.
+  # schedule:
+  #   - cron: '0 6,11,16,20 * * *'   # 8, 13, 18, 22 h (España, verano)
+  workflow_dispatch:      # se puede seguir lanzando a mano desde la pestaña "Actions"
     inputs:
       forzar_analisis:
         description: 'Forzar el análisis IA (Opus) en esta ejecución de prueba'
