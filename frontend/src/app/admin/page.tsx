@@ -475,6 +475,36 @@ export default function AdminDashboard() {
   const [asistenciaResumen, setAsistenciaResumen] = useState<{ presente: number; falta: number; justificada: number; total: number; porcentaje: number | null } | null>(null);
   const [usuariosProfile, setUsuariosProfile] = useState<IscrizioneDetalle | null>(null);
   const [usuariosProfileLoading, setUsuariosProfileLoading] = useState(false);
+  // Edición del contacto (email / teléfono) en la ficha de Clientas.
+  const [editContacto, setEditContacto] = useState(false);
+  const [formContacto, setFormContacto] = useState({ email: "", telefono: "" });
+  const [savingContacto, setSavingContacto] = useState(false);
+  const [contactoError, setContactoError] = useState("");
+
+  const guardarContacto = async () => {
+    if (!usuariosProfile) return;
+    const email = formContacto.email.trim().toLowerCase();
+    const telefono = formContacto.telefono.trim();
+    if (!/\S+@\S+\.\S+/.test(email)) { setContactoError("El correo no es válido."); return; }
+    setSavingContacto(true);
+    setContactoError("");
+    try {
+      const res = await fetch("/api/admin/iscrizioni", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: usuariosProfile.id, email, telefono }),
+      });
+      if (!res.ok) throw new Error();
+      setUsuariosProfile(p => (p ? { ...p, email, telefono: telefono || null } : p));
+      setEditContacto(false);
+    } catch {
+      setContactoError("No se pudo guardar. Inténtalo de nuevo.");
+    } finally {
+      setSavingContacto(false);
+    }
+  };
+  // Al cambiar de ficha de cliente, salir del modo edición.
+  useEffect(() => { setEditContacto(false); setContactoError(""); }, [usuariosProfile?.id]);
 
   // ── Puertas Abiertas state ──
   type PuertaRow = {
@@ -6488,34 +6518,85 @@ export default function AdminDashboard() {
 
                   {/* Contacto */}
                   <div className="space-y-2">
-                    <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Contacto</p>
-                    <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
-                      <Icon name="mail" className="text-base" style={{ color: "#7d2b13" }} />
-                      <p className="text-sm break-all flex-1" style={{ color: "#25190f" }}>{usuariosProfile.email}</p>
-                      <button
-                        onClick={() => { navigator.clipboard?.writeText(usuariosProfile.email); setCopiedEmail(true); setTimeout(() => setCopiedEmail(false), 1500); }}
-                        className="p-1.5 rounded-lg hover:bg-[#fff1e9] transition-colors shrink-0"
-                        title="Copiar email" aria-label="Copiar email"
-                      >
-                        <Icon name={copiedEmail ? "check" : "content_copy"} className="text-base" style={{ color: copiedEmail ? "#2e7d32" : "#7d2b13" }} />
-                      </button>
-                      <a href={`mailto:${usuariosProfile.email}`} className="p-1.5 rounded-lg hover:bg-[#fff1e9] transition-colors shrink-0" title="Enviar email" aria-label="Enviar email">
-                        <Icon name="send" className="text-base" style={{ color: "#7d2b13" }} />
-                      </a>
-                    </div>
-                    {usuariosProfile.telefono && (
-                      <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
-                        <Icon name="phone" className="text-base" style={{ color: "#7d2b13" }} />
-                        <p className="text-sm flex-1" style={{ color: "#25190f" }}>{usuariosProfile.telefono}</p>
-                        <a
-                          href={whatsappHref(usuariosProfile.telefono)} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0"
-                          style={{ backgroundColor: "#25d366", color: "#fff" }}
-                          title="Escribir por WhatsApp"
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>Contacto</p>
+                      {!editContacto && (
+                        <button
+                          onClick={() => { setFormContacto({ email: usuariosProfile.email ?? "", telefono: usuariosProfile.telefono ?? "" }); setContactoError(""); setEditContacto(true); }}
+                          className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "#7d2b13" }}
+                          title="Editar teléfono y correo"
                         >
-                          <Icon name="chat" className="text-sm" /> WhatsApp
-                        </a>
+                          <Icon name="edit" className="text-sm" /> Editar
+                        </button>
+                      )}
+                    </div>
+                    {editContacto ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                          <Icon name="mail" className="text-base" style={{ color: "#7d2b13" }} />
+                          <input
+                            type="email" value={formContacto.email}
+                            onChange={e => setFormContacto(f => ({ ...f, email: e.target.value }))}
+                            placeholder="Correo" className="text-sm flex-1 bg-transparent outline-none" style={{ color: "#25190f" }}
+                          />
+                        </div>
+                        <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                          <Icon name="phone" className="text-base" style={{ color: "#7d2b13" }} />
+                          <input
+                            type="tel" value={formContacto.telefono}
+                            onChange={e => setFormContacto(f => ({ ...f, telefono: e.target.value }))}
+                            placeholder="Teléfono (WhatsApp)" className="text-sm flex-1 bg-transparent outline-none" style={{ color: "#25190f" }}
+                          />
+                        </div>
+                        {contactoError && <p className="text-xs" style={{ color: "#b71c1c" }}>{contactoError}</p>}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={guardarContacto} disabled={savingContacto}
+                            className="px-3 py-1.5 rounded-full text-xs font-semibold"
+                            style={{ backgroundColor: "#7d2b13", color: "#fff8f5", opacity: savingContacto ? 0.7 : 1 }}
+                          >
+                            {savingContacto ? "Guardando…" : "Guardar"}
+                          </button>
+                          <button
+                            onClick={() => { setEditContacto(false); setContactoError(""); }}
+                            className="px-3 py-1.5 rounded-full text-xs font-semibold border"
+                            style={{ borderColor: "#dcc1b9", color: "#89726c" }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                          <Icon name="mail" className="text-base" style={{ color: "#7d2b13" }} />
+                          <p className="text-sm break-all flex-1" style={{ color: "#25190f" }}>{usuariosProfile.email}</p>
+                          <button
+                            onClick={() => { navigator.clipboard?.writeText(usuariosProfile.email); setCopiedEmail(true); setTimeout(() => setCopiedEmail(false), 1500); }}
+                            className="p-1.5 rounded-lg hover:bg-[#fff1e9] transition-colors shrink-0"
+                            title="Copiar email" aria-label="Copiar email"
+                          >
+                            <Icon name={copiedEmail ? "check" : "content_copy"} className="text-base" style={{ color: copiedEmail ? "#2e7d32" : "#7d2b13" }} />
+                          </button>
+                          <a href={`mailto:${usuariosProfile.email}`} className="p-1.5 rounded-lg hover:bg-[#fff1e9] transition-colors shrink-0" title="Enviar email" aria-label="Enviar email">
+                            <Icon name="send" className="text-base" style={{ color: "#7d2b13" }} />
+                          </a>
+                        </div>
+                        {usuariosProfile.telefono && (
+                          <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                            <Icon name="phone" className="text-base" style={{ color: "#7d2b13" }} />
+                            <p className="text-sm flex-1" style={{ color: "#25190f" }}>{usuariosProfile.telefono}</p>
+                            <a
+                              href={whatsappHref(usuariosProfile.telefono)} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0"
+                              style={{ backgroundColor: "#25d366", color: "#fff" }}
+                              title="Escribir por WhatsApp"
+                            >
+                              <Icon name="chat" className="text-sm" /> WhatsApp
+                            </a>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 

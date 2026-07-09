@@ -48,3 +48,28 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ data: data ?? [] });
 }
+
+// PATCH → editar el contacto (email / teléfono) de una inscripción. Solo admin.
+export async function PATCH(req: NextRequest) {
+  if (!(await isAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const body = await req.json().catch(() => null);
+  const id = body?.id;
+  if (!id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
+
+  const patch: { email?: string; telefono?: string | null } = {};
+  if (typeof body.email === "string") {
+    const email = body.email.trim().toLowerCase();
+    if (!/\S+@\S+\.\S+/.test(email)) return NextResponse.json({ error: "Correo no válido" }, { status: 400 });
+    patch.email = email;
+  }
+  if ("telefono" in body) {
+    const tel = typeof body.telefono === "string" ? body.telefono.trim() : "";
+    patch.telefono = tel || null;
+  }
+  if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
+
+  const { data, error } = await supabaseAdmin.from("iscrizioni").update(patch).eq("id", id).select("id, email, telefono").single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ data });
+}
