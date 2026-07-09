@@ -133,7 +133,7 @@ export default function ComprarBono() {
                       ))}
                     </div>
                     <div className="mt-auto flex flex-col gap-1.5">
-                      <button onClick={() => setSel(b)} className="text-xs font-bold py-3 rounded-full uppercase tracking-wider transition-transform hover:scale-[1.02]" style={{ backgroundColor: C.burgundy, color: C.cream }}>{activo ? "Elegido ✓" : "Elegir"}</button>
+                      <button onClick={() => setSel(activo ? null : b)} className="text-xs font-bold py-3 rounded-full uppercase tracking-wider transition-transform hover:scale-[1.02]" style={{ backgroundColor: C.burgundy, color: C.cream }}>{activo ? "Deseleccionar ✕" : "Elegir"}</button>
                       <button onClick={() => setDetalle(b)} className="text-xs font-semibold py-1.5" style={{ color: C.muted, background: "none" }}>Ver detalles</button>
                     </div>
                   </div>
