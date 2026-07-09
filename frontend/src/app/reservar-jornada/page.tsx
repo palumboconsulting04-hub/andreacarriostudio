@@ -101,7 +101,7 @@ export default function ReservarJornada() {
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Me hace muchísima ilusión que pueda acompañarnos ese día y conocer el estudio.</p>
               <div className="rounded-2xl px-4 py-3 mb-4" style={{ backgroundColor: C.blush }}>
                 <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: Jueves 24 de julio</p>
-                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>⏰ Horario: {s?.hora}</p>
+                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>⏰ Horario: {s?.titulo} · {s?.hora}</p>
               </div>
               <p className="text-sm font-bold mb-1.5" style={{ color: C.dark }}>¿Qué necesita traer?</p>
               <p className="text-sm leading-relaxed mb-1" style={{ color: C.brown }}>🩰 Ropa cómoda con la que pueda moverse con facilidad.</p>
@@ -110,8 +110,11 @@ export default function ReservarJornada() {
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Mientras las niñas disfrutan de la clase, podréis esperar tranquilamente en la recepción. Al finalizar tendremos un ratito para conocernos, enseñaros el estudio, resolver cualquier duda sobre el próximo curso y compartir un pequeño detalle preparado con mucho cariño.</p>
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Si finalmente no pudierais asistir, os agradecería muchísimo que me avisarais con la mayor antelación posible para poder ofrecer esa plaza a otra niña.</p>
               <p className="text-sm leading-relaxed mb-4" style={{ color: C.brown }}>¡Tengo muchísimas ganas de conoceros y daros la bienvenida a Andrea Carrió Studio! 🤎</p>
-              <p className="text-sm font-semibold" style={{ color: C.burgundy }}>Andrea Carrió</p>
-              <a href="https://wa.me/34614679291" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold" style={{ color: "#1f7a3d" }}>📱 WhatsApp 614679291</a>
+              <p className="text-sm font-semibold mb-3" style={{ color: C.burgundy }}>Andrea Carrió</p>
+              <a href="https://wa.me/34614679291" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-bold" style={{ backgroundColor: "#25D366", color: "#ffffff" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
+                Escríbeme por WhatsApp
+              </a>
             </div>
           </>
         ) : (
