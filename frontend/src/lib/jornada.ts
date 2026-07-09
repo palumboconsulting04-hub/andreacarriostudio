@@ -16,15 +16,14 @@ export type Slot = {
 };
 
 export const SLOTS: Slot[] = [
-  // 🌅 Mañana · Niñas (10:00–13:00)
-  { id: "nin-pre-1",    bloque: "ninas",   titulo: "Pre-Ballet (3–6)",        hora: "10:00–11:00", tope: 12 },
-  { id: "nin-pre-2",    bloque: "ninas",   titulo: "Pre-Ballet (3–6)",        hora: "11:00–12:00", tope: 12 },
-  { id: "nin-ballet",   bloque: "ninas",   titulo: "Ballet 1 y 2 (7–14)",     hora: "12:00–13:00", tope: 12 },
-  // 🌆 Tarde · Adultas (17:30–21:30) — Barre y Pilates alternos
-  { id: "adu-barre-1",  bloque: "adultas", titulo: "Barre Fit",               hora: "17:30–18:30", tope: 12 },
-  { id: "adu-pilates-1",bloque: "adultas", titulo: "Pilates Mat",             hora: "18:30–19:30", tope: 12 },
-  { id: "adu-barre-2",  bloque: "adultas", titulo: "Barre Fit",               hora: "19:30–20:30", tope: 12 },
-  { id: "adu-pilates-2",bloque: "adultas", titulo: "Pilates Mat",             hora: "20:30–21:30", tope: 12 },
+  // 🌅 Mañana · Ballet infantil (9:30–13:40)
+  { id: "nin-pre",      bloque: "ninas",   titulo: "Pre-Ballet (3–6)",        hora: "9:30–10:45",  tope: 12 },
+  { id: "nin-ballet-1", bloque: "ninas",   titulo: "Ballet 1 (7–9)",          hora: "11:00–12:20", tope: 12 },
+  { id: "nin-ballet-2", bloque: "ninas",   titulo: "Ballet 2 (10–14)",        hora: "12:30–13:40", tope: 12 },
+  // 🌆 Tarde · Barre y Pilates (17:00–21:00)
+  { id: "adu-barre-1",  bloque: "adultas", titulo: "Barre Fit · Grupo 1",     hora: "17:00–18:20", tope: 12 },
+  { id: "adu-pilates",  bloque: "adultas", titulo: "Pilates Mat",             hora: "18:20–19:40", tope: 12 },
+  { id: "adu-barre-2",  bloque: "adultas", titulo: "Barre Fit · Grupo 2",     hora: "19:40–21:00", tope: 12 },
 ];
 
 export const slotById = (id: string): Slot | undefined => SLOTS.find(s => s.id === id);

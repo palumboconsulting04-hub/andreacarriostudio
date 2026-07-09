@@ -145,8 +145,8 @@ export default function ReservarJornada() {
         <p className="text-center text-sm mb-7" style={{ color: C.muted }}>Elige tu hora. Si está completa, te apuntas a su lista de espera 👇</p>
 
         <div className="rounded-3xl p-6 shadow-sm mb-5" style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}>
-          {bloque("🌅 NIÑAS · Mañana", "Clases de prueba de ballet para peques.", ["nin-pre-1", "nin-pre-2", "nin-ballet"])}
-          {bloque("🌆 ADULTAS · Tarde", "Barre Fit y Pilates Mat. ¿Quieres las dos? Reserva una hora de cada una.", ["adu-barre-1", "adu-pilates-1", "adu-barre-2", "adu-pilates-2"])}
+          {bloque("🌅 NIÑAS · Mañana", "Clases de prueba de ballet para peques.", ["nin-pre", "nin-ballet-1", "nin-ballet-2"])}
+          {bloque("🌆 ADULTAS · Tarde", "Barre Fit y Pilates Mat. ¿Quieres las dos? Reserva una hora de cada una.", ["adu-barre-1", "adu-pilates", "adu-barre-2"])}
         </div>
 
         <div className="rounded-3xl p-6 shadow-sm space-y-3" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>
