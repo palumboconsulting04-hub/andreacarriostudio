@@ -102,7 +102,7 @@ export default function ReservarJornada() {
   const bloque = (titulo: string, sub: string, ids: string[]) => (
     <div className="mb-6">
       <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>{titulo}</p>
-      <p className="text-xs mb-3" style={{ color: C.muted }}>{sub}</p>
+      {sub && <p className="text-xs mb-3" style={{ color: C.muted }}>{sub}</p>}
       <div className="flex flex-col gap-2.5">
         {ids.map(id => {
           const s = slotById(id)!;
@@ -146,7 +146,7 @@ export default function ReservarJornada() {
 
         <div className="rounded-3xl p-6 shadow-sm mb-5" style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}>
           {bloque("🌅 NIÑAS · Mañana", "Clases de prueba de ballet para peques.", ["nin-pre", "nin-ballet-1", "nin-ballet-2"])}
-          {bloque("🌆 ADULTAS · Tarde", "Barre Fit y Pilates Mat. ¿Quieres las dos? Reserva una hora de cada una.", ["adu-barre-1", "adu-pilates", "adu-barre-2"])}
+          {bloque("🌆 ADULTAS · Tarde", "", ["adu-barre-1", "adu-pilates", "adu-barre-2"])}
         </div>
 
         <div className="rounded-3xl p-6 shadow-sm space-y-3" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>
