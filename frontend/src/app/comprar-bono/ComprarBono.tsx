@@ -99,13 +99,12 @@ export default function ComprarBono() {
               <span className="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest" style={{ backgroundColor: C.blush, color: C.burgundy }}>{DISC[disciplina]}</span>
             </div>
 
-            {(() => { const precioSuelta = bonos.find(x => x.creditos === 1)?.precio ?? 0; return (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 pt-3 items-stretch">
               {bonos.map(b => {
                 const activo = sel?.id === b.id;
                 const porClase = b.precio / b.creditos;
-                const ahorro = Math.max(0, b.creditos * precioSuelta - b.precio);
                 const destacado = b.creditos === 5;
+                const tagline = b.creditos === 1 ? "Para probar 👋" : b.creditos <= 5 ? "Para coger el hábito 🌱" : "Para las constantes 🔥";
                 const feats = [
                   b.creditos === 1 ? "1 clase de prueba" : `${b.creditos} clases`,
                   `Válido ${b.validezMeses} ${b.validezMeses === 1 ? "mes" : "meses"}`,
@@ -125,11 +124,7 @@ export default function ComprarBono() {
                       <span className="text-xl font-bold mt-1" style={{ color: C.burgundy }}>€</span>
                     </div>
                     <p className="text-xs mt-2" style={{ color: C.muted }}>{porClase.toFixed(0)}€ por clase</p>
-                    {ahorro > 0 ? (
-                      <span className="inline-block mt-2.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold" style={{ backgroundColor: "#e7f7ec", color: "#1f7a3d" }}>Ahorras {ahorro}€</span>
-                    ) : (
-                      <span className="inline-block mt-2.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{ backgroundColor: "#fff1e9", color: C.burgundy }}>Sin compromiso</span>
-                    )}
+                    <span className="inline-block mt-2.5 px-3 py-0.5 rounded-full text-[11px] font-semibold" style={{ backgroundColor: "#fff1e9", color: C.burgundy }}>{tagline}</span>
                     <div className="mt-5 mb-5 space-y-2 text-left">
                       {feats.map(f => (
                         <div key={f} className="flex items-center gap-2">
@@ -146,7 +141,6 @@ export default function ComprarBono() {
                 );
               })}
             </div>
-            ); })()}
 
             {sel && (
               <div ref={formRef} className="rounded-3xl p-6 shadow-sm space-y-3 max-w-md mx-auto scroll-mt-4" style={{ backgroundColor: "#fff", border: `2px solid ${C.burgundy}` }}>
