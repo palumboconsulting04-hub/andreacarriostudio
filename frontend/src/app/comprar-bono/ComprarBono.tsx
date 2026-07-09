@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchBonos, type BonoTipo } from "@/lib/queries";
 
@@ -19,6 +19,7 @@ export default function ComprarBono() {
   const [bonos, setBonos] = useState<BonoTipo[]>([]);
   const [sel, setSel] = useState<BonoTipo | null>(null);
   const [detalle, setDetalle] = useState<BonoTipo | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -30,6 +31,11 @@ export default function ComprarBono() {
     if (!disciplina) { setBonos([]); return; }
     fetchBonos(disciplina).then(setBonos).catch(() => setBonos([]));
   }, [disciplina]);
+
+  // Al elegir un bono, baja suave al formulario de datos.
+  useEffect(() => {
+    if (sel) formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [sel]);
 
   const emailOk = /\S+@\S+\.\S+/.test(email.trim());
   const formValido = !!sel && !!nombre.trim() && !!telefono.trim() && emailOk;
@@ -143,7 +149,7 @@ export default function ComprarBono() {
             ); })()}
 
             {sel && (
-              <div className="rounded-3xl p-6 shadow-sm space-y-3 max-w-md mx-auto" style={{ backgroundColor: "#fff", border: `2px solid ${C.burgundy}` }}>
+              <div ref={formRef} className="rounded-3xl p-6 shadow-sm space-y-3 max-w-md mx-auto scroll-mt-4" style={{ backgroundColor: "#fff", border: `2px solid ${C.burgundy}` }}>
                 <p className="text-sm font-bold" style={{ color: C.burgundy, fontFamily: fSans }}>Tus datos</p>
                 <input style={inputStyle} placeholder="Nombre y apellidos *" value={nombre} onChange={e => setNombre(e.target.value)} />
                 <input style={inputStyle} placeholder="Email * (con este entrarás a reservar)" type="email" value={email} onChange={e => setEmail(e.target.value)} />
