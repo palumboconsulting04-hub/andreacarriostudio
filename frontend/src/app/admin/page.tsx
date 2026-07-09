@@ -765,6 +765,53 @@ export default function AdminDashboard() {
   const [previsionData, setPrevisionData] = useState<PrevisionData | null>(null);
   const [previsionLoading, setPrevisionLoading] = useState(false);
 
+  // ── Tareas (gestor simple: mía / Andrea, estado, seguimiento) ──
+  type Tarea = { id: string; texto: string; responsable: "mia" | "andrea"; estado: "pendiente" | "en_curso" | "hecha"; notas: string | null; created_at: string };
+  const [tareas, setTareas] = useState<Tarea[]>([]);
+  const [nuevaTarea, setNuevaTarea] = useState("");
+  const [nuevaResp, setNuevaResp] = useState<"mia" | "andrea">("mia");
+  const [tareaFiltro, setTareaFiltro] = useState<"todas" | "mia" | "andrea">("todas");
+  const [tareaGuardando, setTareaGuardando] = useState(false);
+
+  const cargarTareas = () => {
+    fetch(`/api/admin/tareas?t=${Date.now()}`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(({ data }) => setTareas((data ?? []) as Tarea[]))
+      .catch(() => setTareas([]));
+  };
+  useEffect(() => {
+    if (activeSection !== "Tareas") return;
+    cargarTareas();
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const crearTarea = async () => {
+    const texto = nuevaTarea.trim();
+    if (!texto || tareaGuardando) return;
+    setTareaGuardando(true);
+    try {
+      const res = await fetch("/api/admin/tareas", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto, responsable: nuevaResp }),
+      });
+      const { data } = await res.json();
+      if (data) setTareas(prev => [...prev, data as Tarea]);
+      setNuevaTarea("");
+    } catch { /* noop */ } finally { setTareaGuardando(false); }
+  };
+
+  const actualizarTarea = async (id: string, cambios: Partial<Pick<Tarea, "texto" | "responsable" | "estado" | "notas">>) => {
+    setTareas(prev => prev.map(t => (t.id === id ? { ...t, ...cambios } : t)));
+    await fetch("/api/admin/tareas", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...cambios }),
+    }).catch(() => {});
+  };
+
+  const borrarTarea = async (id: string) => {
+    setTareas(prev => prev.filter(t => t.id !== id));
+    await fetch(`/api/admin/tareas?id=${id}`, { method: "DELETE" }).catch(() => {});
+  };
+
   // ── Pagos manuales (cuotas mensuales en efectivo/bizum) ──
   type PagoManual = {
     id: string;
@@ -1915,6 +1962,7 @@ export default function AdminDashboard() {
 
   const navItems = [
     { icon: "dashboard", label: "Resumen" },
+    { icon: "task_alt", label: "Tareas" },
     { icon: "calendar_month", label: "Calendario" },
     { icon: "checklist", label: "Asistencia" },
     { icon: "group", label: "Clientas" },
@@ -4962,6 +5010,111 @@ export default function AdminDashboard() {
           })()}
 
           {/* ── Embudo de inscripción (anónimo) ── */}
+          {activeSection === "Tareas" && (
+            <section className="space-y-5">
+              <div>
+                <h3 className="font-headline-md text-headline-md text-primary">Tareas</h3>
+                <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Apunta, asigna (mía o de Andrea) y haz seguimiento.</p>
+              </div>
+
+              {/* Añadir tarea */}
+              <div className="rounded-2xl border p-4 flex flex-col sm:flex-row gap-2" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff" }}>
+                <input
+                  value={nuevaTarea}
+                  onChange={e => setNuevaTarea(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") crearTarea(); }}
+                  placeholder="Nueva tarea…"
+                  className="flex-1 px-3 py-2 rounded-lg border text-sm outline-none"
+                  style={{ borderColor: "#dcc1b9", color: "#25190f" }}
+                />
+                <div className="flex gap-2">
+                  {(["mia", "andrea"] as const).map(r => (
+                    <button key={r} type="button" onClick={() => setNuevaResp(r)}
+                      className="px-3 py-2 rounded-lg text-xs font-semibold border transition-colors"
+                      style={{ borderColor: nuevaResp === r ? "#7d2b13" : "#dcc1b9", backgroundColor: nuevaResp === r ? "#fff0eb" : "#fff", color: "#7d2b13" }}>
+                      {r === "mia" ? "Mía" : "Andrea"}
+                    </button>
+                  ))}
+                  <button type="button" onClick={crearTarea} disabled={!nuevaTarea.trim() || tareaGuardando}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold"
+                    style={{ backgroundColor: "#7d2b13", color: "#fff8f5", opacity: (!nuevaTarea.trim() || tareaGuardando) ? 0.6 : 1, cursor: (!nuevaTarea.trim() || tareaGuardando) ? "not-allowed" : "pointer" }}>
+                    Añadir
+                  </button>
+                </div>
+              </div>
+
+              {/* Filtro por responsable */}
+              <div className="flex gap-2">
+                {(["todas", "mia", "andrea"] as const).map(f => (
+                  <button key={f} type="button" onClick={() => setTareaFiltro(f)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
+                    style={{ borderColor: tareaFiltro === f ? "#7d2b13" : "#dcc1b9", backgroundColor: tareaFiltro === f ? "#7d2b13" : "#fff", color: tareaFiltro === f ? "#fff8f5" : "#7d2b13" }}>
+                    {f === "todas" ? "Todas" : f === "mia" ? "Mías" : "Andrea"}
+                  </button>
+                ))}
+              </div>
+
+              {/* Lista de tareas */}
+              {(() => {
+                const rank = { en_curso: 0, pendiente: 1, hecha: 2 } as const;
+                const lista = tareas
+                  .filter(t => tareaFiltro === "todas" || t.responsable === tareaFiltro)
+                  .sort((a, b) => rank[a.estado] - rank[b.estado] || a.created_at.localeCompare(b.created_at));
+                if (lista.length === 0) {
+                  return <p className="text-sm py-6 text-center" style={{ color: "#89726c" }}>No hay tareas. ¡Añade la primera! ✍️</p>;
+                }
+                return (
+                  <div className="space-y-2">
+                    {lista.map(t => {
+                      const hecha = t.estado === "hecha";
+                      const enCurso = t.estado === "en_curso";
+                      return (
+                        <div key={t.id} className="rounded-xl border p-3 flex items-start gap-3" style={{ borderColor: "#dcc1b9", backgroundColor: hecha ? "#f7f2ef" : "#fff" }}>
+                          <button type="button" onClick={() => actualizarTarea(t.id, { estado: hecha ? "pendiente" : "hecha" })}
+                            className="mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors"
+                            style={{ borderColor: hecha ? "#1f7a3d" : "#c9b3ab", backgroundColor: hecha ? "#1f7a3d" : "transparent" }}
+                            title={hecha ? "Marcar como pendiente" : "Marcar como hecha"}>
+                            {hecha && <Icon name="check" className="text-sm" style={{ color: "#fff" }} />}
+                          </button>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm" style={{ color: hecha ? "#a2938d" : "#25190f", textDecoration: hecha ? "line-through" : "none" }}>{t.texto}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <button type="button" onClick={() => actualizarTarea(t.id, { responsable: t.responsable === "mia" ? "andrea" : "mia" })}
+                                className="px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                                style={{ backgroundColor: t.responsable === "mia" ? "#e9eff7" : "#fbeee9", color: t.responsable === "mia" ? "#1b4f9c" : "#7d2b13" }}
+                                title="Cambiar responsable">
+                                {t.responsable === "mia" ? "Mía" : "Andrea"}
+                              </button>
+                              {!hecha && (
+                                <button type="button" onClick={() => actualizarTarea(t.id, { estado: enCurso ? "pendiente" : "en_curso" })}
+                                  className="px-2.5 py-1 rounded-full text-[11px] font-semibold border"
+                                  style={{ borderColor: enCurso ? "#e65100" : "#dcc1b9", backgroundColor: enCurso ? "#fff3e0" : "#fff", color: enCurso ? "#e65100" : "#89726c" }}>
+                                  {enCurso ? "En curso" : "Marcar en curso"}
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              defaultValue={t.notas ?? ""}
+                              onBlur={e => { const v = e.target.value.trim(); if (v !== (t.notas ?? "")) actualizarTarea(t.id, { notas: v }); }}
+                              placeholder="Seguimiento / notas…"
+                              className="mt-2 w-full px-2.5 py-1.5 rounded-lg border text-xs outline-none"
+                              style={{ borderColor: "#eaddd6", color: "#56423d", backgroundColor: "#fffdfc" }}
+                            />
+                          </div>
+
+                          <button type="button" onClick={() => borrarTarea(t.id)} className="shrink-0 p-1.5 rounded-lg hover:bg-[#fde7e7] transition-colors" title="Borrar tarea">
+                            <Icon name="delete" className="text-base" style={{ color: "#b71c1c" }} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </section>
+          )}
+
           {activeSection === "Previsión" && (() => {
             // ── Parámetros del modelo, anclados a benchmarks del sector ──
             // renov: % de alumnas actuales que renuevan (Andrea: "casi todas").
