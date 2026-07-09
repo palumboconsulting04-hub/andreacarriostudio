@@ -56,14 +56,14 @@ export default function ComprarBono() {
 
   return (
     <div style={{ backgroundColor: C.bg, minHeight: "100vh" }} className="px-4 py-10">
-      <div className="max-w-md mx-auto">
+      <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl sm:text-4xl text-center mb-1" style={{ fontFamily: fSerif, color: C.burgundy }}>Bonos flexibles</h1>
         <p className="text-center text-sm mb-7" style={{ color: C.muted }}>
           Compra créditos y ven cuando puedas. 1 crédito = 1 clase.
         </p>
 
         {!disciplina ? (
-          <div className="rounded-3xl p-6 shadow-sm" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
+          <div className="rounded-3xl p-6 shadow-sm max-w-sm mx-auto" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
             <p className="text-sm font-bold mb-3 text-center" style={{ color: C.burgundy, fontFamily: fSans }}>¿Para qué disciplina?</p>
             <div className="flex flex-col gap-2.5">
               {(["barre-fit", "pilates-mat"] as const).map(d => (
@@ -78,21 +78,19 @@ export default function ComprarBono() {
           <>
             <p className="text-center text-xs mb-4" style={{ color: C.burgundy, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>{DISC[disciplina]}</p>
 
-            <div className="flex flex-col gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
               {bonos.map(b => {
                 const activo = sel?.id === b.id;
                 const porClase = b.precio / b.creditos;
                 return (
-                  <button key={b.id} onClick={() => setSel(b)} className="w-full text-left rounded-2xl p-4 transition-all"
+                  <button key={b.id} onClick={() => setSel(b)} className="text-center rounded-2xl p-5 transition-all hover:-translate-y-0.5"
                     style={{ border: `2px solid ${activo ? C.burgundy : C.border}`, backgroundColor: activo ? C.blush : "#fff", cursor: "pointer" }}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-base font-bold" style={{ color: C.dark, fontFamily: fSans }}>{b.nombre}</p>
-                        <p className="text-xs mt-0.5" style={{ color: C.muted }}>
-                          {b.creditos === 1 ? "1 clase" : `${b.creditos} clases`} · {porClase.toFixed(0)}€/clase · válido {b.validezMeses} {b.validezMeses === 1 ? "mes" : "meses"}
-                        </p>
-                      </div>
-                      <p className="text-2xl font-bold shrink-0 ml-3" style={{ color: C.burgundy }}>{b.precio}€</p>
+                    <p className="text-sm font-bold mb-2" style={{ color: C.dark, fontFamily: fSans }}>{b.nombre}</p>
+                    <p className="text-3xl font-bold leading-none" style={{ color: C.burgundy }}>{b.precio}€</p>
+                    <p className="text-xs mt-1.5" style={{ color: C.muted }}>{porClase.toFixed(0)}€ / clase</p>
+                    <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${activo ? "#e6b8a8" : C.border}` }}>
+                      <p className="text-xs font-semibold" style={{ color: C.brown }}>{b.creditos === 1 ? "1 clase" : `${b.creditos} clases`}</p>
+                      <p className="text-[11px] mt-0.5" style={{ color: C.muted }}>válido {b.validezMeses} {b.validezMeses === 1 ? "mes" : "meses"}</p>
                     </div>
                   </button>
                 );
@@ -100,7 +98,7 @@ export default function ComprarBono() {
             </div>
 
             {sel && (
-              <div className="rounded-3xl p-6 shadow-sm space-y-3" style={{ backgroundColor: "#fff", border: `2px solid ${C.burgundy}` }}>
+              <div className="rounded-3xl p-6 shadow-sm space-y-3 max-w-md mx-auto" style={{ backgroundColor: "#fff", border: `2px solid ${C.burgundy}` }}>
                 <p className="text-sm font-bold" style={{ color: C.burgundy, fontFamily: fSans }}>Tus datos</p>
                 <input style={inputStyle} placeholder="Nombre y apellidos *" value={nombre} onChange={e => setNombre(e.target.value)} />
                 <input style={inputStyle} placeholder="Email * (con este entrarás a reservar)" type="email" value={email} onChange={e => setEmail(e.target.value)} />
