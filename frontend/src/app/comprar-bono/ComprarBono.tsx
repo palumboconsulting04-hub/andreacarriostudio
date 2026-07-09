@@ -65,7 +65,7 @@ export default function ComprarBono() {
 
   return (
     <div style={{ backgroundColor: C.bg, minHeight: "100vh" }} className="px-4 py-10">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <button onClick={volver} className="flex items-center gap-1.5 text-sm mb-5 transition-opacity hover:opacity-70" style={{ color: C.muted, fontFamily: fSans }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 8H3M7 4L3 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Volver
@@ -89,28 +89,52 @@ export default function ComprarBono() {
           </div>
         ) : (
           <>
-            <p className="text-center text-xs mb-4" style={{ color: C.burgundy, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>{DISC[disciplina]}</p>
+            <div className="flex justify-center mb-8">
+              <span className="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest" style={{ backgroundColor: C.blush, color: C.burgundy }}>{DISC[disciplina]}</span>
+            </div>
 
             {(() => { const precioSuelta = bonos.find(x => x.creditos === 1)?.precio ?? 0; return (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 pt-3 items-stretch">
               {bonos.map(b => {
                 const activo = sel?.id === b.id;
                 const porClase = b.precio / b.creditos;
                 const ahorro = Math.max(0, b.creditos * precioSuelta - b.precio);
+                const destacado = b.creditos === 5;
+                const feats = [
+                  b.creditos === 1 ? "1 clase de prueba" : `${b.creditos} clases`,
+                  `Válido ${b.validezMeses} ${b.validezMeses === 1 ? "mes" : "meses"}`,
+                  "Reserva el día que quieras",
+                ];
                 return (
-                  <div key={b.id} className="rounded-2xl p-5 flex flex-col text-center transition-all"
-                    style={{ border: `2px solid ${activo ? C.burgundy : C.border}`, backgroundColor: activo ? C.blush : "#fff" }}>
-                    <p className="text-sm font-bold mb-2" style={{ color: C.dark, fontFamily: fSans }}>{b.nombre}</p>
-                    <p className="text-3xl font-bold leading-none" style={{ color: C.burgundy }}>{b.precio}€</p>
-                    <p className="text-xs mt-1.5" style={{ color: C.muted }}>{porClase.toFixed(0)}€ / clase</p>
-                    {ahorro > 0 && <p className="text-[11px] font-semibold mt-1" style={{ color: "#1f7a3d" }}>Ahorras {ahorro}€</p>}
-                    <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${activo ? "#e6b8a8" : C.border}` }}>
-                      <p className="text-xs font-semibold" style={{ color: C.brown }}>{b.creditos === 1 ? "1 clase" : `${b.creditos} clases`}</p>
-                      <p className="text-[11px] mt-0.5" style={{ color: C.muted }}>válido {b.validezMeses} {b.validezMeses === 1 ? "mes" : "meses"}</p>
+                  <div key={b.id} className="relative rounded-3xl p-6 flex flex-col text-center transition-all"
+                    style={{
+                      border: `2px solid ${activo || destacado ? C.burgundy : C.border}`,
+                      backgroundColor: activo ? C.blush : destacado ? "#fff6f2" : "#fff",
+                      boxShadow: destacado ? "0 14px 34px rgba(125,43,19,0.16)" : "0 3px 12px rgba(37,25,15,0.05)",
+                    }}>
+                    {destacado && <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap shadow" style={{ backgroundColor: C.burgundy, color: C.cream }}>★ Más popular</span>}
+                    <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: C.muted }}>{b.nombre}</p>
+                    <div className="flex items-start justify-center gap-0.5">
+                      <span className="text-5xl font-bold leading-none" style={{ color: C.burgundy }}>{b.precio}</span>
+                      <span className="text-xl font-bold mt-1" style={{ color: C.burgundy }}>€</span>
                     </div>
-                    <div className="mt-4 flex flex-col gap-2">
-                      <button onClick={() => setDetalle(b)} className="text-xs font-semibold py-2 rounded-full" style={{ border: `1px solid ${C.border}`, color: C.burgundy, backgroundColor: "transparent" }}>Detalles</button>
-                      <button onClick={() => setSel(b)} className="text-xs font-bold py-2.5 rounded-full uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>{activo ? "Elegido ✓" : "Elegir"}</button>
+                    <p className="text-xs mt-2" style={{ color: C.muted }}>{porClase.toFixed(0)}€ por clase</p>
+                    {ahorro > 0 ? (
+                      <span className="inline-block mt-2.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold" style={{ backgroundColor: "#e7f7ec", color: "#1f7a3d" }}>Ahorras {ahorro}€</span>
+                    ) : (
+                      <span className="inline-block mt-2.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{ backgroundColor: "#fff1e9", color: C.burgundy }}>Sin compromiso</span>
+                    )}
+                    <div className="mt-5 mb-5 space-y-2 text-left">
+                      {feats.map(f => (
+                        <div key={f} className="flex items-center gap-2">
+                          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="shrink-0"><path d="M3 8l3.5 3.5L13 5" stroke={C.burgundy} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          <span className="text-xs" style={{ color: C.brown }}>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-auto flex flex-col gap-1.5">
+                      <button onClick={() => setSel(b)} className="text-xs font-bold py-3 rounded-full uppercase tracking-wider transition-transform hover:scale-[1.02]" style={{ backgroundColor: C.burgundy, color: C.cream }}>{activo ? "Elegido ✓" : "Elegir"}</button>
+                      <button onClick={() => setDetalle(b)} className="text-xs font-semibold py-1.5" style={{ color: C.muted, background: "none" }}>Ver detalles</button>
                     </div>
                   </div>
                 );
