@@ -813,6 +813,19 @@ export default function AdminDashboard() {
     await fetch(`/api/admin/tareas?id=${id}`, { method: "DELETE" }).catch(() => {});
   };
 
+  // ── Bonos (Fase 3) ──
+  type BonoAdmin = { id: string; disciplina_id: string; nombre: string; email: string; telefono: string | null; creditos_totales: number; creditos_restantes: number; caduca: string; precio_pagado: number | null; estado: string; created_at: string };
+  type ReservaBonoAdmin = { id: string; fecha: string; dia: string; hora: string; horaFin: string; disciplina_id: string; alumna: string; email: string; telefono: string };
+  const [bonosData, setBonosData] = useState<BonoAdmin[]>([]);
+  const [bonosReservas, setBonosReservas] = useState<ReservaBonoAdmin[]>([]);
+  useEffect(() => {
+    if (activeSection !== "Bonos") return;
+    fetch(`/api/admin/bonos?t=${Date.now()}`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => { setBonosData(d.bonos ?? []); setBonosReservas(d.reservas ?? []); })
+      .catch(() => {});
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Pagos manuales (cuotas mensuales en efectivo/bizum) ──
   type PagoManual = {
     id: string;
@@ -1971,6 +1984,7 @@ export default function AdminDashboard() {
     { icon: "self_improvement", label: "P.A. Adultas" },
     { icon: "event_available", label: "Jornada 24J" },
     { icon: "autorenew", label: "Renovaciones" },
+    { icon: "confirmation_number", label: "Bonos" },
     { icon: "insights", label: "Marketing" },
     { icon: "filter_alt", label: "Embudo" },
     { icon: "online_prediction", label: "Previsión" },
@@ -5117,6 +5131,95 @@ export default function AdminDashboard() {
               })()}
             </section>
           )}
+
+          {activeSection === "Bonos" && (() => {
+            const hoy = new Date().toISOString().slice(0, 10);
+            const DL: Record<string, string> = { "barre-fit": "Barre Fit", "pilates-mat": "Pilates Mat" };
+            const waB = (tel: string, nombre: string) => {
+              let t = (tel || "").replace(/\D/g, "");
+              if (t.startsWith("00")) t = t.slice(2);
+              if (t.length === 9) t = "34" + t;
+              return `https://wa.me/${t}?text=${encodeURIComponent(`¡Hola ${nombre}! Soy Andrea, de Andrea Carrió Studio.`)}`;
+            };
+            const estadoBono = (b: BonoAdmin) => {
+              if (b.caduca < hoy) return { l: "Caducado", bg: "#eceff1", fg: "#546e7a" };
+              if (b.creditos_restantes <= 0) return { l: "Agotado", bg: "#fff3e0", fg: "#e65100" };
+              return { l: "Activo", bg: "#e8f5e9", fg: "#2e7d32" };
+            };
+            const activos = bonosData.filter(b => b.caduca >= hoy && b.creditos_restantes > 0);
+            const ingresos = bonosData.reduce((s, b) => s + (Number(b.precio_pagado) || 0), 0);
+            const fmtCaduca = (f: string) => { const [y, m, d] = f.split("-"); return `${+d}/${+m}/${y.slice(2)}`; };
+            const M = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+            const fechaLabel = (f: string, dia: string) => { const [, m, d] = f.split("-"); return `${dia} ${+d} ${M[+m - 1]}`; };
+            const porFecha: Record<string, ReservaBonoAdmin[]> = {};
+            for (const r of bonosReservas) (porFecha[r.fecha] ??= []).push(r);
+            const fechas = Object.keys(porFecha).sort();
+            return (
+              <section className="space-y-5">
+                <div>
+                  <h3 className="font-headline-md text-headline-md text-primary">Bonos</h3>
+                  <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Bonos de Barre y Pilates, créditos y próximas reservas.</p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[{ l: "Vendidos", v: bonosData.length }, { l: "Activos", v: activos.length }, { l: "Ingresos", v: `${ingresos}€` }].map(k => (
+                    <div key={k.l} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
+                      <p className="text-2xl font-bold" style={{ color: "#7d2b13" }}>{k.v}</p>
+                      <p className="text-xs" style={{ color: "#89726c" }}>{k.l}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Bonos vendidos</p>
+                  {bonosData.length === 0 ? (
+                    <p className="text-sm" style={{ color: "#bcb0ab" }}>Aún no se ha vendido ningún bono.</p>
+                  ) : (
+                    <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                      {bonosData.map((b, i) => {
+                        const e = estadoBono(b);
+                        return (
+                          <div key={b.id} className="px-4 py-3 flex items-center justify-between gap-3" style={{ borderTop: i ? "1px solid #f0ddd5" : "none", backgroundColor: i % 2 ? "#fffbf9" : "#fff" }}>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold truncate" style={{ color: "#25190f" }}>{b.nombre}</p>
+                              <p className="text-xs truncate" style={{ color: "#89726c" }}>{DL[b.disciplina_id] ?? b.disciplina_id} · caduca {fmtCaduca(b.caduca)}{b.email ? ` · ${b.email}` : ""}</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-sm font-bold" style={{ color: "#7d2b13" }}>{b.creditos_restantes}/{b.creditos_totales}</span>
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: e.bg, color: e.fg }}>{e.l}</span>
+                              {b.telefono && <a href={waB(b.telefono, b.nombre)} target="_blank" rel="noopener noreferrer" className="w-7 h-7 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp"><Icon name="chat" className="text-sm" /></a>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Próximas reservas con bono</p>
+                  {fechas.length === 0 ? (
+                    <p className="text-sm" style={{ color: "#bcb0ab" }}>Ninguna reserva próxima.</p>
+                  ) : fechas.map(f => (
+                    <div key={f} className="mb-3">
+                      <p className="text-xs font-semibold mb-1" style={{ color: "#7d2b13" }}>{fechaLabel(f, porFecha[f][0].dia)}</p>
+                      <div className="rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                        {porFecha[f].slice().sort((a, b) => a.hora.localeCompare(b.hora)).map((r, i) => (
+                          <div key={r.id} className="px-4 py-2.5 flex items-center justify-between gap-2" style={{ borderTop: i ? "1px solid #f0ddd5" : "none" }}>
+                            <div className="min-w-0">
+                              <p className="text-sm truncate" style={{ color: "#25190f" }}>{r.alumna}</p>
+                              <p className="text-xs" style={{ color: "#89726c" }}>{r.hora}–{r.horaFin} · {DL[r.disciplina_id] ?? r.disciplina_id}</p>
+                            </div>
+                            {r.telefono && <a href={waB(r.telefono, r.alumna)} target="_blank" rel="noopener noreferrer" className="w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0" style={{ backgroundColor: "#25D366" }} title="WhatsApp"><Icon name="chat" className="text-sm" /></a>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
 
           {activeSection === "Previsión" && (() => {
             // ── Parámetros del modelo, anclados a benchmarks del sector ──
