@@ -92,12 +92,38 @@ export default function ReservarJornada() {
         <div className="w-20 h-20 rounded-full flex items-center justify-center mb-8" style={{ backgroundColor: C.blush }}>
           <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M7 18l8 8L29 10" stroke={C.burgundy} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
-        <h2 className="text-4xl sm:text-5xl mb-5" style={{ fontFamily: fSerif, color: C.burgundy }}>¡Hora reservada!</h2>
-        <p className="text-base max-w-md leading-relaxed mb-2" style={{ color: C.brown }}>{esNina && nombre ? <>Te esperamos a <strong>{nombre}</strong> el <strong>{EVENTO.fecha}</strong>:</> : <>Te esperamos el <strong>{EVENTO.fecha}</strong>:</>}</p>
-        {s && <p className="text-lg font-bold mb-8" style={{ color: C.burgundy, fontFamily: fSans }}>{s.titulo} · {s.hora}</p>}
-        <p className="text-sm max-w-md leading-relaxed" style={{ color: C.brown }}>
-          Si quieres probar también la otra disciplina, puedes reservar otra hora.<br />¡Nos vemos! <strong>Andrea</strong>
-        </p>
+        {esNina ? (
+          <>
+            <h2 className="text-3xl sm:text-4xl mb-5" style={{ fontFamily: fSerif, color: C.burgundy }}>¡Plaza reservada! 🩰</h2>
+            <div className="max-w-lg text-left rounded-3xl p-6 sm:p-7" style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}>
+              <p className="text-base font-bold mb-3" style={{ color: C.burgundy, fontFamily: fSerif }}>¡Hola! 🤎</p>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>¡Muchísimas gracias por confirmar la asistencia de <strong>{nombre}</strong> a las Jornadas de Puertas Abiertas de Andrea Carrió Studio!</p>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Me hace muchísima ilusión que pueda acompañarnos ese día y conocer el estudio.</p>
+              <div className="rounded-2xl px-4 py-3 mb-4" style={{ backgroundColor: C.blush }}>
+                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: Jueves 24 de julio</p>
+                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>⏰ Horario: {s?.hora}</p>
+              </div>
+              <p className="text-sm font-bold mb-1.5" style={{ color: C.dark }}>¿Qué necesita traer?</p>
+              <p className="text-sm leading-relaxed mb-1" style={{ color: C.brown }}>🩰 Ropa cómoda con la que pueda moverse con facilidad.</p>
+              <p className="text-sm leading-relaxed mb-1" style={{ color: C.brown }}>🩰 Si tiene zapatillas de ballet, puede traerlas. Si no, no os preocupéis, podrá realizar la clase con calcetines.</p>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: C.brown }}>💧 Una botellita de agua.</p>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Mientras las niñas disfrutan de la clase, podréis esperar tranquilamente en la recepción. Al finalizar tendremos un ratito para conocernos, enseñaros el estudio, resolver cualquier duda sobre el próximo curso y compartir un pequeño detalle preparado con mucho cariño.</p>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Si finalmente no pudierais asistir, os agradecería muchísimo que me avisarais con la mayor antelación posible para poder ofrecer esa plaza a otra niña.</p>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: C.brown }}>¡Tengo muchísimas ganas de conoceros y daros la bienvenida a Andrea Carrió Studio! 🤎</p>
+              <p className="text-sm font-semibold" style={{ color: C.burgundy }}>Andrea Carrió</p>
+              <a href="https://wa.me/34614679291" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold" style={{ color: "#1f7a3d" }}>📱 WhatsApp 614679291</a>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="text-4xl sm:text-5xl mb-5" style={{ fontFamily: fSerif, color: C.burgundy }}>¡Hora reservada!</h2>
+            <p className="text-base max-w-md leading-relaxed mb-2" style={{ color: C.brown }}>Te esperamos el <strong>{EVENTO.fecha}</strong>:</p>
+            {s && <p className="text-lg font-bold mb-8" style={{ color: C.burgundy, fontFamily: fSans }}>{s.titulo} · {s.hora}</p>}
+            <p className="text-sm max-w-md leading-relaxed" style={{ color: C.brown }}>
+              Si quieres probar también la otra disciplina, puedes reservar otra hora.<br />¡Nos vemos! <strong>Andrea</strong>
+            </p>
+          </>
+        )}
       </div>
     );
   }
