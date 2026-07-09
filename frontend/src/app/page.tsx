@@ -233,7 +233,7 @@ export default function Home() {
 
           {!cargando && paso === 1 && fork && (
             <div className="max-w-lg mx-auto px-5">
-              <button onClick={() => setFork(null)} className="flex items-center gap-1.5 text-xs mb-6 transition-opacity hover:opacity-70" style={{ color: "#89726c", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}>
+              <button onClick={() => { setFork(null); update({ disciplina: null, plan: null, horarios: [] }); }} className="flex items-center gap-1.5 text-xs mb-6 transition-opacity hover:opacity-70" style={{ color: "#89726c", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}>
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11 6.5H2M5.5 3L2 6.5l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 Cambiar disciplina
               </button>
@@ -261,7 +261,7 @@ export default function Home() {
                 update({ plan: id, horarios: [] });
                 setPaso(3);
               }}
-              onBack={() => setPaso(1)}
+              onBack={() => { setPaso(1); update({ disciplina: null, plan: null, horarios: [] }); }}
             />
           )}
 
