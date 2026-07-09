@@ -232,23 +232,61 @@ export default function Home() {
           )}
 
           {!cargando && paso === 1 && fork && (
-            <div className="max-w-lg mx-auto px-5">
-              <button onClick={() => { setFork(null); update({ disciplina: null, plan: null, horarios: [] }); }} className="flex items-center gap-1.5 text-xs mb-6 transition-opacity hover:opacity-70" style={{ color: "#89726c", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}>
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11 6.5H2M5.5 3L2 6.5l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                Cambiar disciplina
-              </button>
-              <h2 className="text-3xl sm:text-4xl mb-2" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>¿Cómo prefieres venir?</h2>
-              <p className="text-sm mb-7" style={{ color: "#89726c" }}>{disciplinaObj?.nombre} — elige la modalidad que mejor te encaje.</p>
+            <div className="max-w-2xl mx-auto px-6 pb-16">
+              <div className="flex items-center gap-2 mb-8">
+                <button onClick={() => { setFork(null); update({ disciplina: null, plan: null, horarios: [] }); }} className="flex items-center gap-1.5 font-body text-sm text-texto-muted hover:text-siena transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 8H3M7 4L3 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  Volver
+                </button>
+                <span className="text-outline-light">/</span>
+                <span className="font-body text-sm text-texto">{disciplinaObj?.nombre}</span>
+              </div>
 
-              <button onClick={() => { setFork(null); setPaso(2); }} className="w-full text-left rounded-3xl p-6 mb-4 transition-all" style={{ border: "2px solid #dcc1b9", backgroundColor: "#ffffff", cursor: "pointer" }}>
-                <p className="text-lg font-bold mb-1" style={{ color: "#25190f", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}>Mensualidad 🔁</p>
-                <p className="text-sm" style={{ color: "#56423d" }}>Para quien viene con rutina. Plaza fija cada semana y el mejor precio por clase.</p>
-              </button>
+              <div className="text-center mb-10">
+                <h2 className="font-display text-4xl sm:text-5xl text-siena mb-3">¿Cómo prefieres venir?</h2>
+                <p className="font-body text-texto-muted text-base">Elige la modalidad que mejor encaja con tu ritmo de vida.</p>
+              </div>
 
-              <button onClick={() => { window.location.href = `/comprar-bono?disciplina=${fork}`; }} className="w-full text-left rounded-3xl p-6 transition-all" style={{ border: "2px solid #dcc1b9", backgroundColor: "#ffffff", cursor: "pointer" }}>
-                <p className="text-lg font-bold mb-1" style={{ color: "#25190f", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}>Bono flexible 🎟️</p>
-                <p className="text-sm" style={{ color: "#56423d" }}>Para quien improvisa. Compras créditos y reservas el día que puedas.</p>
-              </button>
+              <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+                {/* Mensualidad (destacada) */}
+                <button onClick={() => { setFork(null); setPaso(2); }} className="group relative text-left rounded-3xl p-7 border transition-all duration-300 hover:-translate-y-1 bg-siena border-siena text-white shadow-lg focus:outline-none">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-terracota-light text-texto font-body font-semibold tracking-widest uppercase px-3 py-1 rounded-full shadow" style={{ fontSize: "10px" }}>Recomendado</span>
+                  <div className="text-3xl mb-3">🔁</div>
+                  <p className="font-display text-2xl font-semibold text-white mb-1">Mensualidad</p>
+                  <p className="font-body text-sm text-siena-pale mb-5">Para quien viene con rutina</p>
+                  <ul className="space-y-2.5 mb-7">
+                    {["Plaza fija cada semana", "El mejor precio por clase", "Progreso constante"].map((f) => (
+                      <li key={f} className="flex items-start gap-2.5">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0 text-siena-light"><path d="M3 8l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        <span className="font-body text-sm leading-snug text-siena-pale">{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <span className="inline-flex items-center justify-center w-full gap-2 py-3 rounded-full font-body text-sm font-semibold tracking-wider uppercase bg-white text-siena group-hover:bg-siena-pale transition-all">
+                    Elegir mensualidad
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="transition-transform group-hover:translate-x-1"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </span>
+                </button>
+
+                {/* Bono flexible */}
+                <button onClick={() => { window.location.href = `/comprar-bono?disciplina=${fork}`; }} className="group relative text-left rounded-3xl p-7 border transition-all duration-300 hover:-translate-y-1 bg-white border-outline-light hover:border-siena-pale shadow-sm hover:shadow-md focus:outline-none">
+                  <div className="text-3xl mb-3">🎟️</div>
+                  <p className="font-display text-2xl font-semibold text-siena mb-1">Bono flexible</p>
+                  <p className="font-body text-sm text-texto-muted mb-5">Para quien improvisa</p>
+                  <ul className="space-y-2.5 mb-7">
+                    {["Compras créditos y vienes cuando puedas", "Reservas el día que quieras", "Sin compromiso mensual"].map((f) => (
+                      <li key={f} className="flex items-start gap-2.5">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0 text-siena"><path d="M3 8l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        <span className="font-body text-sm leading-snug text-texto-muted">{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <span className="inline-flex items-center justify-center w-full gap-2 py-3 rounded-full font-body text-sm font-semibold tracking-wider uppercase bg-siena text-white group-hover:bg-siena-container transition-all">
+                    Ver bonos
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="transition-transform group-hover:translate-x-1"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </span>
+                </button>
+              </div>
             </div>
           )}
 
