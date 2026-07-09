@@ -1091,7 +1091,9 @@ export default function AdminDashboard() {
 
   const cargarPrevision = () => {
     setPrevisionLoading(true);
-    fetch("/api/admin/previsiones")
+    // Petición siempre fresca: sin caché y con URL única, para que las
+    // confirmaciones de Puertas Abiertas / renovaciones se reflejen al momento.
+    fetch(`/api/admin/previsiones?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
       .then(({ data }) => setPrevisionData((data ?? null) as PrevisionData | null))
       .catch(() => setPrevisionData(null))
