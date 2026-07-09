@@ -150,9 +150,10 @@ export default function ReservarJornada() {
         </div>
 
         <div className="rounded-3xl p-6 shadow-sm space-y-3" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>
-          <input style={inputStyle} placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} />
-          <input style={inputStyle} placeholder="WhatsApp" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
-          <input style={inputStyle} placeholder="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          <input style={inputStyle} placeholder="Nombre *" value={nombre} onChange={e => setNombre(e.target.value)} />
+          <input style={inputStyle} placeholder="WhatsApp *" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
+          <input style={inputStyle} placeholder="Email *" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          <p className="text-xs" style={{ color: C.muted }}>* Todos los campos son obligatorios</p>
           {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
           {selFull && !errorMsg && (
             <p className="text-xs" style={{ color: C.burgundy }}>Esta hora está completa → te apuntarás a su <strong>lista de espera</strong>.</p>
