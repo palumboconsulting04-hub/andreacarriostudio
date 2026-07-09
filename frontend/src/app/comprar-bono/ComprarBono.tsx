@@ -52,11 +52,23 @@ export default function ComprarBono() {
     }
   };
 
+  // Volver al paso anterior, sea cual sea la fase.
+  const volver = () => {
+    if (sel) { setSel(null); return; }                                  // formulario → catálogo
+    const dParamValido = ["barre-fit", "pilates-mat"].includes(dParam);
+    if (disciplina && !dParamValido) { setDisciplina(""); return; }     // catálogo → elegir disciplina
+    window.history.back();                                              // → volver al paso anterior (funnel)
+  };
+
   const inputStyle = { border: `1.5px solid ${C.border}`, borderRadius: "12px", padding: "12px 16px", fontSize: "16px", fontFamily: fSans, color: C.dark, backgroundColor: C.cream, outline: "none", width: "100%" };
 
   return (
     <div style={{ backgroundColor: C.bg, minHeight: "100vh" }} className="px-4 py-10">
       <div className="max-w-2xl mx-auto">
+        <button onClick={volver} className="flex items-center gap-1.5 text-sm mb-5 transition-opacity hover:opacity-70" style={{ color: C.muted, fontFamily: fSans }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 8H3M7 4L3 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          Volver
+        </button>
         <h1 className="text-3xl sm:text-4xl text-center mb-1" style={{ fontFamily: fSerif, color: C.burgundy }}>Bonos flexibles</h1>
         <p className="text-center text-sm mb-7" style={{ color: C.muted }}>
           Compra créditos y ven cuando puedas. 1 crédito = 1 clase.
