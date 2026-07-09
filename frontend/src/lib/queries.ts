@@ -99,6 +99,34 @@ export async function fetchOrari(disciplinaId: string): Promise<HorarioSlot[]> {
   });
 }
 
+// ── Bonos (créditos) para Barre y Pilates ──
+export interface BonoTipo {
+  id: string;
+  disciplinaId: string;
+  nombre: string;
+  creditos: number;
+  precio: number;
+  validezMeses: number;
+}
+
+export async function fetchBonos(disciplinaId: string): Promise<BonoTipo[]> {
+  const { data, error } = await supabase
+    .from("bonos_tipo")
+    .select("id, disciplina_id, nombre, creditos, precio, validez_meses, orden")
+    .eq("disciplina_id", disciplinaId)
+    .eq("activo", true)
+    .order("orden");
+  if (error) throw error;
+  return (data ?? []).map((b) => ({
+    id: b.id as string,
+    disciplinaId: b.disciplina_id as string,
+    nombre: b.nombre as string,
+    creditos: b.creditos as number,
+    precio: Number(b.precio),
+    validezMeses: b.validez_meses as number,
+  }));
+}
+
 // Nota: la creación de contacto + inscripción + horarios se hace en el servidor
 // (src/app/api/inscripcion/route.ts) con service-role, no desde el navegador.
 

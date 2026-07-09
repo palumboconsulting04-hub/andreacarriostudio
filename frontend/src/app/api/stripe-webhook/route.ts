@@ -3,6 +3,7 @@ import crypto from "crypto";
 import type Stripe from "stripe";
 import { stripe, BONO_BILLING_ANCHOR, MATRICULA_PI_TIPO } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { procesarBonoPagado } from "@/lib/bonos-server";
 
 const FB_PIXEL_ID = "2024231855152441";
 const sha256 = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
@@ -123,6 +124,11 @@ export async function POST(req: NextRequest) {
           .from("iscrizioni")
           .update({ stato: "cancelada" })
           .eq("stripe_subscription_id", sub.id);
+        break;
+      }
+
+      case "checkout.session.completed": {
+        await procesarBonoPagado(event.data.object as Stripe.Checkout.Session);
         break;
       }
     }

@@ -15,6 +15,8 @@ import type { InscripcionState, BozzaIscrizione, Disciplina, Plan, HorarioSlot, 
 import { fetchDiscipline, fetchPiani, fetchOrari } from "@/lib/queries";
 
 const DISCIPLINAS_NINAS = new Set<DisciplinaId>(["pre-ballet", "ballet-i", "ballet-ii"]);
+// Barre y Pilates ofrecen también bonos (créditos) además de la mensualidad.
+const BONO_DISCIPLINAS = new Set<DisciplinaId>(["barre-fit", "pilates-mat"]);
 
 const estadoInicial: InscripcionState = {
   disciplina: null,
@@ -38,6 +40,8 @@ function continuarEnabled(paso: number, estado: InscripcionState): boolean {
 
 export default function Home() {
   const [paso, setPaso] = useState(1);
+  // Bifurcación mensualidad/bono (solo Barre y Pilates), entre el paso 1 y el 2.
+  const [fork, setFork] = useState<DisciplinaId | null>(null);
   const [estado, setEstado] = useState<InscripcionState>(estadoInicial);
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
@@ -157,7 +161,9 @@ export default function Home() {
       ]);
       setPlanes(newPlanes);
       setSlots(newSlots);
-      setPaso(2);
+      // Barre/Pilates → primero elegir mensualidad o bono. El resto va directo al plan.
+      if (BONO_DISCIPLINAS.has(id)) setFork(id);
+      else setPaso(2);
     } finally {
       setCargando(false);
     }
@@ -217,12 +223,33 @@ export default function Home() {
             </div>
           )}
 
-          {!cargando && paso === 1 && (
+          {!cargando && paso === 1 && !fork && (
             <Paso1Disciplina
               disciplinas={disciplinas}
               value={estado.disciplina}
               onSelect={handleDisciplinaSelect}
             />
+          )}
+
+          {!cargando && paso === 1 && fork && (
+            <div className="max-w-lg mx-auto px-5">
+              <button onClick={() => setFork(null)} className="flex items-center gap-1.5 text-xs mb-6 transition-opacity hover:opacity-70" style={{ color: "#89726c", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}>
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11 6.5H2M5.5 3L2 6.5l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                Cambiar disciplina
+              </button>
+              <h2 className="text-3xl sm:text-4xl mb-2" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>¿Cómo prefieres venir?</h2>
+              <p className="text-sm mb-7" style={{ color: "#89726c" }}>{disciplinaObj?.nombre} — elige la modalidad que mejor te encaje.</p>
+
+              <button onClick={() => { setFork(null); setPaso(2); }} className="w-full text-left rounded-3xl p-6 mb-4 transition-all" style={{ border: "2px solid #dcc1b9", backgroundColor: "#ffffff", cursor: "pointer" }}>
+                <p className="text-lg font-bold mb-1" style={{ color: "#25190f", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}>Mensualidad 🔁</p>
+                <p className="text-sm" style={{ color: "#56423d" }}>Para quien viene con rutina. Plaza fija cada semana y el mejor precio por clase.</p>
+              </button>
+
+              <button onClick={() => { window.location.href = `/comprar-bono?disciplina=${fork}`; }} className="w-full text-left rounded-3xl p-6 transition-all" style={{ border: "2px solid #dcc1b9", backgroundColor: "#ffffff", cursor: "pointer" }}>
+                <p className="text-lg font-bold mb-1" style={{ color: "#25190f", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}>Bono flexible 🎟️</p>
+                <p className="text-sm" style={{ color: "#56423d" }}>Para quien improvisa. Compras créditos y reservas el día que puedas.</p>
+              </button>
+            </div>
           )}
 
           {!cargando && paso === 2 && disciplinaObj && (
