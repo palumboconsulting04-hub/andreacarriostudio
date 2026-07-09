@@ -17,7 +17,7 @@ export type Slot = {
 
 export const SLOTS: Slot[] = [
   // 🌅 Mañana · Ballet infantil (9:30–13:40)
-  { id: "nin-pre",      bloque: "ninas",   titulo: "Pre-Ballet (3–6)",        hora: "9:30–10:45",  tope: 12 },
+  { id: "nin-pre",      bloque: "ninas",   titulo: "Pre-Ballet (3–6)",        hora: "9:30–10:45",  tope: 20 },
   { id: "nin-ballet-1", bloque: "ninas",   titulo: "Ballet 1 (7–9)",          hora: "11:00–12:20", tope: 12 },
   { id: "nin-ballet-2", bloque: "ninas",   titulo: "Ballet 2 (10–14)",        hora: "12:30–13:40", tope: 12 },
   // 🌆 Tarde · Barre y Pilates (17:00–21:00)
