@@ -4329,10 +4329,11 @@ export default function AdminDashboard() {
                             <div key={r.id} className="px-4 py-2.5 flex items-center justify-between gap-3" style={{ borderTop: "1px solid #f0ddd5" }}>
                               <div className="min-w-0">
                                 <p className="text-sm font-medium truncate" style={{ color: "#25190f" }}>{r.avisado ? "📩 " : ""}{r.nombre}</p>
+                                {r.nombre_madre && <p className="text-xs truncate" style={{ color: "#89726c" }}>madre/padre: {r.nombre_madre}</p>}
                                 <p className="text-xs truncate" style={{ color: "#89726c" }}>{r.telefono}{r.email ? ` · ${r.email}` : ""}</p>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <a href={waHref(r.telefono, r.nombre)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg></a>
+                                <a href={waHref(r.telefono, r.nombre_madre || r.nombre)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg></a>
                                 <button onClick={() => marcarAvisado(r.id, !r.avisado)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.avisado ? "#1b4f9c" : "#e6efff", color: r.avisado ? "#ffffff" : "#1b4f9c" }} title="Marcar como avisada">📩</button>
                               </div>
                             </div>
