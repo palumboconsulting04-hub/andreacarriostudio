@@ -119,12 +119,28 @@ export default function ReservarJornada() {
           </>
         ) : (
           <>
-            <h2 className="text-4xl sm:text-5xl mb-5" style={{ fontFamily: fSerif, color: C.burgundy }}>¡Hora reservada!</h2>
-            <p className="text-base max-w-md leading-relaxed mb-2" style={{ color: C.brown }}>Te esperamos el <strong>{EVENTO.fecha}</strong>:</p>
-            {s && <p className="text-lg font-bold mb-8" style={{ color: C.burgundy, fontFamily: fSans }}>{s.titulo} · {s.hora}</p>}
-            <p className="text-sm max-w-md leading-relaxed" style={{ color: C.brown }}>
-              Si quieres probar también la otra disciplina, puedes reservar otra hora.<br />¡Nos vemos! <strong>Andrea</strong>
-            </p>
+            <h2 className="text-3xl sm:text-4xl mb-5" style={{ fontFamily: fSerif, color: C.burgundy }}>¡Plaza reservada! 🤎</h2>
+            <div className="max-w-lg text-left rounded-3xl p-6 sm:p-7" style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}>
+              <p className="text-base font-bold mb-3" style={{ color: C.burgundy, fontFamily: fSerif }}>¡Hola! 🤎</p>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>¡Muchísimas gracias por confirmar tu asistencia a las Jornadas de Puertas Abiertas de Andrea Carrió Studio!</p>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Estoy deseando conocerte y compartir contigo esta experiencia.</p>
+              <div className="rounded-2xl px-4 py-3 mb-4" style={{ backgroundColor: C.blush }}>
+                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: Jueves 24 de julio</p>
+                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>⏰ Horario: {s?.titulo} · {s?.hora}</p>
+              </div>
+              <p className="text-sm font-bold mb-1.5" style={{ color: C.dark }}>¿Qué necesitas traer?</p>
+              <p className="text-sm leading-relaxed mb-1" style={{ color: C.brown }}>✔️ Ropa deportiva cómoda.</p>
+              <p className="text-sm leading-relaxed mb-1" style={{ color: C.brown }}>✔️ Calcetines</p>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: C.brown }}>💧 Una botella de agua.</p>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Al finalizar la clase tendremos un ratito para conocernos mejor, enseñarte el estudio, resolver cualquier duda sobre el próximo curso y compartir un pequeño detalle preparado con mucho cariño.</p>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Si finalmente no pudieras asistir, te agradecería muchísimo que me avisaras con la mayor antelación posible para poder ofrecer tu plaza a otra persona.</p>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: C.brown }}>¡Estoy deseando darte la bienvenida a Andrea Carrió Studio! 🤎</p>
+              <p className="text-sm font-semibold mb-3" style={{ color: C.burgundy }}>Andrea Carrió</p>
+              <a href="https://wa.me/34614679291" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-bold" style={{ backgroundColor: "#25D366", color: "#ffffff" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
+                Escríbeme por WhatsApp
+              </a>
+            </div>
           </>
         )}
       </div>
