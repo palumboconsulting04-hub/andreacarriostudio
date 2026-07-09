@@ -18,6 +18,7 @@ export default function ComprarBono() {
   const [disciplina, setDisciplina] = useState(["barre-fit", "pilates-mat"].includes(dParam) ? dParam : "");
   const [bonos, setBonos] = useState<BonoTipo[]>([]);
   const [sel, setSel] = useState<BonoTipo | null>(null);
+  const [detalle, setDetalle] = useState<BonoTipo | null>(null);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -90,24 +91,32 @@ export default function ComprarBono() {
           <>
             <p className="text-center text-xs mb-4" style={{ color: C.burgundy, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>{DISC[disciplina]}</p>
 
+            {(() => { const precioSuelta = bonos.find(x => x.creditos === 1)?.precio ?? 0; return (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
               {bonos.map(b => {
                 const activo = sel?.id === b.id;
                 const porClase = b.precio / b.creditos;
+                const ahorro = Math.max(0, b.creditos * precioSuelta - b.precio);
                 return (
-                  <button key={b.id} onClick={() => setSel(b)} className="text-center rounded-2xl p-5 transition-all hover:-translate-y-0.5"
-                    style={{ border: `2px solid ${activo ? C.burgundy : C.border}`, backgroundColor: activo ? C.blush : "#fff", cursor: "pointer" }}>
+                  <div key={b.id} className="rounded-2xl p-5 flex flex-col text-center transition-all"
+                    style={{ border: `2px solid ${activo ? C.burgundy : C.border}`, backgroundColor: activo ? C.blush : "#fff" }}>
                     <p className="text-sm font-bold mb-2" style={{ color: C.dark, fontFamily: fSans }}>{b.nombre}</p>
                     <p className="text-3xl font-bold leading-none" style={{ color: C.burgundy }}>{b.precio}€</p>
                     <p className="text-xs mt-1.5" style={{ color: C.muted }}>{porClase.toFixed(0)}€ / clase</p>
+                    {ahorro > 0 && <p className="text-[11px] font-semibold mt-1" style={{ color: "#1f7a3d" }}>Ahorras {ahorro}€</p>}
                     <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${activo ? "#e6b8a8" : C.border}` }}>
                       <p className="text-xs font-semibold" style={{ color: C.brown }}>{b.creditos === 1 ? "1 clase" : `${b.creditos} clases`}</p>
                       <p className="text-[11px] mt-0.5" style={{ color: C.muted }}>válido {b.validezMeses} {b.validezMeses === 1 ? "mes" : "meses"}</p>
                     </div>
-                  </button>
+                    <div className="mt-4 flex flex-col gap-2">
+                      <button onClick={() => setDetalle(b)} className="text-xs font-semibold py-2 rounded-full" style={{ border: `1px solid ${C.border}`, color: C.burgundy, backgroundColor: "transparent" }}>Detalles</button>
+                      <button onClick={() => setSel(b)} className="text-xs font-bold py-2.5 rounded-full uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>{activo ? "Elegido ✓" : "Elegir"}</button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
+            ); })()}
 
             {sel && (
               <div className="rounded-3xl p-6 shadow-sm space-y-3 max-w-md mx-auto" style={{ backgroundColor: "#fff", border: `2px solid ${C.burgundy}` }}>
@@ -127,6 +136,49 @@ export default function ComprarBono() {
           </>
         )}
       </div>
+
+      {detalle && (() => {
+        const precioSuelta = bonos.find(x => x.creditos === 1)?.precio ?? 0;
+        const ahorro = Math.max(0, detalle.creditos * precioSuelta - detalle.precio);
+        const dl = DISC[detalle.disciplinaId] ?? detalle.disciplinaId;
+        const item = (icon: string, texto: string) => (
+          <div className="flex items-start gap-2.5">
+            <span className="text-base leading-6">{icon}</span>
+            <span className="text-sm" style={{ color: C.brown }}>{texto}</span>
+          </div>
+        );
+        return (
+          <div onClick={() => setDetalle(null)} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }}>
+            <div onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl" style={{ backgroundColor: "#fff" }}>
+              <div className="p-6 pb-5" style={{ background: "linear-gradient(135deg,#fff0eb,#fff8f5)" }}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xl font-bold" style={{ color: C.dark, fontFamily: fSans }}>{detalle.nombre}</p>
+                    <p className="text-xs mt-0.5 font-semibold uppercase tracking-widest" style={{ color: C.burgundy }}>{dl}</p>
+                  </div>
+                  <button onClick={() => setDetalle(null)} className="w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0" style={{ backgroundColor: "#fff", color: C.muted }} aria-label="Cerrar">✕</button>
+                </div>
+                <p className="text-4xl font-bold mt-4" style={{ color: C.burgundy }}>{detalle.precio}€</p>
+                <p className="text-sm" style={{ color: C.muted }}>{(detalle.precio / detalle.creditos).toFixed(0)}€ por clase{ahorro > 0 ? ` · ahorras ${ahorro}€` : ""}</p>
+              </div>
+              <div className="p-6 space-y-3">
+                {item("🎟️", `${detalle.creditos === 1 ? "1 clase" : `${detalle.creditos} clases`} · 1 crédito = 1 clase`)}
+                {item("📅", `Válido ${detalle.validezMeses} ${detalle.validezMeses === 1 ? "mes" : "meses"} desde la compra`)}
+                {item("🗓️", "Reservas el día que quieras desde tu panel")}
+                {item("↩️", "Cancela hasta 24 h antes y recupera el crédito")}
+                {ahorro > 0 && item("💚", `Ahorras ${ahorro}€ frente a comprar clases sueltas`)}
+                <p className="text-sm leading-relaxed pt-1" style={{ color: C.muted }}>
+                  Bono de {detalle.creditos} {detalle.creditos === 1 ? "sesión" : "sesiones"} de {dl}, para usar cuando puedas. Ideal si no quieres atarte a una rutina fija.
+                </p>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setDetalle(null)} className="flex-1 py-3 rounded-2xl text-sm font-semibold" style={{ border: `1.5px solid ${C.border}`, color: C.brown, backgroundColor: "#fff" }}>Cancelar</button>
+                  <button onClick={() => { setSel(detalle); setDetalle(null); }} className="flex-1 py-3 rounded-2xl text-sm font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>Elegir →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
