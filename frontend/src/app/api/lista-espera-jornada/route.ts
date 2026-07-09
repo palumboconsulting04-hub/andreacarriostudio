@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
   const telefono = (body?.telefono ?? "").toString().trim();
   const email = (body?.email ?? "").toString().trim();
   const slot_id = (body?.slot_id ?? "").toString();
+  const nombre_madre = (body?.nombre_madre ?? "").toString().trim();
 
   const slot = slotById(slot_id);
   if (!nombre || !telefono || !slot) {
@@ -38,9 +39,12 @@ export async function POST(req: NextRequest) {
   if (!email || !/\S+@\S+\.\S+/.test(email)) {
     return NextResponse.json({ error: "El email es obligatorio." }, { status: 400 });
   }
+  if (slot.bloque === "ninas" && !nombre_madre) {
+    return NextResponse.json({ error: "Falta el nombre de la madre o el padre." }, { status: 400 });
+  }
 
   const { error } = await supabaseAdmin.from("lista_espera_jornada").insert({
-    nombre, telefono, email, slot_id,
+    nombre, telefono, email, slot_id, nombre_madre: nombre_madre || null,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

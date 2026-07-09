@@ -14,6 +14,7 @@ type Disp = { id: string; ocupadas: number; libres: number };
 
 export default function ReservarJornada() {
   const [nombre, setNombre] = useState("");
+  const [nombreMadre, setNombreMadre] = useState("");
   const [telefono, setTelefono] = useState("");
   const [email, setEmail] = useState("");
   const [slotId, setSlotId] = useState("");
@@ -36,7 +37,9 @@ export default function ReservarJornada() {
   useEffect(cargar, []);
 
   const emailOk = /\S+@\S+\.\S+/.test(email.trim());
-  const formValido = nombre.trim() && telefono.trim() && emailOk && slotId;
+  // En un turno de niña, "nombre" es la niña y además pedimos el de la madre/padre.
+  const esNina = !!slotId && slotById(slotId)?.bloque === "ninas";
+  const formValido = !!(nombre.trim() && telefono.trim() && emailOk && slotId && (!esNina || nombreMadre.trim()));
   // Si el turno elegido está lleno → la acción es apuntarse a su lista de espera.
   const selFull = !!slotId && !!disp[slotId] && disp[slotId].libres <= 0;
 
@@ -49,7 +52,7 @@ export default function ReservarJornada() {
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nombre.trim(), telefono: telefono.trim(), email: email.trim(), slot_id: slotId }),
+        body: JSON.stringify({ nombre: nombre.trim(), telefono: telefono.trim(), email: email.trim(), slot_id: slotId, nombre_madre: esNina ? nombreMadre.trim() : "" }),
       });
       if (res.status === 409) {
         // El turno se llenó justo ahora: recargamos para que aparezca como COMPLETO.
@@ -90,7 +93,7 @@ export default function ReservarJornada() {
           <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M7 18l8 8L29 10" stroke={C.burgundy} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
         <h2 className="text-4xl sm:text-5xl mb-5" style={{ fontFamily: fSerif, color: C.burgundy }}>¡Hora reservada!</h2>
-        <p className="text-base max-w-md leading-relaxed mb-2" style={{ color: C.brown }}>Te esperamos el <strong>{EVENTO.fecha}</strong>:</p>
+        <p className="text-base max-w-md leading-relaxed mb-2" style={{ color: C.brown }}>{esNina && nombre ? <>Te esperamos a <strong>{nombre}</strong> el <strong>{EVENTO.fecha}</strong>:</> : <>Te esperamos el <strong>{EVENTO.fecha}</strong>:</>}</p>
         {s && <p className="text-lg font-bold mb-8" style={{ color: C.burgundy, fontFamily: fSans }}>{s.titulo} · {s.hora}</p>}
         <p className="text-sm max-w-md leading-relaxed" style={{ color: C.brown }}>
           Si quieres probar también la otra disciplina, puedes reservar otra hora.<br />¡Nos vemos! <strong>Andrea</strong>
@@ -150,7 +153,14 @@ export default function ReservarJornada() {
         </div>
 
         <div className="rounded-3xl p-6 shadow-sm space-y-3" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>
-          <input style={inputStyle} placeholder="Nombre *" value={nombre} onChange={e => setNombre(e.target.value)} />
+          {esNina ? (
+            <>
+              <input style={inputStyle} placeholder="Nombre de la niña *" value={nombre} onChange={e => setNombre(e.target.value)} />
+              <input style={inputStyle} placeholder="Tu nombre (madre/padre) *" value={nombreMadre} onChange={e => setNombreMadre(e.target.value)} />
+            </>
+          ) : (
+            <input style={inputStyle} placeholder="Tu nombre *" value={nombre} onChange={e => setNombre(e.target.value)} />
+          )}
           <input style={inputStyle} placeholder="WhatsApp *" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
           <input style={inputStyle} placeholder="Email *" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           <p className="text-xs" style={{ color: C.muted }}>* Todos los campos son obligatorios</p>

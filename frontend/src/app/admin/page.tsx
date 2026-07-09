@@ -658,6 +658,7 @@ export default function AdminDashboard() {
   type JornadaRow = {
     id: string; created_at: string; nombre: string; telefono: string;
     email: string | null; bloque: string; slot_id: string; asistio: boolean | null;
+    nombre_madre: string | null;
   };
   const [jornadaData, setJornadaData] = useState<JornadaRow[]>([]);
   const [jornadaLoading, setJornadaLoading] = useState(false);
@@ -669,7 +670,7 @@ export default function AdminDashboard() {
       body: JSON.stringify({ id, asistio }),
     });
   };
-  type EsperaRow = { id: string; created_at: string; nombre: string; telefono: string; email: string | null; slot_id: string; avisado: boolean };
+  type EsperaRow = { id: string; created_at: string; nombre: string; telefono: string; email: string | null; slot_id: string; avisado: boolean; nombre_madre: string | null };
   const [jornadaEspera, setJornadaEspera] = useState<EsperaRow[]>([]);
   const marcarAvisado = async (id: string, avisado: boolean) => {
     setJornadaEspera(prev => prev.map(r => r.id === id ? { ...r, avisado } : r));
@@ -4270,6 +4271,7 @@ export default function AdminDashboard() {
                                     <p className="text-sm font-medium truncate" style={{ color: "#25190f" }}>
                                       {r.asistio === true ? "✅ " : r.asistio === false ? "❌ " : ""}{r.nombre}
                                     </p>
+                                    {r.nombre_madre && <p className="text-xs truncate" style={{ color: "#89726c" }}>madre/padre: {r.nombre_madre}</p>}
                                     <p className="text-xs truncate" style={{ color: "#89726c" }}>{r.telefono}{r.email ? ` · ${r.email}` : ""}</p>
                                   </div>
                                   <div className="flex items-center gap-1.5 shrink-0">
@@ -4281,7 +4283,7 @@ export default function AdminDashboard() {
                                       </>
                                     ) : (
                                       <>
-                                        <a href={waHref(r.telefono, r.nombre)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp">
+                                        <a href={waHref(r.telefono, r.nombre_madre || r.nombre)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#25D366" }} title="WhatsApp">
                                           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
                                         </a>
                                         <button onClick={() => marcarAsistio(r.id, r.asistio === true ? null : true)} className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: r.asistio === true ? "#1f7a3d" : "#e7f7ec", color: r.asistio === true ? "#ffffff" : "#1f7a3d" }} title="Marcar que vino">✔</button>
