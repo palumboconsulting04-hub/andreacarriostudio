@@ -5139,7 +5139,7 @@ export default function AdminDashboard() {
               let t = (tel || "").replace(/\D/g, "");
               if (t.startsWith("00")) t = t.slice(2);
               if (t.length === 9) t = "34" + t;
-              return `https://wa.me/${t}?text=${encodeURIComponent(`¡Hola ${nombre}! Soy Andrea, de Andrea Carrió Studio.`)}`;
+              return `https://wa.me/${t}?text=${encodeURIComponent(`¡Hola ${nombre}! 🤎 Soy Andrea, ¡muchísimas gracias por tu bono!\n\nEste es tu enlace para entrar a tu área "Mis clases" y reservar las clases que quieras cuando te venga bien:\nhttps://reservas.andreacarriostudio.es/mis-clases\n\nEntra con tu nombre y el correo con el que compraste el bono, eliges el día y ¡listo! Nos vemos en el estudio 💛`)}`;
             };
             const estadoBono = (b: BonoAdmin) => {
               if (b.caduca < hoy) return { l: "Caducado", bg: "#eceff1", fg: "#546e7a" };
