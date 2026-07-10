@@ -155,6 +155,8 @@ export default function MisClasesPanel() {
   for (const c of clases) (porFecha[c.fecha] ??= []).push(c);
   const fechas = Object.keys(porFecha).sort();
   const misReservas = clases.filter(c => c.reserva_id).sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
+  const comprarUrl = `/comprar-bono${bonos[0]?.disciplina_id ? `?disciplina=${bonos[0].disciplina_id}` : ""}`;
+  const waAndrea = `https://wa.me/34614679291?text=${encodeURIComponent("¡Hola Andrea! 🤎 Tengo una duda sobre mis clases.")}`;
 
   const lunesBase = lunesDe(new Date());
   const lunesSem = new Date(lunesBase); lunesSem.setDate(lunesBase.getDate() + semana * 7);
@@ -248,7 +250,12 @@ export default function MisClasesPanel() {
 
         {!preview && (
           <div className="flex flex-col gap-2 mb-4">
-            {usables.length === 0 && <p className="text-sm" style={{ color: C.muted }}>No tienes bonos con créditos. <a href="/comprar-bono" style={{ color: C.burgundy, fontWeight: 600 }}>Comprar un bono →</a></p>}
+            {usables.length === 0 && (
+              <div className="rounded-2xl p-4 text-center" style={{ backgroundColor: C.blush }}>
+                <p className="text-sm font-semibold mb-2" style={{ color: C.burgundy }}>No te quedan créditos 🎟️</p>
+                <a href={comprarUrl} className="inline-block px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream, textDecoration: "none" }}>Comprar más créditos →</a>
+              </div>
+            )}
             {usables.map(b => (
               <div key={b.id} className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
                 <div>
@@ -289,6 +296,13 @@ export default function MisClasesPanel() {
               ))}
             </div>
           )
+        )}
+
+        {!preview && (
+          <div className="mt-8 pt-5 flex flex-col gap-2" style={{ borderTop: `1px solid ${C.border}` }}>
+            <a href={comprarUrl} className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.burgundy}`, color: C.burgundy, textDecoration: "none" }}>🎟️ Comprar más créditos</a>
+            <a href={waAndrea} target="_blank" rel="noopener noreferrer" className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2" style={{ backgroundColor: "#25D366", color: "#fff", textDecoration: "none" }}>💬 ¿Dudas? Escríbeme</a>
+          </div>
         )}
       </div>
     </div>
