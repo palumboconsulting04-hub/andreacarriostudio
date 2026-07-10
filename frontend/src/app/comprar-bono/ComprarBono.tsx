@@ -95,8 +95,9 @@ export default function ComprarBono() {
           </div>
         ) : (
           <>
-            <div className="flex justify-center mb-8">
+            <div className="flex flex-col items-center gap-2 mb-8">
               <span className="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest" style={{ backgroundColor: C.blush, color: C.burgundy }}>{DISC[disciplina]}</span>
+              <p className="text-xs text-center max-w-xs" style={{ color: C.muted }}>Cada bono da acceso solo a clases de {DISC[disciplina]}. No sirve para la otra disciplina.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 pt-3 items-stretch">
@@ -107,6 +108,7 @@ export default function ComprarBono() {
                 const tagline = b.creditos === 1 ? "Para probar" : b.creditos <= 5 ? "Para coger el hábito" : "Para las constantes";
                 const feats = [
                   b.creditos === 1 ? "1 clase de prueba" : `${b.creditos} clases`,
+                  `Solo clases de ${DISC[disciplina]}`,
                   `Válido ${b.validezMeses} ${b.validezMeses === 1 ? "mes" : "meses"}`,
                   "Reserva el día que quieras",
                 ];
@@ -187,6 +189,7 @@ export default function ComprarBono() {
               </div>
               <div className="p-6 space-y-3">
                 {item(`${detalle.creditos === 1 ? "1 clase" : `${detalle.creditos} clases`} · 1 crédito = 1 clase`)}
+                {item(`Solo para clases de ${dl}, no para la otra disciplina`)}
                 {item(`Válido ${detalle.validezMeses} ${detalle.validezMeses === 1 ? "mes" : "meses"} desde la compra`)}
                 {item("Reservas el día que quieras desde tu panel")}
                 {item("Cancela hasta 24 h antes y recupera el crédito")}
