@@ -104,7 +104,7 @@ export default function ComprarBono() {
                 const activo = sel?.id === b.id;
                 const porClase = b.precio / b.creditos;
                 const destacado = b.creditos === 5;
-                const tagline = b.creditos === 1 ? "Para probar 👋" : b.creditos <= 5 ? "Para coger el hábito 🌱" : "Para las constantes 🔥";
+                const tagline = b.creditos === 1 ? "Para probar" : b.creditos <= 5 ? "Para coger el hábito" : "Para las constantes";
                 const feats = [
                   b.creditos === 1 ? "1 clase de prueba" : `${b.creditos} clases`,
                   `Válido ${b.validezMeses} ${b.validezMeses === 1 ? "mes" : "meses"}`,
@@ -165,9 +165,9 @@ export default function ComprarBono() {
         const precioSuelta = bonos.find(x => x.creditos === 1)?.precio ?? 0;
         const ahorro = Math.max(0, detalle.creditos * precioSuelta - detalle.precio);
         const dl = DISC[detalle.disciplinaId] ?? detalle.disciplinaId;
-        const item = (icon: string, texto: string) => (
+        const item = (texto: string) => (
           <div className="flex items-start gap-2.5">
-            <span className="text-base leading-6">{icon}</span>
+            <span className="mt-[7px] w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: C.burgundy }} />
             <span className="text-sm" style={{ color: C.brown }}>{texto}</span>
           </div>
         );
@@ -186,11 +186,11 @@ export default function ComprarBono() {
                 <p className="text-sm" style={{ color: C.muted }}>{(detalle.precio / detalle.creditos).toFixed(0)}€ por clase{ahorro > 0 ? ` · ahorras ${ahorro}€` : ""}</p>
               </div>
               <div className="p-6 space-y-3">
-                {item("🎟️", `${detalle.creditos === 1 ? "1 clase" : `${detalle.creditos} clases`} · 1 crédito = 1 clase`)}
-                {item("📅", `Válido ${detalle.validezMeses} ${detalle.validezMeses === 1 ? "mes" : "meses"} desde la compra`)}
-                {item("🗓️", "Reservas el día que quieras desde tu panel")}
-                {item("↩️", "Cancela hasta 24 h antes y recupera el crédito")}
-                {ahorro > 0 && item("💚", `Ahorras ${ahorro}€ frente a comprar clases sueltas`)}
+                {item(`${detalle.creditos === 1 ? "1 clase" : `${detalle.creditos} clases`} · 1 crédito = 1 clase`)}
+                {item(`Válido ${detalle.validezMeses} ${detalle.validezMeses === 1 ? "mes" : "meses"} desde la compra`)}
+                {item("Reservas el día que quieras desde tu panel")}
+                {item("Cancela hasta 24 h antes y recupera el crédito")}
+                {ahorro > 0 && item(`Ahorras ${ahorro}€ frente a comprar clases sueltas`)}
                 <p className="text-sm leading-relaxed pt-1" style={{ color: C.muted }}>
                   Bono de {detalle.creditos} {detalle.creditos === 1 ? "sesión" : "sesiones"} de {dl}, para usar cuando puedas. Ideal si no quieres atarte a una rutina fija.
                 </p>

@@ -189,7 +189,7 @@ export default function MisClasesPanel() {
   for (const c of clases) (porFecha[c.fecha] ??= []).push(c);
   const fechas = Object.keys(porFecha).sort();
   const misReservas = clases.filter(c => c.reserva_id).sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
-  const waAndrea = `https://wa.me/34614679291?text=${encodeURIComponent("¡Hola Andrea! 🤎 Tengo una duda sobre mis clases.")}`;
+  const waAndrea = `https://wa.me/34614679291?text=${encodeURIComponent("¡Hola Andrea! Tengo una duda sobre mis clases.")}`;
 
   const lunesBase = lunesDe(new Date());
   const lunesSem = new Date(lunesBase); lunesSem.setDate(lunesBase.getDate() + semana * 7);
@@ -272,7 +272,7 @@ export default function MisClasesPanel() {
       <div className="max-w-md mx-auto">
         {preview && (
           <div className="rounded-2xl px-4 py-2.5 mb-4 text-xs font-semibold text-center" style={{ backgroundColor: C.burgundy, color: C.cream }}>
-            👁️ Vista previa — así lo ven tus alumnas (solo tú la ves)
+            Vista previa — así lo ven tus alumnas (solo tú la ves)
           </div>
         )}
 
@@ -285,7 +285,7 @@ export default function MisClasesPanel() {
           <div className="flex flex-col gap-2 mb-4">
             {usables.length === 0 && (
               <div className="rounded-2xl p-4 text-center" style={{ backgroundColor: C.blush }}>
-                <p className="text-sm font-semibold mb-2" style={{ color: C.burgundy }}>No te quedan créditos 🎟️</p>
+                <p className="text-sm font-semibold mb-2" style={{ color: C.burgundy }}>No te quedan créditos</p>
                 <button onClick={abrirComprar} className="inline-block px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>Comprar más créditos →</button>
               </div>
             )}
@@ -295,7 +295,7 @@ export default function MisClasesPanel() {
                   <p className="text-sm font-bold" style={{ color: C.dark, fontFamily: fSans }}>{DISC[b.disciplina_id] ?? b.disciplina_id}</p>
                   <p className="text-xs" style={{ color: C.muted }}>caduca {caducaLabel(b.caduca)}</p>
                 </div>
-                <p className="text-sm font-bold" style={{ color: C.burgundy }}>🎟️ {b.creditos_restantes} {b.creditos_restantes === 1 ? "crédito" : "créditos"}</p>
+                <p className="text-sm font-bold" style={{ color: C.burgundy }}>{b.creditos_restantes} {b.creditos_restantes === 1 ? "crédito" : "créditos"}</p>
               </div>
             ))}
           </div>
@@ -333,8 +333,8 @@ export default function MisClasesPanel() {
 
         {!preview && (
           <div className="mt-8 pt-5 flex flex-col gap-2" style={{ borderTop: `1px solid ${C.border}` }}>
-            <button onClick={abrirComprar} className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.burgundy}`, color: C.burgundy }}>🎟️ Comprar más créditos</button>
-            <a href={waAndrea} target="_blank" rel="noopener noreferrer" className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2" style={{ backgroundColor: "#25D366", color: "#fff", textDecoration: "none" }}>💬 ¿Dudas? Escríbeme</a>
+            <button onClick={abrirComprar} className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.burgundy}`, color: C.burgundy }}>Comprar más créditos</button>
+            <a href={waAndrea} target="_blank" rel="noopener noreferrer" className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2" style={{ backgroundColor: "#25D366", color: "#fff", textDecoration: "none" }}>¿Dudas? Escríbeme</a>
           </div>
         )}
 

@@ -251,7 +251,6 @@ export default function Home() {
                 {/* Mensualidad (destacada) */}
                 <button onClick={() => { setFork(null); setPaso(2); }} className="group relative text-left rounded-3xl p-7 border transition-all duration-300 hover:-translate-y-1 bg-siena border-siena text-white shadow-lg focus:outline-none">
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-terracota-light text-texto font-body font-semibold tracking-widest uppercase px-3 py-1 rounded-full shadow" style={{ fontSize: "10px" }}>Recomendado</span>
-                  <div className="text-3xl mb-3">🔁</div>
                   <p className="font-display text-2xl font-semibold text-white mb-1">Mensualidad</p>
                   <p className="font-body text-sm text-siena-pale mb-5">Para quien viene con rutina</p>
                   <ul className="space-y-2.5 mb-7">
@@ -270,7 +269,6 @@ export default function Home() {
 
                 {/* Bono flexible */}
                 <button onClick={() => { window.location.href = `/comprar-bono?disciplina=${fork}`; }} className="group relative text-left rounded-3xl p-7 border transition-all duration-300 hover:-translate-y-1 bg-white border-outline-light hover:border-siena-pale shadow-sm hover:shadow-md focus:outline-none">
-                  <div className="text-3xl mb-3">🎟️</div>
                   <p className="font-display text-2xl font-semibold text-siena mb-1">Bono flexible</p>
                   <p className="font-body text-sm text-texto-muted mb-5">Para quien improvisa</p>
                   <ul className="space-y-2.5 mb-7">
