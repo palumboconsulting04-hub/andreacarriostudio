@@ -419,7 +419,7 @@ export default function AdminDashboard() {
 
   // ── Nuevo horario ──
   const [showNuevoHorario, setShowNuevoHorario] = useState(false);
-  const [nhf, setNhf] = useState({ disciplina_id: "", giorno: "Lunes", ora_inizio: "09:00", ora_fine: "10:00", posti_totali: 10 });
+  const [nhf, setNhf] = useState({ disciplina_id: "", giorno: "Lunes", ora_inizio: "09:00", ora_fine: "10:00", posti_totali: 12 });
   const [nhfLoading, setNhfLoading] = useState(false);
 
   // ── Costes state ──
@@ -1427,7 +1427,7 @@ export default function AdminDashboard() {
     setNhfLoading(true);
     await supabase.from("orari").insert({ disciplina_id: nhf.disciplina_id, giorno: nhf.giorno, ora_inizio: nhf.ora_inizio, ora_fine: nhf.ora_fine, posti_totali: nhf.posti_totali, attivo: true });
     setShowNuevoHorario(false);
-    setNhf({ disciplina_id: "", giorno: "Lunes", ora_inizio: "09:00", ora_fine: "10:00", posti_totali: 10 });
+    setNhf({ disciplina_id: "", giorno: "Lunes", ora_inizio: "09:00", ora_fine: "10:00", posti_totali: 12 });
     setNhfLoading(false);
     // Reload orari
     const { data } = await supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true);
