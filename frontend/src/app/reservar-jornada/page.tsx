@@ -100,7 +100,7 @@ export default function ReservarJornada() {
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>¡Muchísimas gracias por confirmar la asistencia de <strong>{nombre}</strong> a las Jornadas de Puertas Abiertas de Andrea Carrió Studio!</p>
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Me hace muchísima ilusión que pueda acompañarnos ese día y conocer el estudio.</p>
               <div className="rounded-2xl px-4 py-3 mb-4" style={{ backgroundColor: C.blush }}>
-                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: Jueves 24 de julio</p>
+                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: Viernes 24 de julio</p>
                 <p className="text-sm font-semibold" style={{ color: C.burgundy }}>⏰ Horario: {s?.titulo} · {s?.hora}</p>
               </div>
               <p className="text-sm font-bold mb-1.5" style={{ color: C.dark }}>¿Qué necesita traer?</p>
@@ -125,7 +125,7 @@ export default function ReservarJornada() {
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>¡Muchísimas gracias por confirmar tu asistencia a las Jornadas de Puertas Abiertas de Andrea Carrió Studio!</p>
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Estoy deseando conocerte y compartir contigo esta experiencia.</p>
               <div className="rounded-2xl px-4 py-3 mb-4" style={{ backgroundColor: C.blush }}>
-                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: Jueves 24 de julio</p>
+                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: Viernes 24 de julio</p>
                 <p className="text-sm font-semibold" style={{ color: C.burgundy }}>⏰ Horario: {s?.titulo} · {s?.hora}</p>
               </div>
               <p className="text-sm font-bold mb-1.5" style={{ color: C.dark }}>¿Qué necesitas traer?</p>
