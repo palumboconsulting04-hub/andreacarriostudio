@@ -5161,14 +5161,18 @@ export default function AdminDashboard() {
                   <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Bonos de Barre y Pilates, créditos y próximas reservas.</p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <p className="w-full text-xs font-semibold" style={{ color: "#89726c" }}>👁️ Ver el panel de reservas de las alumnas:</p>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <p className="w-full text-xs font-semibold" style={{ color: "#89726c" }}>👁️ Panel de las alumnas (Mis clases):</p>
+                  <a href="/mis-clases" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                    <Icon name="login" className="text-sm" /> Abrir Mis clases (login + panel)
+                  </a>
                   <a href="/mis-clases?preview=barre-fit" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fff0eb", color: "#7d2b13", border: "1px solid #dcc1b9" }}>
-                    <Icon name="visibility" className="text-sm" /> Panel · Barre Fit
+                    <Icon name="visibility" className="text-sm" /> Vista rápida · Barre
                   </a>
                   <a href="/mis-clases?preview=pilates-mat" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fff0eb", color: "#7d2b13", border: "1px solid #dcc1b9" }}>
-                    <Icon name="visibility" className="text-sm" /> Panel · Pilates Mat
+                    <Icon name="visibility" className="text-sm" /> Vista rápida · Pilates
                   </a>
+                  <p className="w-full text-[11px] mt-1" style={{ color: "#bcb0ab" }}>“Abrir Mis clases” = login real + panel con pestañas (entra con tu bono). “Vista rápida” = solo el calendario, sin login.</p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2.5">
