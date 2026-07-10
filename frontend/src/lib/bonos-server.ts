@@ -44,6 +44,38 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
   if (error) return;
 
   try { await enviarEmailBono(m, creditos, caduca); } catch (e) { console.error("email bono:", e); }
+  try { await enviarAvisoAdmin(m, creditos, caduca); } catch (e) { console.error("aviso admin bono:", e); }
+}
+
+// Aviso a Andrea de cada compra de bono (mismo buzón que las matrículas nuevas).
+async function enviarAvisoAdmin(m: Record<string, string>, creditos: number, caduca: Date) {
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+  if (!adminEmail) return;
+  const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
+  const disc = DISC_LABEL[m.disciplina_id] ?? m.disciplina_id;
+  const caducaStr = caduca.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+  const creditosTxt = creditos === 1 ? "1 clase" : `${creditos} clases`;
+  const precio = m.precio ? `${m.precio}€` : "—";
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body style="font-family:Arial,sans-serif;color:#333;max-width:520px;margin:0 auto;padding:24px;">
+<h2 style="margin:0 0 4px;color:#7d2b13;">Nueva compra de bono</h2>
+<p style="margin:0 0 20px;font-size:13px;color:#888;">${new Date().toLocaleString("es-ES")}</p>
+<table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #7d2b13;">
+  <tr><td style="font-size:13px;color:#666;padding:8px 0 4px;">Cliente</td><td style="font-size:13px;font-weight:600;text-align:right;padding:8px 0 4px;">${m.nombre || "—"}</td></tr>
+  <tr><td style="font-size:13px;color:#666;padding:4px 0;">Email</td><td style="font-size:13px;text-align:right;"><a href="mailto:${m.email}">${m.email}</a></td></tr>
+  ${m.telefono ? `<tr><td style="font-size:13px;color:#666;padding:4px 0;">Teléfono</td><td style="font-size:13px;text-align:right;"><a href="tel:${m.telefono}">${m.telefono}</a></td></tr>` : ""}
+  <tr><td style="font-size:13px;color:#666;padding:4px 0;">Bono</td><td style="font-size:13px;font-weight:600;text-align:right;">${disc} · ${creditosTxt}</td></tr>
+  <tr><td style="font-size:13px;color:#666;padding:4px 0;">Importe</td><td style="font-size:13px;font-weight:600;text-align:right;">${precio}</td></tr>
+  <tr><td style="font-size:13px;color:#666;padding:4px 0 8px;">Válido hasta</td><td style="font-size:13px;text-align:right;padding:4px 0 8px;">${caducaStr}</td></tr>
+</table>
+</body></html>`;
+
+  await resend.emails.send({
+    from,
+    to: adminEmail,
+    subject: `Nueva compra de bono — ${m.nombre || m.email}`,
+    html,
+  });
 }
 
 async function enviarEmailBono(m: Record<string, string>, creditos: number, caduca: Date) {

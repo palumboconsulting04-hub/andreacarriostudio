@@ -453,6 +453,7 @@ export default function AdminDashboard() {
   const [nuevasInscripcionesMes, setNuevasInscripcionesMes] = useState(0);
   const [nuevasInscripcionesHoy, setNuevasInscripcionesHoy] = useState(0);
   const [avgPricePerStudent, setAvgPricePerStudent] = useState(0);
+  const [bonosMesResumen, setBonosMesResumen] = useState({ count: 0, ingresos: 0, hoy: 0 });
 
   // Sofia chat
   type SofiaMessage = { role: "user" | "assistant"; content: string };
@@ -1638,13 +1639,14 @@ export default function AdminDashboard() {
   // (renovaciones marcadas pagadas, pagos manuales registrados, etc.).
   const cargarResumen = async () => {
     const todayEs = DOW_ES[new Date().getDay()];
-    const [allIsc, r2, r4, r7, renovaciones, pagosM] = await Promise.all([
+    const [allIsc, r2, r4, r7, renovaciones, pagosM, bonosAll] = await Promise.all([
       fetch("/api/admin/iscrizioni").then(r => r.json()).then(j => (j.data ?? []) as Array<{ id: string; stato: string; created_at: string; disciplina_id: string; piano_id: string; matricula: number; [k: string]: unknown }>),
       supabase.from("orari").select("*", { count: "exact", head: true }).eq("giorno", todayEs).eq("attivo", true),
       supabase.from("orari").select("id, giorno, ora_inizio, ora_fine, disciplina_id, posti_totali, discipline(nome), iscrizione_orari(iscrizione_id)").eq("attivo", true),
       supabase.from("piani").select("id, disciplina_id, prezzo"),
       fetch("/api/admin/renovaciones").then(r => r.json()).then(j => (j.data ?? []) as RenovacionRow[]),
       fetch("/api/admin/pagos-manuales").then(r => r.json()).then(j => (j.data ?? []) as PagoManual[]),
+      fetch(`/api/admin/bonos?t=${Date.now()}`, { cache: "no-store" }).then(r => r.json()).then(j => (j.bonos ?? []) as BonoAdmin[]),
     ]);
     {
       setIscrittiCount(allIsc.filter(i => INSCRITA_STATI_ARR.includes(i.stato)).length);
@@ -1700,6 +1702,23 @@ export default function AdminDashboard() {
         if (mesPago === curMonthStr) factMes += p.importe ?? 0;
         else if (mesPago === prevMonthStr) factAnt += p.importe ?? 0;
       }
+      // Bonos (créditos): cuentan como facturación del mes y como altas nuevas.
+      let bonosMesCount = 0, bonosMesIng = 0, bonosHoyCount = 0;
+      const bTd = now2.getDate();
+      for (const b of bonosAll) {
+        if (b.estado === "cancelado") continue;
+        const mes = (b.created_at ?? "").substring(0, 7);
+        const precio = b.precio_pagado ?? 0;
+        if (mes === curMonthStr) {
+          bonosMesCount++; bonosMesIng += precio; factMes += precio;
+          const d = new Date(b.created_at);
+          if (d.getDate() === bTd && d.getMonth() === tm && d.getFullYear() === ty) bonosHoyCount++;
+        } else if (mes === prevMonthStr) {
+          factAnt += precio;
+        }
+      }
+      setBonosMesResumen({ count: bonosMesCount, ingresos: bonosMesIng, hoy: bonosHoyCount });
+
       setFacturacionMes(factMes);
       setFacturacionMesAnterior(factAnt);
       setPendingAmount(pendAmt);
@@ -1707,13 +1726,13 @@ export default function AdminDashboard() {
         const d = new Date(i.created_at);
         return d.getMonth() === tm && d.getFullYear() === ty;
       }).length;
-      setNuevasInscripcionesMes(nuevasEstesMes);
+      setNuevasInscripcionesMes(nuevasEstesMes + bonosMesCount);
       const td = now2.getDate();
       const nuevasHoy = allIsc.filter(i => {
         const d = new Date(i.created_at);
         return d.getDate() === td && d.getMonth() === tm && d.getFullYear() === ty;
       }).length;
-      setNuevasInscripcionesHoy(nuevasHoy);
+      setNuevasInscripcionesHoy(nuevasHoy + bonosHoyCount);
 
       // Ticket medio = precio del bono medio por alumna con plaza. Incluye las de
       // "matrícula pagada" (su bono arranca en septiembre, pero ya tienen plan), no
@@ -2317,6 +2336,23 @@ export default function AdminDashboard() {
                     {new Date().toLocaleDateString("es-ES", { month: "long" })}
                   </p>
                 </div>
+
+                {/* Bonos vendidos */}
+                <button
+                  onClick={() => setActiveSection("Bonos")}
+                  className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Bonos vendidos <InfoTip text="Bonos de créditos comprados este mes y lo que han ingresado. Pulsa para ver el detalle." /></p>
+                    <div className="p-2 rounded-full" style={{ backgroundColor: "#fff3e0", color: "#e65100" }}>
+                      <Icon name="confirmation_number" className="text-base" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{loading ? "—" : bonosMesResumen.count}</p>
+                  <p className="text-xs mt-2" style={{ color: "#89726c" }}>
+                    {loading ? "—" : `${bonosMesResumen.ingresos}€ este mes${bonosMesResumen.hoy > 0 ? ` · ${bonosMesResumen.hoy} hoy` : ""}`}
+                  </p>
+                </button>
 
                 {/* Objetivo Alumnos */}
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
