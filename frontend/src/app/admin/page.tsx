@@ -5161,6 +5161,16 @@ export default function AdminDashboard() {
                   <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Bonos de Barre y Pilates, créditos y próximas reservas.</p>
                 </div>
 
+                <div className="flex flex-wrap gap-2">
+                  <p className="w-full text-xs font-semibold" style={{ color: "#89726c" }}>👁️ Ver el panel de reservas de las alumnas:</p>
+                  <a href="/mis-clases?preview=barre-fit" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fff0eb", color: "#7d2b13", border: "1px solid #dcc1b9" }}>
+                    <Icon name="visibility" className="text-sm" /> Panel · Barre Fit
+                  </a>
+                  <a href="/mis-clases?preview=pilates-mat" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fff0eb", color: "#7d2b13", border: "1px solid #dcc1b9" }}>
+                    <Icon name="visibility" className="text-sm" /> Panel · Pilates Mat
+                  </a>
+                </div>
+
                 <div className="grid grid-cols-3 gap-2.5">
                   {[{ l: "Vendidos", v: bonosData.length }, { l: "Activos", v: activos.length }, { l: "Ingresos", v: `${ingresos}€` }].map(k => (
                     <div key={k.l} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
