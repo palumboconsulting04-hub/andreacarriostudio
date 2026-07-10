@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-const C = { burgundy: "#7d2b13", blush: "#ffdbd1", bg: "#f5ede8", brown: "#56423d" };
+const C = { burgundy: "#7d2b13", blush: "#ffdbd1", cream: "#fff8f5", bg: "#f5ede8", brown: "#56423d", muted: "#89726c", border: "#dcc1b9", dark: "#25190f" };
 const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
 const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
+const DISC: Record<string, string> = { "barre-fit": "Barre Fit", "pilates-mat": "Pilates Mat" };
+
+type Bono = { nombre: string; email: string; disciplina_id: string; creditos_restantes: number; caduca: string };
 
 export default function BonoGracias() {
   const params = useSearchParams();
+  const [bono, setBono] = useState<Bono | null>(null);
 
   useEffect(() => {
     const sid = params.get("session_id");
@@ -18,24 +22,56 @@ export default function BonoGracias() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sid }),
-    }).catch(() => {});
+    })
+      .then(r => r.json())
+      .then(d => { if (d.bono) setBono(d.bono as Bono); })
+      .catch(() => {});
   }, [params]);
+
+  const creditos = bono?.creditos_restantes ?? 0;
+  const disc = bono ? (DISC[bono.disciplina_id] ?? bono.disciplina_id) : "";
+  const caducaStr = bono?.caduca ? new Date(bono.caduca + "T00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }) : "";
+  const panelUrl = bono?.email ? `/mis-clases?email=${encodeURIComponent(bono.email)}` : "/mis-clases";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-16 text-center" style={{ backgroundColor: C.bg }}>
       <div className="w-20 h-20 rounded-full flex items-center justify-center mb-8" style={{ backgroundColor: C.blush }}>
         <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M7 18l8 8L29 10" stroke={C.burgundy} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </div>
-      <h1 className="text-4xl sm:text-5xl mb-5" style={{ fontFamily: fSerif, color: C.burgundy }}>¡Bono comprado! 🤎</h1>
-      <p className="text-base max-w-md leading-relaxed mb-2" style={{ color: C.brown }}>
-        Te hemos enviado un <strong>email</strong> con tu bono y el acceso a tu panel.
+
+      <h1 className="text-4xl sm:text-5xl mb-4" style={{ fontFamily: fSerif, color: C.burgundy }}>¡Gracias por tu compra!</h1>
+
+      <p className="text-base max-w-md leading-relaxed mb-7" style={{ color: C.brown }}>
+        {bono
+          ? <>Tu bono de <strong>{creditos} {creditos === 1 ? "clase" : "clases"} de {disc}</strong> ya está activo{caducaStr ? <>, válido hasta el <strong>{caducaStr}</strong></> : ""}.</>
+          : <>Tu bono ya está activo y listo para reservar.</>}
       </p>
-      <p className="text-sm max-w-md leading-relaxed mb-8" style={{ color: C.brown }}>
-        Para reservar tus clases, entra en tu panel con el <strong>mismo correo</strong> con el que has pagado.
-      </p>
-      <a href="/mis-clases" className="inline-block px-8 py-4 rounded-full text-sm font-semibold uppercase tracking-widest" style={{ backgroundColor: C.burgundy, color: "#fff8f5", fontFamily: fSans, letterSpacing: "0.08em", textDecoration: "none" }}>
-        Reservar mis clases →
+
+      {/* Cómo entrar */}
+      <div className="w-full max-w-md rounded-3xl p-6 mb-7 text-left" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
+        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: C.burgundy, fontFamily: fSans }}>Para reservar tus clases</p>
+        <p className="text-sm leading-relaxed" style={{ color: C.brown }}>
+          Entra en tu área <strong style={{ color: C.dark }}>Mis clases</strong> con:
+        </p>
+        <ul className="mt-2 space-y-1.5">
+          <li className="flex items-center gap-2.5 text-sm" style={{ color: C.brown }}>
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: C.burgundy }} />
+            Tu correo{bono?.email ? <>: <strong style={{ color: C.dark }}>{bono.email}</strong></> : <> (el mismo con el que has pagado)</>}
+          </li>
+          <li className="flex items-center gap-2.5 text-sm" style={{ color: C.brown }}>
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: C.burgundy }} />
+            Tu nombre{bono?.nombre ? <>: <strong style={{ color: C.dark }}>{bono.nombre}</strong></> : ""}
+          </li>
+        </ul>
+      </div>
+
+      <a href={panelUrl} className="inline-block px-8 py-4 rounded-full text-sm font-semibold uppercase tracking-widest" style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em", textDecoration: "none" }}>
+        Entrar en Mis clases y reservar →
       </a>
+
+      <p className="text-xs max-w-md leading-relaxed mt-6" style={{ color: C.muted }}>
+        También te hemos enviado un email con tu bono y este acceso, por si quieres entrar más tarde.
+      </p>
     </div>
   );
 }

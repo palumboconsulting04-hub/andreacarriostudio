@@ -59,6 +59,8 @@ export default function MisClasesPanel() {
     iniciado.current = true;
     const prev = params.get("preview");
     const token = params.get("acceso");
+    const emailParam = params.get("email");
+    if (emailParam) setEmail(emailParam); // pre-rellena el correo tras la compra
     (async () => {
       if (prev && ["barre-fit", "pilates-mat"].includes(prev)) {
         setPreview(true);

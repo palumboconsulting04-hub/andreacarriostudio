@@ -102,6 +102,7 @@ async function enviarEmailBono(m: Record<string, string>, creditos: number, cadu
             <p style="margin:0;font-size:18px;font-weight:700;color:#7d2b13;">${m.nombre ?? "Bono"} · ${disc}</p>
             <p style="margin:8px 0 0;font-size:14px;color:#25190f;">🎟️ ${creditosTxt} disponibles</p>
             <p style="margin:2px 0 0;font-size:13px;color:#89726c;">Válido hasta el ${caducaStr}</p>
+            ${m.precio ? `<p style="margin:2px 0 0;font-size:13px;color:#89726c;">Importe pagado: ${m.precio}€</p>` : ""}
           </td></tr>
         </table>
       </td></tr>
