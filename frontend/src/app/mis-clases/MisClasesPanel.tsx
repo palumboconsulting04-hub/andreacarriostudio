@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import { loadStripe } from "@stripe/stripe-js";
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
+import { fetchBonos, type BonoTipo } from "@/lib/queries";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 const C = {
   burgundy: "#7d2b13", blush: "#ffdbd1", cream: "#fff8f5", bg: "#f5ede8",
@@ -124,6 +129,35 @@ export default function MisClasesPanel() {
 
   const salir = async () => { await fetch("/api/panel/salir", { method: "POST" }); window.location.reload(); };
 
+  // Comprar más créditos sin salir de la página (Embedded Checkout en modal).
+  const [comprarOpen, setComprarOpen] = useState(false);
+  const [catalogo, setCatalogo] = useState<BonoTipo[]>([]);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [cargandoPago, setCargandoPago] = useState(false);
+
+  const abrirComprar = async () => {
+    setComprarOpen(true); setClientSecret(null); setSessionId(null); setCatalogo([]);
+    const disc = bonos[0]?.disciplina_id;
+    if (disc) { try { setCatalogo(await fetchBonos(disc)); } catch { setCatalogo([]); } }
+  };
+  const cerrarComprar = () => { setComprarOpen(false); setClientSecret(null); setSessionId(null); };
+
+  const elegirParaComprar = async (bt: BonoTipo) => {
+    setCargandoPago(true);
+    try {
+      const res = await fetch("/api/panel/comprar-embedded", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bono_tipo_id: bt.id }) });
+      const data = await res.json();
+      if (data.client_secret) { setClientSecret(data.client_secret); setSessionId(data.session_id); }
+    } finally { setCargandoPago(false); }
+  };
+
+  const pagoCompletado = useCallback(async () => {
+    if (sessionId) await fetch("/api/confirm-bono", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: sessionId }) }).catch(() => {});
+    await cargarCalendario();
+    setComprarOpen(false); setClientSecret(null); setSessionId(null);
+  }, [sessionId, cargarCalendario]);
+
   if (estado === "cargando") {
     return <div style={{ minHeight: "100vh", backgroundColor: C.bg }} className="flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: C.burgundy, borderTopColor: "transparent" }} /></div>;
   }
@@ -155,7 +189,6 @@ export default function MisClasesPanel() {
   for (const c of clases) (porFecha[c.fecha] ??= []).push(c);
   const fechas = Object.keys(porFecha).sort();
   const misReservas = clases.filter(c => c.reserva_id).sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
-  const comprarUrl = `/comprar-bono${bonos[0]?.disciplina_id ? `?disciplina=${bonos[0].disciplina_id}` : ""}`;
   const waAndrea = `https://wa.me/34614679291?text=${encodeURIComponent("¡Hola Andrea! 🤎 Tengo una duda sobre mis clases.")}`;
 
   const lunesBase = lunesDe(new Date());
@@ -253,7 +286,7 @@ export default function MisClasesPanel() {
             {usables.length === 0 && (
               <div className="rounded-2xl p-4 text-center" style={{ backgroundColor: C.blush }}>
                 <p className="text-sm font-semibold mb-2" style={{ color: C.burgundy }}>No te quedan créditos 🎟️</p>
-                <a href={comprarUrl} className="inline-block px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream, textDecoration: "none" }}>Comprar más créditos →</a>
+                <button onClick={abrirComprar} className="inline-block px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>Comprar más créditos →</button>
               </div>
             )}
             {usables.map(b => (
@@ -300,8 +333,41 @@ export default function MisClasesPanel() {
 
         {!preview && (
           <div className="mt-8 pt-5 flex flex-col gap-2" style={{ borderTop: `1px solid ${C.border}` }}>
-            <a href={comprarUrl} className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.burgundy}`, color: C.burgundy, textDecoration: "none" }}>🎟️ Comprar más créditos</a>
+            <button onClick={abrirComprar} className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.burgundy}`, color: C.burgundy }}>🎟️ Comprar más créditos</button>
             <a href={waAndrea} target="_blank" rel="noopener noreferrer" className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2" style={{ backgroundColor: "#25D366", color: "#fff", textDecoration: "none" }}>💬 ¿Dudas? Escríbeme</a>
+          </div>
+        )}
+
+        {comprarOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }} onClick={cerrarComprar}>
+            <div className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl max-h-[92vh] overflow-y-auto" style={{ backgroundColor: "#fff" }} onClick={e => e.stopPropagation()}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "linear-gradient(135deg,#fff0eb,#fff8f5)" }}>
+                <p className="text-lg font-bold" style={{ color: C.dark, fontFamily: fSans }}>Comprar más créditos</p>
+                <button onClick={cerrarComprar} className="w-8 h-8 rounded-full flex items-center justify-center text-base leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.muted }}>✕</button>
+              </div>
+              <div className="p-5">
+                {clientSecret ? (
+                  <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret, onComplete: pagoCompletado }}>
+                    <EmbeddedCheckout />
+                  </EmbeddedCheckoutProvider>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {catalogo.length === 0 ? (
+                      <p className="text-sm text-center py-6" style={{ color: C.muted }}>Cargando bonos…</p>
+                    ) : catalogo.map(bt => (
+                      <button key={bt.id} disabled={cargandoPago} onClick={() => elegirParaComprar(bt)} className="rounded-2xl p-4 flex items-center justify-between text-left transition-all" style={{ border: `1.5px solid ${C.border}`, backgroundColor: "#fff", opacity: cargandoPago ? 0.5 : 1 }}>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold" style={{ color: C.dark, fontFamily: fSans }}>{bt.nombre}</p>
+                          <p className="text-xs" style={{ color: C.muted }}>{bt.creditos === 1 ? "1 clase" : `${bt.creditos} clases`} · {(bt.precio / bt.creditos).toFixed(0)}€/clase</p>
+                        </div>
+                        <p className="text-xl font-bold shrink-0" style={{ color: C.burgundy }}>{bt.precio}€</p>
+                      </button>
+                    ))}
+                    {cargandoPago && <p className="text-xs text-center mt-1" style={{ color: C.muted }}>Preparando el pago seguro…</p>}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
