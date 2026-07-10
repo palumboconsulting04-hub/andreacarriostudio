@@ -11,12 +11,17 @@ const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
 const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
 const DISC: Record<string, string> = { "barre-fit": "Barre Fit", "pilates-mat": "Pilates Mat" };
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-const CORTO: Record<string, string> = { "Lunes": "Lun", "Martes": "Mar", "Miércoles": "Mié", "Miercoles": "Mié", "Jueves": "Jue", "Viernes": "Vie", "Sábado": "Sáb", "Sabado": "Sáb", "Domingo": "Dom" };
+const MESCORTO = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const DIACORTO = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 type Bono = { id: string; disciplina_id: string; nombre: string; creditos_restantes: number; creditos_totales: number; caduca: string; estado: string };
 type Clase = { orario_id: string; disciplina_id: string; fecha: string; dia: string; hora: string; horaFin: string; libres: number; tope: number; reserva_id: string | null };
 
-const hoyStr = () => new Date().toISOString().slice(0, 10);
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const fStr = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const lunesDe = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); const dw = (x.getDay() + 6) % 7; x.setDate(x.getDate() - dw); return x; };
+const MSW = 7 * 86400000;
+const hoyStr = () => fStr(new Date());
 const fechaLabel = (fecha: string, dia: string) => { const [, m, d] = fecha.split("-"); return `${dia} ${+d} de ${MESES[+m - 1]}`; };
 const caducaLabel = (f: string) => { const [y, m, d] = f.split("-"); return `${+d}/${+m}/${y.slice(2)}`; };
 
@@ -28,6 +33,7 @@ export default function MisClasesPanel() {
   const [bonos, setBonos] = useState<Bono[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
   const [diaSel, setDiaSel] = useState("");
+  const [semana, setSemana] = useState(0);
   const [enviado, setEnviado] = useState(false);
   const [msg, setMsg] = useState("");
   const [accion, setAccion] = useState(false);
@@ -65,13 +71,14 @@ export default function MisClasesPanel() {
     })();
   }, [params, cargarCalendario]);
 
-  // El día seleccionado por defecto = el primer día con clases.
+  // Al cargar las clases, abre en la primera semana con clases.
   useEffect(() => {
-    const fechas = [...new Set(clases.map(c => c.fecha))].sort();
-    if (fechas.length && !fechas.includes(diaSel)) setDiaSel(fechas[0]);
-  }, [clases, diaSel]);
+    if (!clases.length) return;
+    const primera = [...new Set(clases.map(c => c.fecha))].sort()[0];
+    setDiaSel(primera);
+    setSemana(Math.max(0, Math.floor((new Date(primera + "T00:00").getTime() - lunesDe(new Date()).getTime()) / MSW)));
+  }, [clases]);
 
-  // Refresco periódico (no en vista previa).
   useEffect(() => {
     if (estado !== "panel" || preview) return;
     const t = setInterval(() => { cargarCalendario(); }, 20000);
@@ -141,12 +148,28 @@ export default function MisClasesPanel() {
     );
   }
 
-  // Panel
+  // ── Panel ──
   const usables = bonos.filter(b => b.creditos_restantes > 0 && b.caduca >= hoyStr());
   const porFecha: Record<string, Clase[]> = {};
   for (const c of clases) (porFecha[c.fecha] ??= []).push(c);
   const fechas = Object.keys(porFecha).sort();
-  const delDia = porFecha[diaSel] ?? [];
+
+  const lunesBase = lunesDe(new Date());
+  const lunesSem = new Date(lunesBase); lunesSem.setDate(lunesBase.getDate() + semana * 7);
+  const dias7 = Array.from({ length: 7 }, (_, k) => { const d = new Date(lunesSem); d.setDate(lunesSem.getDate() + k); return { fecha: fStr(d), corto: DIACORTO[k], num: d.getDate() }; });
+  const finSem = new Date(lunesSem); finSem.setDate(lunesSem.getDate() + 6);
+  const maxFecha = fechas.length ? fechas[fechas.length - 1] : fStr(lunesBase);
+  const maxSemana = Math.max(0, Math.floor((new Date(maxFecha + "T00:00").getTime() - lunesBase.getTime()) / MSW));
+  const rango = `${lunesSem.getDate()} ${MESCORTO[lunesSem.getMonth()]} – ${finSem.getDate()} ${MESCORTO[finSem.getMonth()]}`;
+  const delDia = diaSel ? (porFecha[diaSel] ?? []) : [];
+
+  const cambiarSemana = (delta: number) => {
+    const nueva = Math.max(0, Math.min(maxSemana, semana + delta));
+    setSemana(nueva);
+    const ls = new Date(lunesBase); ls.setDate(lunesBase.getDate() + nueva * 7);
+    const dsem = Array.from({ length: 7 }, (_, k) => { const d = new Date(ls); d.setDate(ls.getDate() + k); return fStr(d); });
+    setDiaSel(dsem.find(f => porFecha[f]) ?? "");
+  };
 
   return (
     <div style={{ backgroundColor: C.bg, minHeight: "100vh" }} className="px-4 py-8">
@@ -162,7 +185,6 @@ export default function MisClasesPanel() {
           {!preview && <button onClick={salir} className="text-xs" style={{ color: C.muted }}>Salir</button>}
         </div>
 
-        {/* Bonos (no en vista previa) */}
         {!preview && (
           <div className="flex flex-col gap-2 mb-6">
             {usables.length === 0 && <p className="text-sm" style={{ color: C.muted }}>No tienes bonos con créditos. <a href="/comprar-bono" style={{ color: C.burgundy, fontWeight: 600 }}>Comprar un bono →</a></p>}
@@ -184,47 +206,61 @@ export default function MisClasesPanel() {
           <p className="text-sm text-center py-8" style={{ color: C.muted }}>No hay clases disponibles ahora mismo.</p>
         ) : (
           <>
-            {/* Selector de día (horizontal) */}
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: "none" }}>
-              {fechas.map(f => {
-                const [, , d] = f.split("-");
-                const activo = f === diaSel;
+            {/* Navegación por semanas */}
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={() => cambiarSemana(-1)} disabled={semana <= 0} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semana <= 0 ? 0.3 : 1 }}>‹</button>
+              <p className="text-sm font-bold" style={{ color: C.burgundy, fontFamily: fSans }}>{rango}</p>
+              <button onClick={() => cambiarSemana(1)} disabled={semana >= maxSemana} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semana >= maxSemana ? 0.3 : 1 }}>›</button>
+            </div>
+
+            {/* Semana completa (Lun–Dom) */}
+            <div className="grid grid-cols-7 gap-1.5 mb-4">
+              {dias7.map(dd => {
+                const tiene = !!porFecha[dd.fecha];
+                const activo = dd.fecha === diaSel;
                 return (
-                  <button key={f} onClick={() => setDiaSel(f)} className="shrink-0 w-[52px] rounded-2xl py-2 text-center transition-all"
-                    style={{ backgroundColor: activo ? C.burgundy : "#fff", border: `1.5px solid ${activo ? C.burgundy : C.border}` }}>
-                    <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: activo ? C.blush : C.muted }}>{CORTO[porFecha[f][0].dia] ?? porFecha[f][0].dia.slice(0, 3)}</p>
-                    <p className="text-lg font-bold leading-tight" style={{ color: activo ? C.cream : C.dark }}>{+d}</p>
+                  <button key={dd.fecha} onClick={() => tiene && setDiaSel(dd.fecha)} disabled={!tiene} className="rounded-xl py-2 text-center transition-all"
+                    style={{ backgroundColor: activo ? C.burgundy : "#fff", border: `1.5px solid ${activo ? C.burgundy : C.border}`, opacity: tiene ? 1 : 0.4, cursor: tiene ? "pointer" : "default" }}>
+                    <p className="text-[9px] font-bold uppercase" style={{ color: activo ? C.blush : C.muted }}>{dd.corto}</p>
+                    <p className="text-sm font-bold leading-tight" style={{ color: activo ? C.cream : C.dark }}>{dd.num}</p>
+                    <div className="h-1.5 flex justify-center items-center">{tiene && !activo && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: C.burgundy }} />}</div>
                   </button>
                 );
               })}
             </div>
 
             {/* Clases del día seleccionado */}
-            <p className="text-xs font-bold uppercase tracking-widest mt-4 mb-2" style={{ color: C.burgundy }}>{diaSel && fechaLabel(diaSel, delDia[0]?.dia ?? "")}</p>
-            <div className="flex flex-col gap-2">
-              {delDia.map(c => {
-                const reservada = !!c.reserva_id;
-                const puede = !preview && !!bonoUsable(c.disciplina_id);
-                const lleno = c.libres <= 0;
-                return (
-                  <div key={c.orario_id + c.fecha} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: reservada ? C.blush : "#fff", border: `1px solid ${reservada ? C.burgundy : C.border}` }}>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: C.dark, fontFamily: fSans }}>{c.hora}–{c.horaFin} · {DISC[c.disciplina_id] ?? c.disciplina_id}</p>
-                      <p className="text-xs" style={{ color: lleno && !reservada ? "#b71c1c" : "#1f7a3d" }}>{reservada ? "Reservada ✓" : lleno ? "Completa" : `${c.libres} libres`}</p>
-                    </div>
-                    {preview ? (
-                      <span className="text-xs shrink-0" style={{ color: C.muted }}>{lleno ? "Completa" : `${c.libres} libres`}</span>
-                    ) : reservada ? (
-                      <button onClick={() => cancelar(c)} disabled={accion} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Cancelar</button>
-                    ) : puede && !lleno ? (
-                      <button onClick={() => reservar(c)} disabled={accion} className="px-4 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: C.burgundy, color: C.cream }}>Reservar</button>
-                    ) : (
-                      <span className="text-xs shrink-0" style={{ color: C.muted }}>{lleno ? "—" : "Sin crédito"}</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            {delDia.length === 0 ? (
+              <p className="text-sm text-center py-6" style={{ color: C.muted }}>Ningún día de esta semana tiene clase. Usa las flechas ‹ › para ver otras semanas.</p>
+            ) : (
+              <>
+                <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.burgundy }}>{fechaLabel(diaSel, delDia[0].dia)}</p>
+                <div className="flex flex-col gap-2">
+                  {delDia.map(c => {
+                    const reservada = !!c.reserva_id;
+                    const puede = !preview && !!bonoUsable(c.disciplina_id);
+                    const lleno = c.libres <= 0;
+                    return (
+                      <div key={c.orario_id + c.fecha} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: reservada ? C.blush : "#fff", border: `1px solid ${reservada ? C.burgundy : C.border}` }}>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold" style={{ color: C.dark, fontFamily: fSans }}>{c.hora}–{c.horaFin} · {DISC[c.disciplina_id] ?? c.disciplina_id}</p>
+                          <p className="text-xs" style={{ color: lleno && !reservada ? "#b71c1c" : "#1f7a3d" }}>{reservada ? "Reservada ✓" : lleno ? "Completa" : `${c.libres} libres`}</p>
+                        </div>
+                        {preview ? (
+                          <span className="text-xs shrink-0" style={{ color: C.muted }}>{lleno ? "Completa" : `${c.libres} libres`}</span>
+                        ) : reservada ? (
+                          <button onClick={() => cancelar(c)} disabled={accion} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Cancelar</button>
+                        ) : puede && !lleno ? (
+                          <button onClick={() => reservar(c)} disabled={accion} className="px-4 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: C.burgundy, color: C.cream }}>Reservar</button>
+                        ) : (
+                          <span className="text-xs shrink-0" style={{ color: C.muted }}>{lleno ? "—" : "Sin crédito"}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
