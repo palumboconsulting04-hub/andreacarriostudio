@@ -74,7 +74,7 @@ async function enviarEmailBono(m: Record<string, string>, creditos: number, cadu
         </table>
       </td></tr>
       <tr><td style="padding:16px 32px 8px;">
-        <p style="margin:0;font-size:14px;color:#56423d;line-height:1.7;">Para reservar, entra en tu panel con <strong>este mismo correo</strong> (${m.email}). Te llegará un enlace de acceso, eliges el día y ¡listo!</p>
+        <p style="margin:0;font-size:14px;color:#56423d;line-height:1.7;">Para reservar, entra en tu panel con <strong>tu correo</strong> (${m.email}) y <strong>tu nombre</strong>, eliges el día y ¡listo!</p>
       </td></tr>
       <tr><td style="padding:16px 32px 36px;text-align:center;">
         <a href="${panel}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:.5px;padding:15px 40px;border-radius:9999px;">Reservar mis clases →</a>
