@@ -19,10 +19,12 @@ export async function GET() {
     .order("created_at", { ascending: false });
   const bonos = (bonosData ?? []) as BonoRow[];
 
-  const disciplinas = [...new Set(bonos.filter(b => b.creditos_restantes > 0 && b.caduca >= hoy).map(b => b.disciplina_id))];
+  const usables = bonos.filter(b => b.creditos_restantes > 0 && b.caduca >= hoy);
+  const disciplinas = [...new Set(usables.map(b => b.disciplina_id))];
+  const hasta = usables.reduce((m, b) => (b.caduca > m ? b.caduca : m), "");
   const bonoIds = bonos.map(b => b.id);
 
-  const clases = await generarClases(disciplinas);
+  const clases = await generarClases(disciplinas, hasta || undefined);
 
   // Marca las clases que ya tiene reservadas esta alumna (para poder cancelar).
   if (bonoIds.length && clases.length) {

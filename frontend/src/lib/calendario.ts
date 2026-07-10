@@ -8,7 +8,8 @@ const DIAS: Record<string, number> = {
   "Domingo": 0, "Lunes": 1, "Martes": 2, "Miércoles": 3, "Miercoles": 3,
   "Jueves": 4, "Viernes": 5, "Sábado": 6, "Sabado": 6,
 };
-const HORIZON_DIAS = 28;
+const HORIZON_DIAS = 28;          // por defecto (vista previa pública): 4 semanas
+const HORIZON_MAX = 100;          // tope de seguridad (~3 meses, el bono más largo)
 const pad = (n: number) => String(n).padStart(2, "0");
 const horaMin = (t: string) => { const [h, m] = t.split(":"); return (+h) * 60 + (+m); };
 
@@ -19,7 +20,9 @@ export type Clase = {
 
 type OrarioRow = { id: string; disciplina_id: string; giorno: string; ora_inizio: string; ora_fine: string; posti_totali: number };
 
-export async function generarClases(disciplinas: string[]): Promise<Clase[]> {
+// `hasta` (YYYY-MM-DD, opcional): última fecha a generar — normalmente la caducidad
+// del bono, para que la alumna pueda reservar en toda la validez, no solo 4 semanas.
+export async function generarClases(disciplinas: string[], hasta?: string): Promise<Clase[]> {
   if (disciplinas.length === 0) return [];
   const hoy = new Date().toISOString().slice(0, 10);
 
@@ -51,8 +54,14 @@ export async function generarClases(disciplinas: string[]): Promise<Clase[]> {
   const nowMinutes = nowMadrid.getHours() * 60 + nowMadrid.getMinutes();
   const start = new Date(nowMadrid); start.setHours(0, 0, 0, 0);
 
+  let horizon = HORIZON_DIAS;
+  if (hasta) {
+    const diff = Math.round((new Date(hasta + "T00:00").getTime() - start.getTime()) / 86400000);
+    horizon = Math.max(0, Math.min(HORIZON_MAX, diff));
+  }
+
   const clases: Clase[] = [];
-  for (let i = 0; i <= HORIZON_DIAS; i++) {
+  for (let i = 0; i <= horizon; i++) {
     const d = new Date(start); d.setDate(start.getDate() + i);
     const dow = d.getDay();
     const fecha = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
