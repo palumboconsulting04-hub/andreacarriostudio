@@ -173,8 +173,8 @@ export default function ReservarJornada() {
                 <span className="block text-sm font-semibold" style={{ color: sel ? C.burgundy : C.dark, fontFamily: fSans }}>{s.titulo}</span>
                 <span className="block text-xs" style={{ color: C.muted }}>{s.hora}</span>
               </span>
-              <span className="text-xs font-semibold" style={{ color: lleno ? "#b71c1c" : "#1f7a3d" }}>
-                {lleno ? "COMPLETO · espera" : `${libres} libres`}
+              <span className="text-xs font-semibold text-right" style={{ color: lleno ? "#b71c1c" : "#1f7a3d" }}>
+                {lleno ? "Completo · apúntate a la espera" : `${libres} libres`}
               </span>
             </button>
           );
