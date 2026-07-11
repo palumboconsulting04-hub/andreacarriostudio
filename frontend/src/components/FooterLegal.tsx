@@ -76,7 +76,7 @@ export default function FooterLegal() {
       {abierto === "privacidad" && (
         <Modal titulo="Política de Privacidad" onClose={() => setAbierto(null)}>
           <Bloque titulo="Responsable del tratamiento">
-            Andrea Carrió, titular de Andrea Carrió Studio, C/ Motilla del Palancar 34, Alfahuir (Valencia). Contacto: andreacarriostudio@gmail.com
+            Andrea Carrió Caselles (NIF 53947178B), titular de Andrea Carrió Studio, con domicilio en C/ Motilla del Palancar 34, bajo, 46019 Valencia. Contacto: andreacarriostudio@gmail.com
           </Bloque>
           <Bloque titulo="Finalidad">
             Gestionar la inscripción, impartir las clases, cobrar las cuotas, cumplir las obligaciones fiscales y contables y adaptar la práctica a la información médica facilitada.
@@ -102,7 +102,7 @@ export default function FooterLegal() {
       {abierto === "terminos" && (
         <Modal titulo="Términos y Condiciones" onClose={() => setAbierto(null)}>
           <Bloque titulo="1. Titular">
-            Andrea Carrió Studio, titularidad de Andrea Carrió Caselles (DNI/NIF [pendiente de completar]), con domicilio en C/ Motilla del Palancar 34, Alfahuir (Valencia) y correo de contacto andreacarriostudio@gmail.com.
+            Andrea Carrió Studio, titularidad de Andrea Carrió Caselles (NIF 53947178B), con domicilio en C/ Motilla del Palancar 34, bajo, 46019 Valencia y correo de contacto andreacarriostudio@gmail.com.
           </Bloque>
           <Bloque titulo="2. Objeto">
             Estas condiciones regulan la inscripción y la participación en las clases y actividades impartidas por el estudio, así como las condiciones económicas asociadas.
@@ -149,7 +149,7 @@ export default function FooterLegal() {
       {abierto === "contacto" && (
         <Modal titulo="Contacto" onClose={() => setAbierto(null)}>
           <Bloque titulo="Andrea Carrió Studio">
-            C/ Motilla del Palancar 34, Alfahuir (Valencia).
+            C/ Motilla del Palancar 34, bajo · 46019 Valencia (zona Alfahuir).
           </Bloque>
           <Bloque titulo="Email">
             <a href="mailto:andreacarriostudio@gmail.com" className="underline hover:opacity-70" style={{ color: "#7d2b13" }}>
