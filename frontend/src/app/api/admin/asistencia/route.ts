@@ -11,6 +11,8 @@ async function isAdmin(): Promise<boolean> {
 // Estados que cuentan como alumna inscrita (tiene plaza en la clase).
 const INSCRITA = ["pagato", "pagado", "activa", "matricula_pagada"];
 
+const uno = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
+
 type LinkRow = {
   iscrizione_id: string;
   iscrizioni: {
@@ -23,10 +25,12 @@ type LinkRow = {
     stato: string;
   } | null;
 };
+type ReservaRow = { id: string; bonos: { nombre: string | null } | { nombre: string | null }[] | null };
+type RosterItem = { tipo: "mensualidad" | "bono"; iscrizione_id?: string; reserva_id?: string; nombre: string; estado: string | null; nota: string | null };
 
 // GET
-//  · ?orario_id=&fecha=  → roster de la clase con la marca de asistencia de ese día
-//  · ?iscrizione_id=     → resumen de asistencia de una alumna
+//  · ?orario_id=&fecha=  → roster de la clase (mensualidad + bono) con su marca
+//  · ?iscrizione_id=     → resumen de asistencia de una alumna de mensualidad
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -47,7 +51,6 @@ export async function GET(req: NextRequest) {
     const falta = marcas.filter(m => m.estado === "falta").length;
     const justificada = marcas.filter(m => m.estado === "justificada").length;
     const total = marcas.length;
-    // El % cuenta como "asistida" presente + justificada sobre el total de clases marcadas.
     const porcentaje = total > 0 ? Math.round(((presente + justificada) / total) * 100) : null;
     return NextResponse.json({ resumen: { presente, falta, justificada, total, porcentaje }, historial: marcas });
   }
@@ -59,23 +62,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Faltan orario_id y fecha" }, { status: 400 });
   }
 
-  const [{ data: links, error: e1 }, { data: marks, error: e2 }] = await Promise.all([
+  const [{ data: links, error: e1 }, { data: reservas, error: e3 }, { data: marks, error: e2 }] = await Promise.all([
     supabaseAdmin
       .from("iscrizione_orari")
       .select("iscrizione_id, iscrizioni(id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, stato)")
       .eq("orario_id", orarioId),
     supabaseAdmin
+      .from("reservas_clase")
+      .select("id, bonos(nombre)")
+      .eq("orario_id", orarioId)
+      .eq("fecha", fecha),
+    supabaseAdmin
       .from("asistencia")
-      .select("iscrizione_id, estado, nota")
+      .select("iscrizione_id, reserva_id, estado, nota")
       .eq("orario_id", orarioId)
       .eq("fecha", fecha),
   ]);
-  if (e1 || e2) {
-    return NextResponse.json({ error: (e1 ?? e2)?.message }, { status: 500 });
+  if (e1 || e2 || e3) {
+    return NextResponse.json({ error: (e1 ?? e2 ?? e3)?.message }, { status: 500 });
   }
 
-  const markByIsc = new Map((marks ?? []).map(m => [m.iscrizione_id, m]));
-  const alumnas = ((links ?? []) as unknown as LinkRow[])
+  const markByIsc = new Map((marks ?? []).filter(m => m.iscrizione_id).map(m => [m.iscrizione_id, m]));
+  const markByReserva = new Map((marks ?? []).filter(m => m.reserva_id).map(m => [m.reserva_id, m]));
+
+  // Mensualidad
+  const mensualidad: RosterItem[] = ((links ?? []) as unknown as LinkRow[])
     .filter(l => l.iscrizioni && INSCRITA.includes(l.iscrizioni.stato))
     .map(l => {
       const i = l.iscrizioni!;
@@ -84,49 +95,57 @@ export async function GET(req: NextRequest) {
         ? `${i.nome_alumna} ${i.cognome_alumna ?? ""}`.trim()
         : `${i.nome} ${i.cognome}`;
       const mark = markByIsc.get(i.id);
-      return { iscrizione_id: i.id, nombre, estado: mark?.estado ?? null, nota: mark?.nota ?? null };
-    })
-    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+      return { tipo: "mensualidad" as const, iscrizione_id: i.id, nombre, estado: mark?.estado ?? null, nota: mark?.nota ?? null };
+    });
 
+  // Bono (reservas activas de ese día; las canceladas ya no existen)
+  const bono: RosterItem[] = ((reservas ?? []) as ReservaRow[]).map(r => {
+    const b = uno(r.bonos);
+    const mark = markByReserva.get(r.id);
+    return { tipo: "bono" as const, reserva_id: r.id, nombre: (b?.nombre ?? "").trim() || "Bono", estado: mark?.estado ?? null, nota: mark?.nota ?? null };
+  });
+
+  const alumnas = [...mensualidad, ...bono].sort((a, b) => a.nombre.localeCompare(b.nombre));
   return NextResponse.json({ alumnas });
 }
 
-// POST → registra/actualiza la marca de asistencia de una alumna en una clase y fecha.
+// POST → registra/actualiza la marca de una alumna (mensualidad por iscrizione_id, bono por reserva_id).
 export async function POST(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   const body = await req.json().catch(() => null) as
-    | { iscrizione_id?: string; orario_id?: string; fecha?: string; estado?: string; nota?: string | null }
+    | { iscrizione_id?: string; reserva_id?: string; orario_id?: string; fecha?: string; estado?: string; nota?: string | null }
     | null;
-  if (!body?.iscrizione_id || !body.orario_id || !body.fecha || !body.estado) {
+  const iscrizioneId = body?.iscrizione_id || null;
+  const reservaId = body?.reserva_id || null;
+  if ((!iscrizioneId && !reservaId) || (iscrizioneId && reservaId) || !body?.orario_id || !body.fecha || !body.estado) {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
   }
   if (!["presente", "falta", "justificada"].includes(body.estado)) {
     return NextResponse.json({ error: "Estado no válido" }, { status: 400 });
   }
-  const { error } = await supabaseAdmin
-    .from("asistencia")
-    .upsert(
-      {
-        iscrizione_id: body.iscrizione_id,
-        orario_id: body.orario_id,
-        fecha: body.fecha,
-        estado: body.estado,
-        nota: body.nota ?? null,
-      },
-      { onConflict: "iscrizione_id,orario_id,fecha" },
-    );
+  const fila = { orario_id: body.orario_id, fecha: body.fecha, estado: body.estado, nota: body.nota ?? null };
+  const { error } = reservaId
+    ? await supabaseAdmin.from("asistencia").upsert({ ...fila, reserva_id: reservaId }, { onConflict: "reserva_id" })
+    : await supabaseAdmin.from("asistencia").upsert({ ...fila, iscrizione_id: iscrizioneId }, { onConflict: "iscrizione_id,orario_id,fecha" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
 
-// DELETE → borra la marca (volver a "sin marcar"). ?iscrizione_id=&orario_id=&fecha=
+// DELETE → borra la marca (volver a "sin marcar").
+//   mensualidad: ?iscrizione_id=&orario_id=&fecha=   ·   bono: ?reserva_id=
 export async function DELETE(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   const sp = req.nextUrl.searchParams;
+  const reservaId = sp.get("reserva_id");
+  if (reservaId) {
+    const { error } = await supabaseAdmin.from("asistencia").delete().eq("reserva_id", reservaId);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
   const iscrizioneId = sp.get("iscrizione_id");
   const orarioId = sp.get("orario_id");
   const fecha = sp.get("fecha");
@@ -134,11 +153,8 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
   }
   const { error } = await supabaseAdmin
-    .from("asistencia")
-    .delete()
-    .eq("iscrizione_id", iscrizioneId)
-    .eq("orario_id", orarioId)
-    .eq("fecha", fecha);
+    .from("asistencia").delete()
+    .eq("iscrizione_id", iscrizioneId).eq("orario_id", orarioId).eq("fecha", fecha);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

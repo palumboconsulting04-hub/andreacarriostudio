@@ -471,7 +471,9 @@ export default function AdminDashboard() {
   // Asistencia / pasar lista
   const [asistenciaFecha, setAsistenciaFecha] = useState(() => new Date().toLocaleDateString("en-CA"));
   const [asistenciaOrarioId, setAsistenciaOrarioId] = useState<string>("");
-  const [asistenciaRoster, setAsistenciaRoster] = useState<{ iscrizione_id: string; nombre: string; estado: string | null; nota: string | null }[]>([]);
+  type RosterItem = { tipo: "mensualidad" | "bono"; iscrizione_id?: string; reserva_id?: string; nombre: string; estado: string | null; nota: string | null };
+  const [asistenciaRoster, setAsistenciaRoster] = useState<RosterItem[]>([]);
+  const rosterKey = (a: { iscrizione_id?: string; reserva_id?: string }) => a.reserva_id ?? a.iscrizione_id ?? "";
   const [asistenciaLoading, setAsistenciaLoading] = useState(false);
   const [asistenciaResumen, setAsistenciaResumen] = useState<{ presente: number; falta: number; justificada: number; total: number; porcentaje: number | null } | null>(null);
   const [usuariosProfile, setUsuariosProfile] = useState<IscrizioneDetalle | null>(null);
@@ -1963,17 +1965,24 @@ export default function AdminDashboard() {
     setAsistenciaLoading(false);
   };
 
+  // Cuerpo/QS según el tipo de alumna (mensualidad → iscrizione_id, bono → reserva_id).
+  const asistOwner = (a: { iscrizione_id?: string; reserva_id?: string }) =>
+    a.reserva_id ? { reserva_id: a.reserva_id } : { iscrizione_id: a.iscrizione_id };
+
   // Marca (o desmarca, si se pulsa el estado ya activo) la asistencia de una alumna.
-  const marcarAsistencia = async (iscrizioneId: string, estado: string) => {
-    const actual = asistenciaRoster.find(a => a.iscrizione_id === iscrizioneId)?.estado;
-    const nuevo = actual === estado ? null : estado;
-    setAsistenciaRoster(prev => prev.map(a => a.iscrizione_id === iscrizioneId ? { ...a, estado: nuevo } : a));
+  const marcarAsistencia = async (a: RosterItem, estado: string) => {
+    const nuevo = a.estado === estado ? null : estado;
+    const k = rosterKey(a);
+    setAsistenciaRoster(prev => prev.map(x => rosterKey(x) === k ? { ...x, estado: nuevo } : x));
     if (nuevo === null) {
-      await fetch(`/api/admin/asistencia?iscrizione_id=${iscrizioneId}&orario_id=${asistenciaOrarioId}&fecha=${asistenciaFecha}`, { method: "DELETE" });
+      const qs = a.reserva_id
+        ? `reserva_id=${a.reserva_id}`
+        : `iscrizione_id=${a.iscrizione_id}&orario_id=${asistenciaOrarioId}&fecha=${asistenciaFecha}`;
+      await fetch(`/api/admin/asistencia?${qs}`, { method: "DELETE" });
     } else {
       await fetch("/api/admin/asistencia", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ iscrizione_id: iscrizioneId, orario_id: asistenciaOrarioId, fecha: asistenciaFecha, estado: nuevo }),
+        body: JSON.stringify({ ...asistOwner(a), orario_id: asistenciaOrarioId, fecha: asistenciaFecha, estado: nuevo }),
       });
     }
   };
@@ -1984,7 +1993,7 @@ export default function AdminDashboard() {
     setAsistenciaRoster(prev => prev.map(a => ({ ...a, estado: "presente" })));
     await Promise.all(objetivo.map(a => fetch("/api/admin/asistencia", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ iscrizione_id: a.iscrizione_id, orario_id: asistenciaOrarioId, fecha: asistenciaFecha, estado: "presente" }),
+      body: JSON.stringify({ ...asistOwner(a), orario_id: asistenciaOrarioId, fecha: asistenciaFecha, estado: "presente" }),
     })));
   };
 
@@ -3171,15 +3180,18 @@ export default function AdminDashboard() {
 
                         <div className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden divide-y" style={{ borderColor: "#dcc1b9" }}>
                           {asistenciaRoster.map(a => (
-                            <div key={a.iscrizione_id} className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderColor: "#f0e0d8" }}>
-                              <span className="text-sm font-medium truncate" style={{ color: "#25190f" }}>{a.nombre}</span>
+                            <div key={rosterKey(a)} className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderColor: "#f0e0d8" }}>
+                              <span className="text-sm font-medium truncate flex items-center gap-2" style={{ color: "#25190f" }}>
+                                {a.nombre}
+                                {a.tipo === "bono" && <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "#fff3e0", color: "#e65100" }}>Bono</span>}
+                              </span>
                               <div className="flex gap-1.5 shrink-0">
                                 {ESTADOS.map(es => {
                                   const active = a.estado === es.key;
                                   return (
                                     <button
                                       key={es.key}
-                                      onClick={() => marcarAsistencia(a.iscrizione_id, es.key)}
+                                      onClick={() => marcarAsistencia(a, es.key)}
                                       title={es.label}
                                       className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-colors border"
                                       style={{
