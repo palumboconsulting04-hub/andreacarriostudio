@@ -74,10 +74,11 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
 }
 
 // Crea un bono de 1 crédito de regalo (referido). Caduca a los 2 meses del arranque.
-async function crearBonoRegalo(email: string, nombre: string, disciplina: string, validoDesde: string) {
+// Devuelve el id del bono creado (o null si falla).
+export async function crearBonoRegalo(email: string, nombre: string, disciplina: string, validoDesde: string): Promise<string | null> {
   const caduca = new Date(`${validoDesde}T00:00:00Z`);
   caduca.setUTCMonth(caduca.getUTCMonth() + 2);
-  await supabaseAdmin.from("bonos").insert({
+  const { data, error } = await supabaseAdmin.from("bonos").insert({
     bono_tipo_id: null,
     disciplina_id: disciplina,
     nombre,
@@ -88,7 +89,9 @@ async function crearBonoRegalo(email: string, nombre: string, disciplina: string
     caduca: caduca.toISOString().slice(0, 10),
     precio_pagado: 0,
     estado: "activo",
-  });
+  }).select("id").maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
 }
 
 // Aplica el premio de referido: +1 clase de regalo a la madrina y a la amiga, y avisa a la madrina.

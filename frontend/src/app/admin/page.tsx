@@ -831,17 +831,40 @@ export default function AdminDashboard() {
 
   // ── Referidos (Trae a tu amiga): madrinas y las amigas que han traído ──
   type AmigaRef = { nombre: string; email: string; via: "bono" | "mensualidad"; fecha: string; estado: string };
-  type MadrinaRef = { codigo: string; nombre: string; email: string; amigas: AmigaRef[]; total: number };
+  type PremioRef = { tipo: string; detalle: string; importeCent: number | null; fecha: string };
+  type MadrinaRef = { codigo: string; nombre: string; email: string; amigas: AmigaRef[]; total: number; amigasMensualidad: number; tieneMensualidad: boolean; premios: PremioRef[] };
   type ResumenRef = { codigosEmitidos: number; amigasTraidas: number; madrinasActivas: number; embajadoras: number };
   const [refMadrinas, setRefMadrinas] = useState<MadrinaRef[]>([]);
   const [refResumen, setRefResumen] = useState<ResumenRef | null>(null);
-  useEffect(() => {
-    if (activeSection !== "Referidos") return;
+  const [refOtorgando, setRefOtorgando] = useState<string | null>(null); // `${codigo}:${tipo}` en curso
+  const cargarReferidos = () => {
     fetch(`/api/admin/referidos?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
       .then(d => { setRefMadrinas(d.madrinas ?? []); setRefResumen(d.resumen ?? null); })
       .catch(() => {});
+  };
+  useEffect(() => {
+    if (activeSection !== "Referidos") return;
+    cargarReferidos();
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+  const otorgarPremio = async (codigo: string, tipo: string, aviso: string) => {
+    if (refOtorgando) return;
+    if (!window.confirm(aviso)) return;
+    setRefOtorgando(`${codigo}:${tipo}`);
+    try {
+      const res = await fetch("/api/admin/referidos/otorgar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo, tipo }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) window.alert(d.error ?? "No se pudo otorgar el premio.");
+      else { window.alert(d.detalle ?? "Premio otorgado."); cargarReferidos(); }
+    } catch {
+      window.alert("Error de red al otorgar el premio.");
+    } finally {
+      setRefOtorgando(null);
+    }
+  };
 
   // ── Pagos manuales (cuotas mensuales en efectivo/bizum) ──
   type PagoManual = {
@@ -5419,7 +5442,7 @@ export default function AdminDashboard() {
                 <div className="rounded-2xl p-4 text-xs leading-relaxed" style={{ backgroundColor: "#fff8f5", border: "1px solid #f0ddd5", color: "#89726c" }}>
                   <p className="font-bold uppercase tracking-widest mb-1" style={{ color: "#7d2b13" }}>Cómo se premia</p>
                   Cuando una amiga compra un <strong>bono</strong>, la madrina y la amiga reciben <strong>+1 clase automática</strong> (ya funciona solo).
-                  Los premios de <strong>mensualidad</strong> y de <strong>Embajadora</strong> (1 mes gratis, detalle…) los otorgas tú a mano: esta lista te dice a quién y cuánto.
+                  Los premios de <strong>mensualidad</strong> y de <strong>Embajadora</strong> (15€ en la cuota, 1 mes gratis) los apruebas tú con un botón: se aplican solos en Stripe y quedan marcados como otorgados.
                 </div>
 
                 <div>
@@ -5442,9 +5465,52 @@ export default function AdminDashboard() {
                                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: nv.bg, color: nv.fg }}>{nv.emoji} {nv.l}</span>
                               </div>
                             </div>
-                            <div className="px-4 py-2 text-[11px]" style={{ backgroundColor: "#fffbf9", borderTop: "1px solid #f0ddd5", color: "#89726c" }}>
-                              <span className="font-semibold" style={{ color: "#7d2b13" }}>Premio:</span> {nv.premio}
-                            </div>
+                            {(() => {
+                              const otorgadosPorAmiga = m.premios.filter(p => p.tipo === "clase" || p.tipo === "cuota15").length;
+                              const pendientesAmiga = Math.max(0, m.amigasMensualidad - otorgadosPorAmiga);
+                              const mesOtorgado = m.premios.some(p => p.tipo === "mes_gratis");
+                              const mesPendiente = m.total >= 3 && !mesOtorgado;
+                              const tipoAmiga = m.tieneMensualidad ? "cuota15" : "clase";
+                              const labelAmiga = m.tieneMensualidad ? "15€ en su cuota" : "+1 clase";
+                              const busy = (t: string) => refOtorgando === `${m.codigo}:${t}`;
+                              return (
+                                <div className="px-4 py-2.5 space-y-2" style={{ backgroundColor: "#fffbf9", borderTop: "1px solid #f0ddd5" }}>
+                                  {(pendientesAmiga > 0 || mesPendiente) ? (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-[11px] font-semibold" style={{ color: "#7d2b13" }}>Premios pendientes:</span>
+                                      {pendientesAmiga > 0 && (
+                                        <button disabled={!!refOtorgando}
+                                          onClick={() => otorgarPremio(m.codigo, tipoAmiga, `¿Otorgar ${labelAmiga} a ${m.nombre || m.email}? Quedan ${pendientesAmiga} por amiga de mensualidad.`)}
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold disabled:opacity-50"
+                                          style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                                          {busy(tipoAmiga) ? "Aplicando…" : `${labelAmiga} · ${pendientesAmiga}`}
+                                        </button>
+                                      )}
+                                      {mesPendiente && m.tieneMensualidad && (
+                                        <button disabled={!!refOtorgando}
+                                          onClick={() => otorgarPremio(m.codigo, "mes_gratis", `¿Otorgar 1 MES GRATIS a ${m.nombre || m.email}? Se aplicará como crédito en su próxima cuota de Stripe.`)}
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold disabled:opacity-50"
+                                          style={{ backgroundColor: "#b8860b", color: "#fff8f5" }}>
+                                          {busy("mes_gratis") ? "Aplicando…" : "👑 1 mes gratis"}
+                                        </button>
+                                      )}
+                                      {mesPendiente && !m.tieneMensualidad && (
+                                        <span className="text-[11px]" style={{ color: "#b8860b" }}>⭐ Embajadora — no paga mensualidad: dale el detalle a mano.</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-[11px]" style={{ color: "#89726c" }}><span className="font-semibold" style={{ color: "#7d2b13" }}>Premio:</span> {nv.premio}</p>
+                                  )}
+                                  {m.premios.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {m.premios.map((p, i) => (
+                                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>✓ {p.detalle} · {fFecha(p.fecha)}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             <div style={{ borderTop: "1px solid #f0ddd5" }}>
                               {m.amigas.map((a, i) => (
                                 <div key={`${m.codigo}-${a.email}-${i}`} className="px-4 py-2 flex items-center justify-between gap-2" style={{ borderTop: i ? "1px solid #f7ece7" : "none", backgroundColor: i % 2 ? "#fffbf9" : "#fff" }}>

@@ -8,15 +8,21 @@ async function isAdmin(): Promise<boolean> {
 }
 
 type Amiga = { nombre: string; email: string; via: "bono" | "mensualidad"; fecha: string; estado: string };
-type Madrina = { codigo: string; nombre: string; email: string; amigas: Amiga[]; total: number };
+type Premio = { tipo: string; detalle: string; importeCent: number | null; fecha: string };
+type Madrina = {
+  codigo: string; nombre: string; email: string;
+  amigas: Amiga[]; total: number;
+  amigasMensualidad: number; tieneMensualidad: boolean;
+  premios: Premio[];
+};
 
 // Programa "Trae a tu amiga": por cada madrina (referidos_codigo), las amigas que
 // han comprado con su código, sea un bono (bonos.referido_por) o una mensualidad
-// (iscrizioni.referido_por). Solo lectura, solo admin.
+// (iscrizioni.referido_por), más qué premios se le han otorgado ya. Solo lectura, solo admin.
 export async function GET() {
   if (!(await isAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const [codigosRes, bonosRes, iscrRes] = await Promise.all([
+  const [codigosRes, bonosRes, iscrRes, mensualRes, premiosRes] = await Promise.all([
     supabaseAdmin.from("referidos_codigo").select("codigo, email, nombre"),
     supabaseAdmin.from("bonos")
       .select("nombre, email, referido_por, created_at, estado")
@@ -24,13 +30,36 @@ export async function GET() {
     supabaseAdmin.from("iscrizioni")
       .select("nome, cognome, email, referido_por, created_at, stato")
       .not("referido_por", "is", null),
+    // Madrinas que pagan mensualidad (tienen suscripción/cliente en Stripe).
+    supabaseAdmin.from("iscrizioni")
+      .select("email, stripe_customer_id")
+      .not("stripe_customer_id", "is", null),
+    supabaseAdmin.from("premios_referido")
+      .select("madrina_codigo, tipo, detalle, importe_cent, created_at"),
   ]);
   if (codigosRes.error) return NextResponse.json({ error: codigosRes.error.message }, { status: 500 });
+
+  // Emails que tienen una mensualidad activa en Stripe.
+  const emailsMensualidad = new Set<string>();
+  for (const r of mensualRes.data ?? []) if (r.email) emailsMensualidad.add(r.email.toLowerCase());
+
+  // Premios ya otorgados por código.
+  const premiosPorCodigo = new Map<string, Premio[]>();
+  for (const p of premiosRes.data ?? []) {
+    const arr = premiosPorCodigo.get(p.madrina_codigo) ?? [];
+    arr.push({ tipo: p.tipo, detalle: p.detalle ?? "", importeCent: p.importe_cent ?? null, fecha: (p.created_at ?? "").slice(0, 10) });
+    premiosPorCodigo.set(p.madrina_codigo, arr);
+  }
 
   // Índice de madrinas por código.
   const porCodigo = new Map<string, Madrina>();
   for (const c of codigosRes.data ?? []) {
-    porCodigo.set(c.codigo, { codigo: c.codigo, nombre: c.nombre ?? "", email: c.email ?? "", amigas: [], total: 0 });
+    porCodigo.set(c.codigo, {
+      codigo: c.codigo, nombre: c.nombre ?? "", email: c.email ?? "",
+      amigas: [], total: 0, amigasMensualidad: 0,
+      tieneMensualidad: emailsMensualidad.has((c.email ?? "").toLowerCase()),
+      premios: premiosPorCodigo.get(c.codigo) ?? [],
+    });
   }
 
   // Añade una amiga a su madrina, sin duplicar por email (una amiga cuenta una vez).
@@ -62,7 +91,7 @@ export async function GET() {
   }
 
   const madrinas = [...porCodigo.values()]
-    .map((m) => ({ ...m, total: m.amigas.length }))
+    .map((m) => ({ ...m, total: m.amigas.length, amigasMensualidad: m.amigas.filter((a) => a.via === "mensualidad").length }))
     .filter((m) => m.total > 0)
     .sort((a, b) => b.total - a.total);
 
