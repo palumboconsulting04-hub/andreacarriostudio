@@ -54,13 +54,17 @@ export default function BonoGracias() {
           Entra en tu área <strong style={{ color: C.dark }}>Mis clases</strong> con:
         </p>
         <ul className="mt-2 space-y-1.5">
-          <li className="flex items-center gap-2.5 text-sm" style={{ color: C.brown }}>
-            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: C.burgundy }} />
-            Tu correo{bono?.email ? <>: <strong style={{ color: C.dark }}>{bono.email}</strong></> : <> (el mismo con el que has pagado)</>}
+          <li className="flex items-start gap-2.5 text-sm" style={{ color: C.brown }}>
+            <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-[6px]" style={{ backgroundColor: C.burgundy }} />
+            <span className="min-w-0 break-words">
+              Tu correo{bono?.email ? <>: <strong className="break-all" style={{ color: C.dark }}>{bono.email}</strong></> : <> (el mismo con el que has pagado)</>}
+            </span>
           </li>
-          <li className="flex items-center gap-2.5 text-sm" style={{ color: C.brown }}>
-            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: C.burgundy }} />
-            Tu nombre{bono?.nombre ? <>: <strong style={{ color: C.dark }}>{bono.nombre}</strong></> : ""}
+          <li className="flex items-start gap-2.5 text-sm" style={{ color: C.brown }}>
+            <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-[6px]" style={{ backgroundColor: C.burgundy }} />
+            <span className="min-w-0 break-words">
+              Tu nombre{bono?.nombre ? <>: <strong style={{ color: C.dark }}>{bono.nombre}</strong></> : ""}
+            </span>
           </li>
         </ul>
       </div>
