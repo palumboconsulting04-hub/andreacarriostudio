@@ -43,6 +43,7 @@ export default function MisClasesPanel() {
   const [semana, setSemana] = useState(0);
   const [msg, setMsg] = useState("");
   const [accion, setAccion] = useState(false);
+  const [confirmar, setConfirmar] = useState<Clase | null>(null);
   const iniciado = useRef(false);
 
   const cargarCalendario = useCallback(async () => {
@@ -255,7 +256,7 @@ export default function MisClasesPanel() {
                     ) : reservada ? (
                       <button onClick={() => cancelar(c)} disabled={accion} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Cancelar</button>
                     ) : puede && !lleno ? (
-                      <button onClick={() => reservar(c)} disabled={accion} className="px-4 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: C.burgundy, color: C.cream }}>Reservar</button>
+                      <button onClick={() => setConfirmar(c)} disabled={accion} className="px-4 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: C.burgundy, color: C.cream }}>Reservar</button>
                     ) : (
                       <span className="text-xs shrink-0" style={{ color: C.muted }}>{lleno ? "—" : "Sin crédito"}</span>
                     )}
@@ -339,6 +340,32 @@ export default function MisClasesPanel() {
             <a href={waAndrea} target="_blank" rel="noopener noreferrer" className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2" style={{ backgroundColor: "#25D366", color: "#fff", textDecoration: "none" }}>¿Dudas? Escríbeme</a>
           </div>
         )}
+
+        {confirmar && (() => {
+          const c = confirmar;
+          const menos24 = new Date(`${c.fecha}T${c.hora}`).getTime() - Date.now() < 24 * 3600 * 1000;
+          return (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }} onClick={() => setConfirmar(null)}>
+              <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl" style={{ backgroundColor: "#fff" }} onClick={e => e.stopPropagation()}>
+                <div className="p-6 text-center">
+                  <p className="text-lg font-bold mb-2" style={{ color: C.dark, fontFamily: fSans }}>¿Reservar esta clase?</p>
+                  <p className="text-sm font-semibold" style={{ color: C.burgundy, fontFamily: fSans }}>{DISC[c.disciplina_id] ?? c.disciplina_id}</p>
+                  <p className="text-sm mb-3" style={{ color: C.brown }}>{fechaLabel(c.fecha, c.dia)} · {c.hora}–{c.horaFin}</p>
+                  <p className="text-xs mb-4" style={{ color: C.muted }}>Se usará 1 crédito.</p>
+                  {menos24 && (
+                    <div className="rounded-2xl px-4 py-3 mb-4 text-xs text-left" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>
+                      Es en menos de 24 h: una vez reservada <strong>no podrás cancelarla</strong> ni recuperar el crédito.
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmar(null)} className="flex-1 py-3 rounded-2xl text-sm font-semibold" style={{ border: `1.5px solid ${C.border}`, color: C.brown, backgroundColor: "#fff" }}>Cancelar</button>
+                    <button onClick={() => { setConfirmar(null); reservar(c); }} disabled={accion} className="flex-1 py-3 rounded-2xl text-sm font-bold" style={{ backgroundColor: C.burgundy, color: C.cream }}>Reservar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {comprarOpen && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }} onClick={cerrarComprar}>
