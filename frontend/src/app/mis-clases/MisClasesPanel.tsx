@@ -344,6 +344,7 @@ export default function MisClasesPanel() {
             <p className="text-sm text-center py-8" style={{ color: C.muted }}>No tienes clases reservadas. Ve a <strong style={{ color: C.burgundy }}>Reservar</strong> para elegir un día.</p>
           ) : (
             <div className="flex flex-col gap-2">
+              <p className="text-xs text-center mb-1" style={{ color: C.muted }}>Puedes cancelar hasta <strong style={{ color: C.burgundy }}>4 h antes</strong> de la clase y recuperas el crédito.</p>
               {misReservas.map(c => (
                 <div key={c.orario_id + c.fecha} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: C.blush, border: `1px solid ${C.burgundy}` }}>
                   <div className="min-w-0">
