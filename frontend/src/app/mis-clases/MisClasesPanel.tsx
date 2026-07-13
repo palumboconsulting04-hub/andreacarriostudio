@@ -360,7 +360,7 @@ export default function MisClasesPanel() {
                       <button key={bt.id} disabled={cargandoPago} onClick={() => elegirParaComprar(bt)} className="rounded-2xl p-4 flex items-center justify-between text-left transition-all" style={{ border: `1.5px solid ${C.border}`, backgroundColor: "#fff", opacity: cargandoPago ? 0.5 : 1 }}>
                         <div className="min-w-0">
                           <p className="text-sm font-bold" style={{ color: C.dark, fontFamily: fSans }}>{bt.nombre}</p>
-                          <p className="text-xs" style={{ color: C.muted }}>{bt.creditos === 1 ? "1 clase" : `${bt.creditos} clases`} · {(bt.precio / bt.creditos).toFixed(0)}€/clase</p>
+                          <p className="text-xs" style={{ color: C.muted }}>{bt.creditos === 1 ? "1 clase" : `${bt.creditos} clases`} · {(bt.precio / bt.creditos).toLocaleString("es-ES", { maximumFractionDigits: 1 })}€/clase</p>
                         </div>
                         <p className="text-xl font-bold shrink-0" style={{ color: C.burgundy }}>{bt.precio}€</p>
                       </button>

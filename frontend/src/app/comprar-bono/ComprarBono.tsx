@@ -125,7 +125,7 @@ export default function ComprarBono() {
                       <span className="text-5xl font-bold leading-none" style={{ color: C.burgundy }}>{b.precio}</span>
                       <span className="text-xl font-bold mt-1" style={{ color: C.burgundy }}>€</span>
                     </div>
-                    <p className="text-xs mt-2" style={{ color: C.muted }}>{porClase.toFixed(0)}€ por clase</p>
+                    <p className="text-xs mt-2" style={{ color: C.muted }}>{porClase.toLocaleString("es-ES", { maximumFractionDigits: 1 })}€ por clase</p>
                     <span className="inline-block mt-2.5 px-3 py-0.5 rounded-full text-[11px] font-semibold" style={{ backgroundColor: "#fff1e9", color: C.burgundy }}>{tagline}</span>
                     <div className="mt-5 mb-5 space-y-2 text-left">
                       {feats.map(f => (
@@ -185,7 +185,7 @@ export default function ComprarBono() {
                   <button onClick={() => setDetalle(null)} className="w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0" style={{ backgroundColor: "#fff", color: C.muted }} aria-label="Cerrar">✕</button>
                 </div>
                 <p className="text-4xl font-bold mt-4" style={{ color: C.burgundy }}>{detalle.precio}€</p>
-                <p className="text-sm" style={{ color: C.muted }}>{(detalle.precio / detalle.creditos).toFixed(0)}€ por clase{ahorro > 0 ? ` · ahorras ${ahorro}€` : ""}</p>
+                <p className="text-sm" style={{ color: C.muted }}>{(detalle.precio / detalle.creditos).toLocaleString("es-ES", { maximumFractionDigits: 1 })}€ por clase{ahorro > 0 ? ` · ahorras ${ahorro}€` : ""}</p>
               </div>
               <div className="p-6 space-y-3">
                 {item(`${detalle.creditos === 1 ? "1 clase" : `${detalle.creditos} clases`} · 1 crédito = 1 clase`)}
