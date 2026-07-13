@@ -5271,7 +5271,7 @@ export default function AdminDashboard() {
               let t = (tel || "").replace(/\D/g, "");
               if (t.startsWith("00")) t = t.slice(2);
               if (t.length === 9) t = "34" + t;
-              return `https://wa.me/${t}?text=${encodeURIComponent(`¡Hola ${nombre}! 🤎 Soy Andrea, ¡muchísimas gracias por tu bono!\n\nEste es tu enlace para entrar a tu área "Mis clases" y reservar las clases que quieras cuando te venga bien:\nhttps://reservas.andreacarriostudio.es/mis-clases\n\nEntra con tu nombre y el correo con el que compraste el bono, eliges el día y ¡listo! Nos vemos en el estudio 💛`)}`;
+              return `https://wa.me/${t}?text=${encodeURIComponent(`¡Hola ${nombre}! 🤎 Soy Andrea, ¡muchísimas gracias por tu bono!\n\nEste es tu enlace para entrar a tu área "Mis clases" y reservar las clases que quieras cuando te venga bien:\nhttps://reservas.andreacarriostudio.es/mis-clases?entrar=1\n\nEntra con tu nombre y el correo con el que compraste el bono, eliges el día y ¡listo! Nos vemos en el estudio 💛`)}`;
             };
             const estadoBono = (b: BonoAdmin) => {
               if (b.caduca < hoy) return { l: "Caducado", bg: "#eceff1", fg: "#546e7a" };
@@ -5295,7 +5295,7 @@ export default function AdminDashboard() {
 
                 <div className="flex flex-wrap gap-2 items-center">
                   <p className="w-full text-xs font-semibold" style={{ color: "#89726c" }}>👁️ Panel de las alumnas (Mis clases):</p>
-                  <a href="/mis-clases" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                  <a href="/mis-clases?entrar=1" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
                     <Icon name="login" className="text-sm" /> Abrir Mis clases (login + panel)
                   </a>
                   <a href="/mis-clases?preview=barre-fit" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fff0eb", color: "#7d2b13", border: "1px solid #dcc1b9" }}>

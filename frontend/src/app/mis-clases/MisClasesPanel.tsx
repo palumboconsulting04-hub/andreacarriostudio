@@ -62,6 +62,7 @@ export default function MisClasesPanel() {
     const prev = params.get("preview");
     const token = params.get("acceso");
     const emailParam = params.get("email");
+    const forzarLogin = params.get("entrar"); // desde el email o la página de gracias
     if (emailParam) setEmail(emailParam); // pre-rellena el correo tras la compra
     (async () => {
       if (prev && ["barre-fit", "pilates-mat"].includes(prev)) {
@@ -70,6 +71,14 @@ export default function MisClasesPanel() {
         const data = await res.json();
         setClases(data.clases ?? []);
         setEstado("panel");
+        return;
+      }
+      // Enlaces del email / página de gracias: SIEMPRE al login. Limpiamos cualquier
+      // sesión previa para no entrar por error en el panel de otra persona.
+      if (forzarLogin) {
+        await fetch("/api/panel/salir", { method: "POST" }).catch(() => {});
+        window.history.replaceState({}, "", "/mis-clases");
+        setEstado("login");
         return;
       }
       if (token) {
@@ -281,9 +290,12 @@ export default function MisClasesPanel() {
           </div>
         )}
 
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-3xl" style={{ fontFamily: fSerif, color: C.burgundy }}>Mis clases</h1>
-          {!preview && <button onClick={salir} className="text-xs" style={{ color: C.muted }}>Salir</button>}
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h1 className="text-3xl" style={{ fontFamily: fSerif, color: C.burgundy }}>Mis clases</h1>
+            {!preview && bonos[0]?.nombre && <p className="text-sm font-semibold" style={{ color: C.dark, fontFamily: fSans }}>{bonos[0].nombre}</p>}
+          </div>
+          {!preview && <button onClick={salir} className="text-xs shrink-0" style={{ color: C.muted }}>Salir</button>}
         </div>
 
         {!preview && (

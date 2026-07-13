@@ -31,7 +31,8 @@ export default function BonoGracias() {
   const creditos = bono?.creditos_restantes ?? 0;
   const disc = bono ? (DISC[bono.disciplina_id] ?? bono.disciplina_id) : "";
   const caducaStr = bono?.caduca ? new Date(bono.caduca + "T00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }) : "";
-  const panelUrl = bono?.email ? `/mis-clases?email=${encodeURIComponent(bono.email)}` : "/mis-clases";
+  // Siempre al login (entrar=1) para que cada quien entre en SU panel, nunca con una sesión previa.
+  const panelUrl = bono?.email ? `/mis-clases?entrar=1&email=${encodeURIComponent(bono.email)}` : "/mis-clases?entrar=1";
   const porEmpezar = !!bono?.valido_desde && bono.valido_desde > new Date().toISOString().slice(0, 10);
   const inicioStr = bono?.valido_desde ? new Date(bono.valido_desde + "T00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long" }) : "";
 

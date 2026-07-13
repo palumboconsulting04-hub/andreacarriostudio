@@ -90,7 +90,8 @@ async function enviarEmailBono(m: Record<string, string>, creditos: number, cadu
   const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
   const disc = DISC_LABEL[m.disciplina_id] ?? m.disciplina_id;
   const caducaStr = caduca.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
-  const panel = `${APP_URL}/mis-clases`;
+  // Siempre al login (entrar=1) → cada persona entra en SU panel, no con una sesión previa.
+  const panel = `${APP_URL}/mis-clases?entrar=1&email=${encodeURIComponent(m.email)}`;
   const creditosTxt = creditos === 1 ? "1 clase" : `${creditos} clases`;
   const porEmpezar = !!validoDesde && validoDesde > new Date().toISOString().slice(0, 10);
   const inicioStr = validoDesde ? new Date(`${validoDesde}T00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "long" }) : "";
