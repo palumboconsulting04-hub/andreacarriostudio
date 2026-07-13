@@ -82,6 +82,11 @@ export default function Home() {
     ) {
       origenRef.current = "ads";
     }
+
+    // Referido "Trae a tu amiga": guarda el código de madrina de la URL (?ref=)
+    // para atribuir la inscripción de mensualidad al confirmar el pago.
+    const ref = (p.get("ref") || "").trim().toUpperCase().slice(0, 20);
+    if (ref) sessionStorage.setItem("acs_ref", ref);
   }, []);
   useEffect(() => {
     const map: Record<number, string> = {

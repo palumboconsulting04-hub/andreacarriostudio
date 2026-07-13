@@ -424,6 +424,9 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
       };
     });
 
+    // Código de madrina (Trae a tu amiga), si la clienta llegó con un ?ref=.
+    const referidoPor = typeof window !== "undefined" ? (sessionStorage.getItem("acs_ref") || null) : null;
+
     const res = await fetch("/api/inscripcion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -432,6 +435,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
         existingContattoId: existingContattoId ?? null,
         stripePaymentIntentId,
         stripeCustomerId,
+        referidoPor,
         inscripciones,
       }),
     });

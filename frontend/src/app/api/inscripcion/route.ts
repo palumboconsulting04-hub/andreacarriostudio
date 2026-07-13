@@ -24,6 +24,7 @@ type Body = {
   existingContattoId?: string | null;
   stripePaymentIntentId?: string | null;
   stripeCustomerId?: string | null;
+  referidoPor?: string | null;
   inscripciones: InscripcionItem[];
 };
 
@@ -61,6 +62,15 @@ export async function POST(req: NextRequest) {
   }
 
   // 2) Una fila de iscrizioni por cada inscripción + sus horarios.
+  // Código de madrina (Trae a tu amiga): normalizado, sin autorreferido.
+  const emailComprador = body.contatto.email.toLowerCase().trim();
+  let referidoPor = (body.referidoPor || "").trim().toUpperCase().slice(0, 20) || null;
+  if (referidoPor) {
+    const { data: mad } = await supabaseAdmin
+      .from("referidos_codigo").select("email").eq("codigo", referidoPor).maybeSingle();
+    if (!mad || mad.email === emailComprador) referidoPor = null; // código inexistente o autorreferido
+  }
+
   let firstId = "";
   for (const item of body.inscripciones) {
     const { data: isc, error: iErr } = await supabaseAdmin
@@ -78,6 +88,7 @@ export async function POST(req: NextRequest) {
         nome_alumna: item.nome_alumna || null,
         cognome_alumna: item.cognome_alumna || null,
         matricula: item.matricula ?? 0,
+        referido_por: referidoPor,
         stripe_payment_intent_id: body.stripePaymentIntentId || null,
         stripe_customer_id: body.stripeCustomerId || null,
       })

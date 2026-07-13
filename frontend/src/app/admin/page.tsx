@@ -829,6 +829,20 @@ export default function AdminDashboard() {
       .catch(() => {});
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Referidos (Trae a tu amiga): madrinas y las amigas que han traído ──
+  type AmigaRef = { nombre: string; email: string; via: "bono" | "mensualidad"; fecha: string; estado: string };
+  type MadrinaRef = { codigo: string; nombre: string; email: string; amigas: AmigaRef[]; total: number };
+  type ResumenRef = { codigosEmitidos: number; amigasTraidas: number; madrinasActivas: number; embajadoras: number };
+  const [refMadrinas, setRefMadrinas] = useState<MadrinaRef[]>([]);
+  const [refResumen, setRefResumen] = useState<ResumenRef | null>(null);
+  useEffect(() => {
+    if (activeSection !== "Referidos") return;
+    fetch(`/api/admin/referidos?t=${Date.now()}`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => { setRefMadrinas(d.madrinas ?? []); setRefResumen(d.resumen ?? null); })
+      .catch(() => {});
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Pagos manuales (cuotas mensuales en efectivo/bizum) ──
   type PagoManual = {
     id: string;
@@ -2044,6 +2058,7 @@ export default function AdminDashboard() {
     { icon: "event_available", label: "Jornada 24J" },
     { icon: "autorenew", label: "Renovaciones" },
     { icon: "confirmation_number", label: "Bonos" },
+    { icon: "diversity_3", label: "Referidos" },
     { icon: "insights", label: "Marketing" },
     { icon: "filter_alt", label: "Embudo" },
     { icon: "online_prediction", label: "Previsión" },
@@ -5363,6 +5378,92 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </section>
+            );
+          })()}
+
+          {activeSection === "Referidos" && (() => {
+            const M = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+            const fFecha = (f: string) => { if (!f) return ""; const [, m, d] = f.split("-"); return `${+d} ${M[+m - 1]}`; };
+            // Nivel de la madrina según cuántas amigas ha traído (regla del programa).
+            const nivel = (n: number) => {
+              if (n >= 5) return { l: "Embajadora Oro", emoji: "👑", bg: "#fff8e1", fg: "#b8860b", premio: "Mes gratis + taller + detalle + muro de embajadoras" };
+              if (n >= 3) return { l: "Embajadora", emoji: "⭐", bg: "#fff3e0", fg: "#e65100", premio: "1 mes gratis" };
+              return { l: "Madrina", emoji: "🤎", bg: "#f3e9e4", fg: "#7d2b13", premio: "Premio por cada amiga (bono → +1 clase automática)" };
+            };
+            const cards = refResumen ? [
+              { l: "Códigos emitidos", v: refResumen.codigosEmitidos },
+              { l: "Amigas traídas", v: refResumen.amigasTraidas },
+              { l: "Madrinas activas", v: refResumen.madrinasActivas },
+              { l: "Embajadoras", v: refResumen.embajadoras },
+            ] : [];
+            return (
+              <section className="space-y-5">
+                <div>
+                  <h3 className="font-headline-md text-headline-md text-primary">Referidos · Trae a tu amiga</h3>
+                  <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Quién ha traído a quién y qué premio le toca a cada madrina.</p>
+                </div>
+
+                {cards.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {cards.map(k => (
+                      <div key={k.l} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
+                        <p className="text-2xl font-bold" style={{ color: "#7d2b13" }}>{k.v}</p>
+                        <p className="text-xs" style={{ color: "#89726c" }}>{k.l}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="rounded-2xl p-4 text-xs leading-relaxed" style={{ backgroundColor: "#fff8f5", border: "1px solid #f0ddd5", color: "#89726c" }}>
+                  <p className="font-bold uppercase tracking-widest mb-1" style={{ color: "#7d2b13" }}>Cómo se premia</p>
+                  Cuando una amiga compra un <strong>bono</strong>, la madrina y la amiga reciben <strong>+1 clase automática</strong> (ya funciona solo).
+                  Los premios de <strong>mensualidad</strong> y de <strong>Embajadora</strong> (1 mes gratis, detalle…) los otorgas tú a mano: esta lista te dice a quién y cuánto.
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Madrinas</p>
+                  {refMadrinas.length === 0 ? (
+                    <p className="text-sm" style={{ color: "#bcb0ab" }}>Aún nadie ha traído a una amiga con su código.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {refMadrinas.map((m) => {
+                        const nv = nivel(m.total);
+                        return (
+                          <div key={m.codigo} className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                            <div className="px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: "#fff" }}>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold truncate" style={{ color: "#25190f" }}>{m.nombre || m.email}</p>
+                                <p className="text-xs truncate" style={{ color: "#89726c" }}>código <strong>{m.codigo}</strong>{m.email ? ` · ${m.email}` : ""}</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-1 shrink-0">
+                                <span className="text-sm font-bold" style={{ color: "#7d2b13" }}>{m.total} {m.total === 1 ? "amiga" : "amigas"}</span>
+                                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: nv.bg, color: nv.fg }}>{nv.emoji} {nv.l}</span>
+                              </div>
+                            </div>
+                            <div className="px-4 py-2 text-[11px]" style={{ backgroundColor: "#fffbf9", borderTop: "1px solid #f0ddd5", color: "#89726c" }}>
+                              <span className="font-semibold" style={{ color: "#7d2b13" }}>Premio:</span> {nv.premio}
+                            </div>
+                            <div style={{ borderTop: "1px solid #f0ddd5" }}>
+                              {m.amigas.map((a, i) => (
+                                <div key={`${m.codigo}-${a.email}-${i}`} className="px-4 py-2 flex items-center justify-between gap-2" style={{ borderTop: i ? "1px solid #f7ece7" : "none", backgroundColor: i % 2 ? "#fffbf9" : "#fff" }}>
+                                  <div className="min-w-0">
+                                    <p className="text-sm truncate" style={{ color: "#25190f" }}>{a.nombre || a.email}</p>
+                                    <p className="text-xs truncate" style={{ color: "#89726c" }}>{a.email}</p>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: a.via === "bono" ? "#e8f5e9" : "#e3f2fd", color: a.via === "bono" ? "#2e7d32" : "#1565c0" }}>{a.via === "bono" ? "Bono" : "Mensualidad"}</span>
+                                    <span className="text-[11px]" style={{ color: "#bcb0ab" }}>{fFecha(a.fecha)}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </section>
             );
