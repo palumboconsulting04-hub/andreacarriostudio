@@ -1997,6 +1997,37 @@ export default function AdminDashboard() {
     })));
   };
 
+  // Walk-in: cobrar 1 crédito a una alumna de bono que viene sin reserva.
+  const [walkinOpen, setWalkinOpen] = useState(false);
+  const [walkinBonos, setWalkinBonos] = useState<{ id: string; nombre: string; email: string; creditos_restantes: number }[]>([]);
+  const [walkinSearch, setWalkinSearch] = useState("");
+  const [walkinSaving, setWalkinSaving] = useState(false);
+  const [walkinMsg, setWalkinMsg] = useState("");
+
+  const abrirWalkin = async () => {
+    setWalkinOpen(true); setWalkinSearch(""); setWalkinMsg(""); setWalkinBonos([]);
+    try {
+      const res = await fetch(`/api/admin/asistencia/walkin?orario_id=${asistenciaOrarioId}`);
+      const json = await res.json();
+      setWalkinBonos(json.bonos ?? []);
+    } catch { setWalkinBonos([]); }
+  };
+
+  const cobrarWalkin = async (bonoId: string) => {
+    setWalkinSaving(true); setWalkinMsg("");
+    try {
+      const res = await fetch("/api/admin/asistencia/walkin", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bono_id: bonoId, orario_id: asistenciaOrarioId, fecha: asistenciaFecha }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setWalkinMsg(json.error ?? "No se pudo cobrar la clase"); return; }
+      setWalkinOpen(false);
+      await cargarRoster(asistenciaOrarioId, asistenciaFecha);
+    } catch { setWalkinMsg("Error de conexión"); }
+    finally { setWalkinSaving(false); }
+  };
+
   const handleLogout = async () => {
     try { await fetch("/api/admin/logout", { method: "POST" }); } catch {}
     window.location.href = "/admin/login";
@@ -3169,13 +3200,22 @@ export default function AdminDashboard() {
                             {" · "}<span style={{ color: "#e65100" }}>{justificadas} justif.</span>
                             {sinMarcar > 0 && <> · {sinMarcar} sin marcar</>}
                           </p>
-                          <button
-                            onClick={marcarTodasPresentes}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
-                            style={{ borderColor: "#2e7d32", color: "#2e7d32" }}
-                          >
-                            <Icon name="done_all" className="text-sm" /> Todas presentes
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={abrirWalkin}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
+                              style={{ borderColor: "#7d2b13", color: "#7d2b13" }}
+                            >
+                              <Icon name="person_add" className="text-sm" /> Vino sin reserva
+                            </button>
+                            <button
+                              onClick={marcarTodasPresentes}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
+                              style={{ borderColor: "#2e7d32", color: "#2e7d32" }}
+                            >
+                              <Icon name="done_all" className="text-sm" /> Todas presentes
+                            </button>
+                          </div>
                         </div>
 
                         <div className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden divide-y" style={{ borderColor: "#dcc1b9" }}>
@@ -3212,6 +3252,50 @@ export default function AdminDashboard() {
                       </div>
                     )}
                   </>
+                )}
+
+                {walkinOpen && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }} onClick={() => setWalkinOpen(false)}>
+                    <div className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]" style={{ backgroundColor: "#fff" }} onClick={e => e.stopPropagation()}>
+                      <div className="px-5 py-4 flex items-center justify-between" style={{ backgroundColor: "#fff0eb" }}>
+                        <p className="text-base font-bold" style={{ color: "#25190f" }}>Vino sin reserva — cobrar clase</p>
+                        <button onClick={() => setWalkinOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "#fff", color: "#89726c" }}>✕</button>
+                      </div>
+                      <div className="p-4 pb-2">
+                        <input
+                          value={walkinSearch}
+                          onChange={e => setWalkinSearch(e.target.value)}
+                          placeholder="Buscar por nombre o email…"
+                          className="w-full rounded-xl px-4 py-2.5 text-sm border outline-none"
+                          style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}
+                        />
+                        <p className="text-xs mt-2" style={{ color: "#89726c" }}>Al elegir, se le descuenta 1 crédito y queda presente.</p>
+                        {walkinMsg && <p className="text-sm mt-2" style={{ color: "#b71c1c" }}>{walkinMsg}</p>}
+                      </div>
+                      <div className="overflow-y-auto px-4 pb-4 space-y-1.5">
+                        {(() => {
+                          const q = walkinSearch.trim().toLowerCase();
+                          const lista = walkinBonos.filter(b => !q || b.nombre.toLowerCase().includes(q) || (b.email ?? "").toLowerCase().includes(q));
+                          if (lista.length === 0) return <p className="text-sm text-center py-6" style={{ color: "#89726c" }}>No hay bonos con crédito para esta disciplina.</p>;
+                          return lista.map(b => (
+                            <button
+                              key={b.id}
+                              disabled={walkinSaving}
+                              onClick={() => cobrarWalkin(b.id)}
+                              className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border text-left"
+                              style={{ borderColor: "#dcc1b9", backgroundColor: "#fff", opacity: walkinSaving ? 0.5 : 1 }}
+                            >
+                              <span className="min-w-0">
+                                <span className="block text-sm font-semibold truncate" style={{ color: "#25190f" }}>{b.nombre}</span>
+                                <span className="block text-xs truncate" style={{ color: "#89726c" }}>{b.email}</span>
+                              </span>
+                              <span className="text-xs font-bold shrink-0" style={{ color: "#7d2b13" }}>{b.creditos_restantes} créd.</span>
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </section>
             );
