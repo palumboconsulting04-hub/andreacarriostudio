@@ -20,19 +20,39 @@ export async function GET() {
   const bonos = (bonosData ?? []) as BonoRow[];
 
   const usables = bonos.filter(b => b.creditos_restantes > 0 && b.caduca >= hoy);
-  const disciplinas = [...new Set(usables.map(b => b.disciplina_id))];
-  const hasta = usables.reduce((m, b) => (b.caduca > m ? b.caduca : m), "");
   const bonoIds = bonos.map(b => b.id);
+
+  // Reservas de la alumna (con la disciplina de su clase) para mostrarlas SIEMPRE,
+  // aunque ya no le queden créditos en ese bono.
+  type RCRow = { id: string; orario_id: string; fecha: string; orari: { disciplina_id: string } | { disciplina_id: string }[] | null };
+  const reservas: { id: string; orario_id: string; fecha: string; disciplina_id: string }[] = [];
+  if (bonoIds.length) {
+    const { data: rc } = await supabaseAdmin
+      .from("reservas_clase")
+      .select("id, orario_id, fecha, orari(disciplina_id)")
+      .in("bono_id", bonoIds)
+      .gte("fecha", hoy);
+    for (const r of (rc ?? []) as RCRow[]) {
+      const disc = (Array.isArray(r.orari) ? r.orari[0]?.disciplina_id : r.orari?.disciplina_id) ?? "";
+      reservas.push({ id: r.id, orario_id: r.orario_id, fecha: r.fecha, disciplina_id: disc });
+    }
+  }
+
+  // Disciplinas a mostrar: donde puede reservar (con crédito) + donde ya tiene reserva.
+  const disciplinas = [...new Set([
+    ...usables.map(b => b.disciplina_id),
+    ...reservas.map(r => r.disciplina_id).filter(Boolean),
+  ])];
+  // Horizonte: hasta la caducidad más lejana con crédito o su reserva más lejana.
+  const hasta = [...usables.map(b => b.caduca), ...reservas.map(r => r.fecha)]
+    .reduce((m, f) => (f > m ? f : m), "");
 
   const clases = await generarClases(disciplinas, hasta || undefined);
 
   // Marca las clases que ya tiene reservadas esta alumna (para poder cancelar).
-  if (bonoIds.length && clases.length) {
-    const { data: rc } = await supabaseAdmin
-      .from("reservas_clase").select("id, orario_id, fecha")
-      .in("bono_id", bonoIds).gte("fecha", hoy);
+  if (clases.length) {
     const mine = new Map<string, string>();
-    for (const r of (rc ?? []) as { id: string; orario_id: string; fecha: string }[]) mine.set(`${r.orario_id}|${r.fecha}`, r.id);
+    for (const r of reservas) mine.set(`${r.orario_id}|${r.fecha}`, r.id);
     for (const c of clases) c.reserva_id = mine.get(`${c.orario_id}|${c.fecha}`) ?? null;
   }
 
