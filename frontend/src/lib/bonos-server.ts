@@ -35,9 +35,10 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
   // Referido: si trae un código de madrina válido (y no es autorreferido), lo guardamos.
   const emailComprador = (m.email ?? "").toLowerCase();
   let referidoPor: string | null = null;
+  let emailMadrina: string | null = null;
   if (m.ref) {
-    const emailMadrina = await emailDeCodigo(m.ref);
-    if (emailMadrina && emailMadrina !== emailComprador) referidoPor = m.ref.toUpperCase();
+    const e = await emailDeCodigo(m.ref);
+    if (e && e !== emailComprador) { referidoPor = m.ref.toUpperCase(); emailMadrina = e; }
   }
 
   const { error } = await supabaseAdmin.from("bonos").insert({
@@ -60,10 +61,70 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
   if (error && error.code !== "23505") throw error;
   if (error) return;
 
-  try { await enviarEmailBono(m, creditos, caduca, validoDesde); } catch (e) { console.error("email bono:", e); }
+  try { await enviarEmailBono(m, creditos, caduca, validoDesde, !!referidoPor && creditos >= 5); } catch (e) { console.error("email bono:", e); }
   try { await enviarAvisoAdmin(m, creditos, caduca); } catch (e) { console.error("aviso admin bono:", e); }
   // La compradora recibe su propio código de madrina para poder invitar a amigas.
   try { await getCodigoReferido(emailComprador, m.nombre ?? ""); } catch (e) { console.error("codigo referido:", e); }
+
+  // Fase 2 — premio de referido: solo con Bono 5/12 (nunca clase suelta).
+  if (referidoPor && emailMadrina && creditos >= 5) {
+    try { await aplicarPremioReferido(emailMadrina, emailComprador, m.nombre ?? "", m.disciplina_id ?? "", validoDesde); }
+    catch (e) { console.error("premio referido:", e); }
+  }
+}
+
+// Crea un bono de 1 crédito de regalo (referido). Caduca a los 2 meses del arranque.
+async function crearBonoRegalo(email: string, nombre: string, disciplina: string, validoDesde: string) {
+  const caduca = new Date(`${validoDesde}T00:00:00Z`);
+  caduca.setUTCMonth(caduca.getUTCMonth() + 2);
+  await supabaseAdmin.from("bonos").insert({
+    bono_tipo_id: null,
+    disciplina_id: disciplina,
+    nombre,
+    email: email.toLowerCase(),
+    creditos_totales: 1,
+    creditos_restantes: 1,
+    valido_desde: validoDesde,
+    caduca: caduca.toISOString().slice(0, 10),
+    precio_pagado: 0,
+    estado: "activo",
+  });
+}
+
+// Aplica el premio de referido: +1 clase de regalo a la madrina y a la amiga, y avisa a la madrina.
+async function aplicarPremioReferido(emailMadrina: string, amigaEmail: string, amigaNombre: string, disciplina: string, validoDesde: string) {
+  const { data: mad } = await supabaseAdmin
+    .from("referidos_codigo").select("nombre").eq("email", emailMadrina).maybeSingle();
+  const nombreMadrina = mad?.nombre ?? "";
+  await crearBonoRegalo(emailMadrina, nombreMadrina, disciplina, validoDesde);
+  await crearBonoRegalo(amigaEmail, amigaNombre, disciplina, validoDesde);
+  try { await enviarEmailPremioMadrina(emailMadrina, nombreMadrina, amigaNombre, disciplina); }
+  catch (e) { console.error("email premio madrina:", e); }
+}
+
+// Aviso a la madrina de que su amiga se apuntó y tiene 1 clase de regalo.
+async function enviarEmailPremioMadrina(email: string, nombreMadrina: string, amigaNombre: string, disciplina: string) {
+  const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
+  const disc = DISC_LABEL[disciplina] ?? disciplina;
+  const panel = `${APP_URL}/mis-clases?entrar=1&email=${encodeURIComponent(email)}`;
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background:#f5ede8;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5ede8;padding:40px 16px;"><tr><td align="center">
+    <table width="100%" style="max-width:520px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 8px 40px rgba(37,25,15,0.10);">
+      <tr><td style="padding:34px 40px 8px;text-align:center;">
+        <h1 style="margin:0 0 12px;font-size:24px;font-weight:600;color:#25190f;font-family:Georgia,serif;">¡Gracias por invitar${nombreMadrina ? `, ${nombreMadrina}` : ""}! 🤎</h1>
+        <p style="margin:0;font-size:15px;color:#56423d;line-height:1.7;">Tu amiga <strong>${amigaNombre || "una amiga"}</strong> se ha apuntado con tu código, así que te hemos añadido <strong>1 clase de regalo de ${disc}</strong> en tu área "Mis clases".</p>
+      </td></tr>
+      <tr><td style="padding:20px 32px 36px;text-align:center;">
+        <a href="${panel}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:14px;font-weight:700;padding:15px 40px;border-radius:9999px;">Ver mi clase de regalo →</a>
+      </td></tr>
+      <tr><td style="background:#fff8f5;border-top:1px solid #f0ddd5;padding:24px 32px;text-align:center;">
+        <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#25190f;">Andrea Carrió Studio</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+  await resend.emails.send({ from, to: email, subject: `¡${amigaNombre || "Tu amiga"} se ha apuntado! Tienes 1 clase de regalo 🤎`, html });
 }
 
 // Aviso a Andrea de cada compra de bono (mismo buzón que las matrículas nuevas).
@@ -97,7 +158,7 @@ async function enviarAvisoAdmin(m: Record<string, string>, creditos: number, cad
   });
 }
 
-async function enviarEmailBono(m: Record<string, string>, creditos: number, caduca: Date, validoDesde: string) {
+async function enviarEmailBono(m: Record<string, string>, creditos: number, caduca: Date, validoDesde: string, esReferida = false) {
   if (!m.email) return;
   const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
   const disc = DISC_LABEL[m.disciplina_id] ?? m.disciplina_id;
@@ -116,6 +177,7 @@ async function enviarEmailBono(m: Record<string, string>, creditos: number, cadu
       <tr><td style="padding:20px 40px 8px;text-align:center;">
         <h1 style="margin:0 0 12px;font-size:26px;font-weight:600;color:#25190f;font-family:Georgia,serif;">¡Hola ${m.nombre ?? ""}! 🤎</h1>
         <p style="margin:0;font-size:15px;color:#56423d;line-height:1.7;">${porEmpezar ? `Tu bono queda reservado y <strong>empieza el ${inicioStr}</strong>. Podrás reservar tus clases a partir de esa fecha.` : "Tu bono ya está activo. Reserva tus clases cuando quieras desde tu panel."}</p>
+        ${esReferida ? `<p style="margin:12px 0 0;font-size:14px;font-weight:700;color:#7d2b13;">🎁 Y como vienes de una amiga, tienes 1 clase de regalo extra.</p>` : ""}
       </td></tr>
       <tr><td style="padding:20px 32px 8px;">
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff1e9;border-radius:16px;">
