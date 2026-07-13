@@ -131,6 +131,13 @@ export async function POST(req: NextRequest) {
         await procesarBonoPagado(event.data.object as Stripe.Checkout.Session);
         break;
       }
+
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        const piId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+        if (piId) await anularBonoReembolsado(piId);
+        break;
+      }
     }
   } catch (err) {
     console.error(`Webhook handler error (${event.type}):`, err);
@@ -139,6 +146,20 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+// Reembolso en Stripe → anula el bono correspondiente: créditos a 0, estado
+// "reembolsado" y elimina sus reservas, para que no siga usable tras devolver el
+// dinero. Solo afecta a bonos (los pagos de matrícula no coinciden y se ignoran).
+async function anularBonoReembolsado(paymentIntentId: string) {
+  const { data: bono } = await supabaseAdmin
+    .from("bonos")
+    .select("id, estado")
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .maybeSingle();
+  if (!bono || bono.estado === "reembolsado") return;
+  await supabaseAdmin.from("reservas_clase").delete().eq("bono_id", bono.id);
+  await supabaseAdmin.from("bonos").update({ creditos_restantes: 0, estado: "reembolsado" }).eq("id", bono.id);
 }
 
 // Crea la suscripción mensual del bono con la tarjeta guardada en el pago de la
