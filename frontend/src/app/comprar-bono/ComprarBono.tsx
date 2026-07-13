@@ -15,6 +15,7 @@ const DISC: Record<string, string> = { "barre-fit": "Barre Fit", "pilates-mat": 
 export default function ComprarBono() {
   const params = useSearchParams();
   const dParam = params.get("disciplina") ?? "";
+  const ref = params.get("ref") ?? ""; // código de madrina (viene de un enlace de referido)
   const [disciplina, setDisciplina] = useState(["barre-fit", "pilates-mat"].includes(dParam) ? dParam : "");
   const [bonos, setBonos] = useState<BonoTipo[]>([]);
   const [sel, setSel] = useState<BonoTipo | null>(null);
@@ -48,7 +49,7 @@ export default function ComprarBono() {
       const res = await fetch("/api/create-bono-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bono_tipo_id: sel!.id, nombre: nombre.trim(), email: email.trim(), telefono: telefono.trim() }),
+        body: JSON.stringify({ bono_tipo_id: sel!.id, nombre: nombre.trim(), email: email.trim(), telefono: telefono.trim(), ref }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error || "");

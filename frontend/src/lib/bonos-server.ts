@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { Resend } from "resend";
+import { emailDeCodigo, getCodigoReferido } from "@/lib/referidos";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://reservas.andreacarriostudio.es";
@@ -31,16 +32,25 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
   caduca.setUTCMonth(caduca.getUTCMonth() + validez);
   const pi = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
 
+  // Referido: si trae un código de madrina válido (y no es autorreferido), lo guardamos.
+  const emailComprador = (m.email ?? "").toLowerCase();
+  let referidoPor: string | null = null;
+  if (m.ref) {
+    const emailMadrina = await emailDeCodigo(m.ref);
+    if (emailMadrina && emailMadrina !== emailComprador) referidoPor = m.ref.toUpperCase();
+  }
+
   const { error } = await supabaseAdmin.from("bonos").insert({
     bono_tipo_id: m.bono_tipo_id ?? null,
     disciplina_id: m.disciplina_id ?? "",
     nombre: m.nombre ?? "",
-    email: (m.email ?? "").toLowerCase(),
+    email: emailComprador,
     telefono: m.telefono || null,
     creditos_totales: creditos,
     creditos_restantes: creditos,
     valido_desde: validoDesde,
     caduca: caduca.toISOString().slice(0, 10),
+    referido_por: referidoPor,
     precio_pagado: parseFloat(m.precio ?? "0") || null,
     stripe_session_id: session.id,
     stripe_payment_intent_id: pi,
@@ -52,6 +62,8 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
 
   try { await enviarEmailBono(m, creditos, caduca, validoDesde); } catch (e) { console.error("email bono:", e); }
   try { await enviarAvisoAdmin(m, creditos, caduca); } catch (e) { console.error("aviso admin bono:", e); }
+  // La compradora recibe su propio código de madrina para poder invitar a amigas.
+  try { await getCodigoReferido(emailComprador, m.nombre ?? ""); } catch (e) { console.error("codigo referido:", e); }
 }
 
 // Aviso a Andrea de cada compra de bono (mismo buzón que las matrículas nuevas).

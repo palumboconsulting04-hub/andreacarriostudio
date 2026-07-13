@@ -817,7 +817,7 @@ export default function AdminDashboard() {
   };
 
   // ── Bonos (Fase 3) ──
-  type BonoAdmin = { id: string; disciplina_id: string; nombre: string; email: string; telefono: string | null; creditos_totales: number; creditos_restantes: number; caduca: string; precio_pagado: number | null; estado: string; created_at: string };
+  type BonoAdmin = { id: string; disciplina_id: string; nombre: string; email: string; telefono: string | null; creditos_totales: number; creditos_restantes: number; caduca: string; precio_pagado: number | null; estado: string; created_at: string; referido_por: string | null };
   type ReservaBonoAdmin = { id: string; fecha: string; dia: string; hora: string; horaFin: string; disciplina_id: string; alumna: string; email: string; telefono: string };
   const [bonosData, setBonosData] = useState<BonoAdmin[]>([]);
   const [bonosReservas, setBonosReservas] = useState<ReservaBonoAdmin[]>([]);
@@ -5329,6 +5329,7 @@ export default function AdminDashboard() {
                             <div className="min-w-0">
                               <p className="text-sm font-semibold truncate" style={{ color: "#25190f" }}>{b.nombre}</p>
                               <p className="text-xs truncate" style={{ color: "#89726c" }}>{DL[b.disciplina_id] ?? b.disciplina_id} · caduca {fmtCaduca(b.caduca)}{b.email ? ` · ${b.email}` : ""}</p>
+                              {b.referido_por && <p className="text-[11px] font-semibold" style={{ color: "#7d2b13" }}>Referida · código {b.referido_por}</p>}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className="text-sm font-bold" style={{ color: "#7d2b13" }}>{b.creditos_restantes}/{b.creditos_totales}</span>

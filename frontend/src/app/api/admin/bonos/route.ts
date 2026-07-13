@@ -24,7 +24,7 @@ export async function GET() {
 
   const [bonosRes, reservasRes] = await Promise.all([
     supabaseAdmin.from("bonos")
-      .select("id, disciplina_id, nombre, email, telefono, creditos_totales, creditos_restantes, caduca, precio_pagado, estado, created_at")
+      .select("id, disciplina_id, nombre, email, telefono, creditos_totales, creditos_restantes, caduca, precio_pagado, estado, created_at, referido_por")
       .order("created_at", { ascending: false }),
     supabaseAdmin.from("reservas_clase")
       .select("id, fecha, orario_id, bono_id, bonos(nombre, email, telefono, disciplina_id), orari(giorno, ora_inizio, ora_fine)")

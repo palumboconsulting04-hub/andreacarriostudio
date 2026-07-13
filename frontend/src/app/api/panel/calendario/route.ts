@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { emailDeSesion } from "@/lib/panel-auth";
 import { generarClases } from "@/lib/calendario";
+import { getCodigoReferido } from "@/lib/referidos";
 
 type BonoRow = { id: string; disciplina_id: string; nombre: string; creditos_restantes: number; creditos_totales: number; caduca: string; valido_desde: string | null; estado: string };
 
@@ -56,5 +57,9 @@ export async function GET() {
     for (const c of clases) c.reserva_id = mine.get(`${c.orario_id}|${c.fecha}`) ?? null;
   }
 
-  return NextResponse.json({ email, bonos, clases });
+  // Código de madrina de la alumna (para invitar a amigas). Se crea si no existe.
+  let codigo = "";
+  try { codigo = await getCodigoReferido(email, bonos[0]?.nombre ?? ""); } catch { /* no bloquea el panel */ }
+
+  return NextResponse.json({ email, codigo, bonos, clases });
 }

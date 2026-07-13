@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
     const nombre = (body?.nombre ?? "").toString().trim();
     const email = (body?.email ?? "").toString().trim().toLowerCase();
     const telefono = (body?.telefono ?? "").toString().trim();
+    const ref = (body?.ref ?? "").toString().trim().toUpperCase().slice(0, 20); // código de madrina
 
     if (!bonoTipoId || !nombre) {
       return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
         creditos: String(tipo.creditos),
         validez_meses: String(tipo.validez_meses),
         precio: String(tipo.precio),
+        ref,
       },
       success_url: `${origin}/bono-gracias?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/comprar-bono?disciplina=${tipo.disciplina_id}`,
