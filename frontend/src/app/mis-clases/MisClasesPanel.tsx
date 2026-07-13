@@ -343,7 +343,7 @@ export default function MisClasesPanel() {
 
         {confirmar && (() => {
           const c = confirmar;
-          const menos24 = new Date(`${c.fecha}T${c.hora}`).getTime() - Date.now() < 24 * 3600 * 1000;
+          const menos4 = new Date(`${c.fecha}T${c.hora}`).getTime() - Date.now() < 4 * 3600 * 1000;
           return (
             <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }} onClick={() => setConfirmar(null)}>
               <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl" style={{ backgroundColor: "#fff" }} onClick={e => e.stopPropagation()}>
@@ -352,9 +352,9 @@ export default function MisClasesPanel() {
                   <p className="text-sm font-semibold" style={{ color: C.burgundy, fontFamily: fSans }}>{DISC[c.disciplina_id] ?? c.disciplina_id}</p>
                   <p className="text-sm mb-3" style={{ color: C.brown }}>{fechaLabel(c.fecha, c.dia)} · {c.hora}–{c.horaFin}</p>
                   <p className="text-xs mb-4" style={{ color: C.muted }}>Se usará 1 crédito.</p>
-                  {menos24 && (
+                  {menos4 && (
                     <div className="rounded-2xl px-4 py-3 mb-4 text-xs text-left" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>
-                      Es en menos de 24 h: una vez reservada <strong>no podrás cancelarla</strong> ni recuperar el crédito.
+                      Es en menos de 4 h: una vez reservada <strong>no podrás cancelarla</strong> ni recuperar el crédito.
                     </div>
                   )}
                   <div className="flex gap-2">

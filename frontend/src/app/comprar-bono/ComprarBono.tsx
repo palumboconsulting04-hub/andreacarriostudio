@@ -192,7 +192,7 @@ export default function ComprarBono() {
                 {item(`Solo para clases de ${dl}, no para la otra disciplina`)}
                 {item(`Válido ${detalle.validezMeses} ${detalle.validezMeses === 1 ? "mes" : "meses"} desde la compra`)}
                 {item("Reservas el día que quieras desde tu panel")}
-                {item("Cancela hasta 24 h antes y recupera el crédito")}
+                {item("Cancela hasta 4 h antes y recupera el crédito")}
                 {ahorro > 0 && item(`Ahorras ${ahorro}€ frente a comprar clases sueltas`)}
                 <p className="text-sm leading-relaxed pt-1" style={{ color: C.muted }}>
                   Bono de {detalle.creditos} {detalle.creditos === 1 ? "sesión" : "sesiones"} de {dl}, para usar cuando puedas. Ideal si no quieres atarte a una rutina fija.

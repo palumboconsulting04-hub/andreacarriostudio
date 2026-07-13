@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { emailDeSesion } from "@/lib/panel-auth";
 
-// Cancela una reserva de la alumna (devuelve el crédito si faltan >24 h).
+// Cancela una reserva de la alumna (devuelve el crédito si faltan >4 h).
 export async function POST(req: NextRequest) {
   const email = await emailDeSesion();
   if (!email) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
