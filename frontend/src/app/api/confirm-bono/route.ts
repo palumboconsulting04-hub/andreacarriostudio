@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     const { data: bono } = await supabaseAdmin
       .from("bonos")
-      .select("nombre, email, disciplina_id, creditos_restantes, caduca")
+      .select("nombre, email, disciplina_id, creditos_restantes, caduca, valido_desde")
       .eq("stripe_session_id", session.id)
       .maybeSingle();
 

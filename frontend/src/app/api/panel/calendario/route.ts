@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { emailDeSesion } from "@/lib/panel-auth";
 import { generarClases } from "@/lib/calendario";
 
-type BonoRow = { id: string; disciplina_id: string; nombre: string; creditos_restantes: number; creditos_totales: number; caduca: string; estado: string };
+type BonoRow = { id: string; disciplina_id: string; nombre: string; creditos_restantes: number; creditos_totales: number; caduca: string; valido_desde: string | null; estado: string };
 
 // Bonos de la alumna + calendario de sus disciplinas, con sus reservas marcadas.
 export async function GET() {
@@ -14,12 +14,12 @@ export async function GET() {
 
   const { data: bonosData } = await supabaseAdmin
     .from("bonos")
-    .select("id, disciplina_id, nombre, creditos_restantes, creditos_totales, caduca, estado")
+    .select("id, disciplina_id, nombre, creditos_restantes, creditos_totales, caduca, valido_desde, estado")
     .ilike("email", email)
     .order("created_at", { ascending: false });
   const bonos = (bonosData ?? []) as BonoRow[];
 
-  const usables = bonos.filter(b => b.creditos_restantes > 0 && b.caduca >= hoy);
+  const usables = bonos.filter(b => b.creditos_restantes > 0 && b.caduca >= hoy && (!b.valido_desde || b.valido_desde <= hoy));
   const bonoIds = bonos.map(b => b.id);
 
   // Reservas de la alumna (con la disciplina de su clase) para mostrarlas SIEMPRE,

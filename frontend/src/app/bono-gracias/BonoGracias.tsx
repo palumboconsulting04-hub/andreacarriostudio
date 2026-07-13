@@ -8,7 +8,7 @@ const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
 const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
 const DISC: Record<string, string> = { "barre-fit": "Barre Fit", "pilates-mat": "Pilates Mat" };
 
-type Bono = { nombre: string; email: string; disciplina_id: string; creditos_restantes: number; caduca: string };
+type Bono = { nombre: string; email: string; disciplina_id: string; creditos_restantes: number; caduca: string; valido_desde: string | null };
 
 export default function BonoGracias() {
   const params = useSearchParams();
@@ -32,6 +32,8 @@ export default function BonoGracias() {
   const disc = bono ? (DISC[bono.disciplina_id] ?? bono.disciplina_id) : "";
   const caducaStr = bono?.caduca ? new Date(bono.caduca + "T00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }) : "";
   const panelUrl = bono?.email ? `/mis-clases?email=${encodeURIComponent(bono.email)}` : "/mis-clases";
+  const porEmpezar = !!bono?.valido_desde && bono.valido_desde > new Date().toISOString().slice(0, 10);
+  const inicioStr = bono?.valido_desde ? new Date(bono.valido_desde + "T00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long" }) : "";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-16 text-center" style={{ backgroundColor: C.bg }}>
@@ -43,7 +45,9 @@ export default function BonoGracias() {
 
       <p className="text-base max-w-md leading-relaxed mb-7" style={{ color: C.brown }}>
         {bono
-          ? <>Tu bono de <strong>{creditos} {creditos === 1 ? "clase" : "clases"} de {disc}</strong> ya está activo{caducaStr ? <>, válido hasta el <strong>{caducaStr}</strong></> : ""}.</>
+          ? porEmpezar
+            ? <>Tu bono de <strong>{creditos} {creditos === 1 ? "clase" : "clases"} de {disc}</strong> queda reservado y <strong>empieza el {inicioStr}</strong>. Podrás reservar tus clases a partir de esa fecha.</>
+            : <>Tu bono de <strong>{creditos} {creditos === 1 ? "clase" : "clases"} de {disc}</strong> ya está activo{caducaStr ? <>, válido hasta el <strong>{caducaStr}</strong></> : ""}.</>
           : <>Tu bono ya está activo y listo para reservar.</>}
       </p>
 

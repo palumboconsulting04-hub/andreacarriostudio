@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
     .eq("disciplina_id", orario.disciplina_id)
     .gt("creditos_restantes", 0)
     .gte("caduca", hoy)
+    .lte("valido_desde", hoy)
     .order("nombre");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ bonos: data ?? [] });

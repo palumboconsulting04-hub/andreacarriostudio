@@ -5,6 +5,9 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://reservas.andreacarriostudio.es";
 const DISC_LABEL: Record<string, string> = { "barre-fit": "Barre Fit", "pilates-mat": "Pilates Mat" };
+// Los bonos del curso arrancan el 1 de septiembre de 2026. Si se compra antes, la
+// validez cuenta desde esa fecha (no desde la compra) y no se puede usar antes.
+export const BONO_INICIO_CURSO = "2026-09-01";
 
 // Crea el bono en la base a partir de una Checkout Session pagada. Idempotente por
 // stripe_session_id (lo llaman tanto el webhook como el endpoint de confirmación).
@@ -21,8 +24,11 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
 
   const creditos = parseInt(m.creditos ?? "0", 10) || 0;
   const validez = parseInt(m.validez_meses ?? "1", 10) || 1;
-  const caduca = new Date();
-  caduca.setMonth(caduca.getMonth() + validez);
+  // Arranca el 1-sep si se compra antes; si no, hoy. La validez cuenta desde ahí.
+  const hoy = new Date().toISOString().slice(0, 10);
+  const validoDesde = hoy < BONO_INICIO_CURSO ? BONO_INICIO_CURSO : hoy;
+  const caduca = new Date(`${validoDesde}T00:00:00Z`);
+  caduca.setUTCMonth(caduca.getUTCMonth() + validez);
   const pi = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
 
   const { error } = await supabaseAdmin.from("bonos").insert({
@@ -33,6 +39,7 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
     telefono: m.telefono || null,
     creditos_totales: creditos,
     creditos_restantes: creditos,
+    valido_desde: validoDesde,
     caduca: caduca.toISOString().slice(0, 10),
     precio_pagado: parseFloat(m.precio ?? "0") || null,
     stripe_session_id: session.id,
@@ -43,7 +50,7 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
   if (error && error.code !== "23505") throw error;
   if (error) return;
 
-  try { await enviarEmailBono(m, creditos, caduca); } catch (e) { console.error("email bono:", e); }
+  try { await enviarEmailBono(m, creditos, caduca, validoDesde); } catch (e) { console.error("email bono:", e); }
   try { await enviarAvisoAdmin(m, creditos, caduca); } catch (e) { console.error("aviso admin bono:", e); }
 }
 
@@ -78,13 +85,15 @@ async function enviarAvisoAdmin(m: Record<string, string>, creditos: number, cad
   });
 }
 
-async function enviarEmailBono(m: Record<string, string>, creditos: number, caduca: Date) {
+async function enviarEmailBono(m: Record<string, string>, creditos: number, caduca: Date, validoDesde: string) {
   if (!m.email) return;
   const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
   const disc = DISC_LABEL[m.disciplina_id] ?? m.disciplina_id;
   const caducaStr = caduca.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
   const panel = `${APP_URL}/mis-clases`;
   const creditosTxt = creditos === 1 ? "1 clase" : `${creditos} clases`;
+  const porEmpezar = !!validoDesde && validoDesde > new Date().toISOString().slice(0, 10);
+  const inicioStr = validoDesde ? new Date(`${validoDesde}T00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "long" }) : "";
 
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/></head>
 <body style="margin:0;padding:0;background:#f5ede8;font-family:'Helvetica Neue',Arial,sans-serif;">
@@ -93,7 +102,7 @@ async function enviarEmailBono(m: Record<string, string>, creditos: number, cadu
       <tr><td style="padding:36px 40px 8px;text-align:center;"><img src="https://andreacarriostudio.vercel.app/logo-email.png" alt="Andrea Carrió Studio" width="150" style="display:block;margin:0 auto;width:150px;" /></td></tr>
       <tr><td style="padding:20px 40px 8px;text-align:center;">
         <h1 style="margin:0 0 12px;font-size:26px;font-weight:600;color:#25190f;font-family:Georgia,serif;">¡Hola ${m.nombre ?? ""}! 🤎</h1>
-        <p style="margin:0;font-size:15px;color:#56423d;line-height:1.7;">Tu bono ya está activo. Reserva tus clases cuando quieras desde tu panel.</p>
+        <p style="margin:0;font-size:15px;color:#56423d;line-height:1.7;">${porEmpezar ? `Tu bono queda reservado y <strong>empieza el ${inicioStr}</strong>. Podrás reservar tus clases a partir de esa fecha.` : "Tu bono ya está activo. Reserva tus clases cuando quieras desde tu panel."}</p>
       </td></tr>
       <tr><td style="padding:20px 32px 8px;">
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff1e9;border-radius:16px;">
@@ -101,6 +110,7 @@ async function enviarEmailBono(m: Record<string, string>, creditos: number, cadu
             <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#89726c;font-weight:700;">Tu bono</p>
             <p style="margin:0;font-size:18px;font-weight:700;color:#7d2b13;">${m.nombre ?? "Bono"} · ${disc}</p>
             <p style="margin:8px 0 0;font-size:14px;color:#25190f;">🎟️ ${creditosTxt} disponibles</p>
+            ${porEmpezar ? `<p style="margin:2px 0 0;font-size:13px;color:#7d2b13;font-weight:700;">Empieza el ${inicioStr}</p>` : ""}
             <p style="margin:2px 0 0;font-size:13px;color:#89726c;">Válido hasta el ${caducaStr}</p>
             ${m.precio ? `<p style="margin:2px 0 0;font-size:13px;color:#89726c;">Importe pagado: ${m.precio}€</p>` : ""}
           </td></tr>

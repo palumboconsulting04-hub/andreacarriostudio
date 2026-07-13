@@ -19,7 +19,7 @@ const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "
 const MESCORTO = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const DIACORTO = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
-type Bono = { id: string; disciplina_id: string; nombre: string; creditos_restantes: number; creditos_totales: number; caduca: string; estado: string };
+type Bono = { id: string; disciplina_id: string; nombre: string; creditos_restantes: number; creditos_totales: number; caduca: string; valido_desde: string | null; estado: string };
 type Clase = { orario_id: string; disciplina_id: string; fecha: string; dia: string; hora: string; horaFin: string; libres: number; tope: number; reserva_id: string | null };
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -29,6 +29,7 @@ const MSW = 7 * 86400000;
 const hoyStr = () => fStr(new Date());
 const fechaLabel = (fecha: string, dia: string) => { const [, m, d] = fecha.split("-"); return `${dia} ${+d} de ${MESES[+m - 1]}`; };
 const caducaLabel = (f: string) => { const [y, m, d] = f.split("-"); return `${+d}/${+m}/${y.slice(2)}`; };
+const inicioLabel = (f: string) => new Date(`${f}T00:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 
 export default function MisClasesPanel() {
   const params = useSearchParams();
@@ -105,7 +106,7 @@ export default function MisClasesPanel() {
     } finally { setAccion(false); }
   };
 
-  const bonoUsable = (disciplinaId: string) => bonos.find(b => b.disciplina_id === disciplinaId && b.creditos_restantes > 0 && b.caduca >= hoyStr());
+  const bonoUsable = (disciplinaId: string) => bonos.find(b => b.disciplina_id === disciplinaId && b.creditos_restantes > 0 && b.caduca >= hoyStr() && (!b.valido_desde || b.valido_desde <= hoyStr()));
 
   const reservar = async (c: Clase) => {
     const bono = bonoUsable(c.disciplina_id);
@@ -187,7 +188,8 @@ export default function MisClasesPanel() {
   }
 
   // ── Panel ──
-  const usables = bonos.filter(b => b.creditos_restantes > 0 && b.caduca >= hoyStr());
+  const usables = bonos.filter(b => b.creditos_restantes > 0 && b.caduca >= hoyStr() && (!b.valido_desde || b.valido_desde <= hoyStr()));
+  const porEmpezar = bonos.filter(b => b.creditos_restantes > 0 && b.caduca >= hoyStr() && !!b.valido_desde && b.valido_desde > hoyStr());
   const porFecha: Record<string, Clase[]> = {};
   for (const c of clases) (porFecha[c.fecha] ??= []).push(c);
   const fechas = Object.keys(porFecha).sort();
@@ -286,12 +288,21 @@ export default function MisClasesPanel() {
 
         {!preview && (
           <div className="flex flex-col gap-2 mb-4">
-            {usables.length === 0 && (
+            {usables.length === 0 && porEmpezar.length === 0 && (
               <div className="rounded-2xl p-4 text-center" style={{ backgroundColor: C.blush }}>
                 <p className="text-sm font-semibold mb-2" style={{ color: C.burgundy }}>No te quedan créditos</p>
                 <button onClick={abrirComprar} className="inline-block px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>Comprar más créditos →</button>
               </div>
             )}
+            {porEmpezar.map(b => (
+              <div key={b.id} className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: C.dark, fontFamily: fSans }}>{DISC[b.disciplina_id] ?? b.disciplina_id}</p>
+                  <p className="text-xs font-semibold" style={{ color: C.burgundy }}>Empieza el {inicioLabel(b.valido_desde!)}</p>
+                </div>
+                <p className="text-sm font-bold" style={{ color: C.muted }}>{b.creditos_restantes} {b.creditos_restantes === 1 ? "crédito" : "créditos"}</p>
+              </div>
+            ))}
             {usables.map(b => (
               <div key={b.id} className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
                 <div>

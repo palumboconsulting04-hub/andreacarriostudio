@@ -77,9 +77,14 @@ export default function ComprarBono() {
           Volver
         </button>
         <h1 className="text-3xl sm:text-4xl text-center mb-1" style={{ fontFamily: fSerif, color: C.burgundy }}>Bonos flexibles</h1>
-        <p className="text-center text-sm mb-7" style={{ color: C.muted }}>
+        <p className="text-center text-sm mb-4" style={{ color: C.muted }}>
           Compra créditos y ven cuando puedas. 1 crédito = 1 clase.
         </p>
+        {new Date().toISOString().slice(0, 10) < "2026-09-01" && (
+          <div className="rounded-2xl px-4 py-2.5 mb-7 text-center text-xs font-semibold max-w-md mx-auto" style={{ backgroundColor: C.blush, color: C.burgundy }}>
+            Los bonos empiezan el <strong>1 de septiembre</strong> · la validez cuenta desde esa fecha
+          </div>
+        )}
 
         {!disciplina ? (
           <div className="rounded-3xl p-6 shadow-sm max-w-sm mx-auto" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
