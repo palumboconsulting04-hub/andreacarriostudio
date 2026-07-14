@@ -1,141 +1,139 @@
 "use client";
 
 import { useState } from "react";
-import QRCode from "qrcode";
 
-const C = { burgundy: "#7d2b13", cream: "#fff8f5", brown: "#56423d", muted: "#89726c", dark: "#25190f", bg: "#f5ede8" };
+const C = { burgundy: "#7d2b13", cream: "#fff8f5", brown: "#56423d", muted: "#89726c", dark: "#25190f" };
 
+// El enlace lleva el código puesto: la amiga solo tiene que tocarlo (no teclea nada).
 const linkDe = (codigo: string) => `https://reservas.andreacarriostudio.es/comprar-bono?ref=${codigo}`;
-const textoDe = (codigo: string) => `¡Ven a probar una clase conmigo en Andrea Carrió Studio! Usa mi código ${codigo} y ganamos las dos un regalo: ${linkDe(codigo)}`;
+const textoDe = (codigo: string) =>
+  `Te invito a probar una clase conmigo en Andrea Carrió Studio 🤎 Danza & Pilates en Valencia (zona Alfahuir). Toca mi enlace y ven: ganamos las dos un regalo 👉 ${linkDe(codigo)}`;
 
-// Genera una imagen 1080x1920 (formato Story) con el código y un QR escaneable.
-async function generarImagenStory(codigo: string): Promise<Blob> {
+// Dibuja texto con sombra para que se lea sobre la foto.
+function texto(ctx: CanvasRenderingContext2D, t: string, x: number, y: number, font: string, color: string, spacing = 0) {
+  ctx.font = font;
+  ctx.fillStyle = color;
+  try { ctx.letterSpacing = `${spacing}px`; } catch {}
+  ctx.shadowColor = "rgba(0,0,0,0.55)";
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 2;
+  ctx.fillText(t, x, y);
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  try { ctx.letterSpacing = "0px"; } catch {}
+}
+
+// Imagen 1080x1920 (Story) con la foto de Andrea de fondo + texto de marketing.
+async function generarImagenStory(): Promise<Blob> {
   const W = 1080, H = 1920;
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d")!;
   const centro = W / 2;
 
-  // Fondo
-  ctx.fillStyle = "#f5ede8"; ctx.fillRect(0, 0, W, H);
-  // Tarjeta
-  const cardX = 70, cardY = 150, cardW = W - 140, cardH = H - 300, r = 48;
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.moveTo(cardX + r, cardY);
-  ctx.arcTo(cardX + cardW, cardY, cardX + cardW, cardY + cardH, r);
-  ctx.arcTo(cardX + cardW, cardY + cardH, cardX, cardY + cardH, r);
-  ctx.arcTo(cardX, cardY + cardH, cardX, cardY, r);
-  ctx.arcTo(cardX, cardY, cardX + cardW, cardY, r);
-  ctx.closePath();
-  ctx.fill();
+  // Foto de fondo (mismo origen → sin problemas de CORS).
+  const foto = new Image();
+  await new Promise<void>((res) => { foto.onload = () => res(); foto.onerror = () => res(); foto.src = "/andrea.jpg"; });
+  if (foto.width) {
+    const scale = Math.max(W / foto.width, H / foto.height);
+    const dw = foto.width * scale, dh = foto.height * scale;
+    ctx.drawImage(foto, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  } else {
+    ctx.fillStyle = C.burgundy; ctx.fillRect(0, 0, W, H);
+  }
+
+  // Velo oscuro arriba y abajo para que el texto se lea.
+  const gTop = ctx.createLinearGradient(0, 0, 0, 340);
+  gTop.addColorStop(0, "rgba(37,25,15,0.55)"); gTop.addColorStop(1, "rgba(37,25,15,0)");
+  ctx.fillStyle = gTop; ctx.fillRect(0, 0, W, 340);
+  const gBot = ctx.createLinearGradient(0, H - 820, 0, H);
+  gBot.addColorStop(0, "rgba(37,25,15,0)"); gBot.addColorStop(0.55, "rgba(37,25,15,0.75)"); gBot.addColorStop(1, "rgba(37,25,15,0.92)");
+  ctx.fillStyle = gBot; ctx.fillRect(0, H - 820, W, 820);
 
   ctx.textAlign = "center";
 
+  // Nombre completo arriba.
+  texto(ctx, "ANDREA CARRIÓ STUDIO", centro, 150, "bold 42px 'Helvetica Neue', Arial, sans-serif", "#ffffff", 6);
+  texto(ctx, "Danza & Pilates · Valencia (Alfahuir)", centro, 200, "30px 'Helvetica Neue', Arial, sans-serif", "#ffe9e0", 1);
+
+  // Titular marketiniano abajo.
+  texto(ctx, "Ven a probar", centro, H - 470, "80px Georgia, 'Times New Roman', serif", "#ffffff");
+  texto(ctx, "una clase conmigo", centro, H - 380, "80px Georgia, 'Times New Roman', serif", "#ffffff");
+  texto(ctx, "Tu primera clase te va a encantar 🤎", centro, H - 300, "36px 'Helvetica Neue', Arial, sans-serif", "#ffe9e0");
+
+  // Píldora CTA hacia el enlace.
+  const pw = 620, ph = 110, px = centro - pw / 2, py = H - 220, pr = 55;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(px + pr, py);
+  ctx.arcTo(px + pw, py, px + pw, py + ph, pr);
+  ctx.arcTo(px + pw, py + ph, px, py + ph, pr);
+  ctx.arcTo(px, py + ph, px, py, pr);
+  ctx.arcTo(px, py, px + pw, py, pr);
+  ctx.closePath();
+  ctx.fill();
   ctx.fillStyle = C.burgundy;
   ctx.font = "bold 40px 'Helvetica Neue', Arial, sans-serif";
-  try { ctx.letterSpacing = "6px"; } catch {}
-  ctx.fillText("ANDREA CARRIÓ STUDIO", centro, 330);
-  try { ctx.letterSpacing = "0px"; } catch {}
+  ctx.fillText("TOCA EL ENLACE PARA VENIR", centro, py + 70);
 
-  ctx.fillStyle = C.dark;
-  ctx.font = "68px Georgia, 'Times New Roman', serif";
-  ctx.fillText("Ven a entrenar", centro, 520);
-  ctx.fillText("conmigo", centro, 605);
-
-  ctx.fillStyle = C.brown;
-  ctx.font = "40px 'Helvetica Neue', Arial, sans-serif";
-  ctx.fillText("y ganamos las dos un regalo", centro, 700);
-
-  ctx.fillStyle = C.muted;
-  ctx.font = "bold 34px 'Helvetica Neue', Arial, sans-serif";
-  try { ctx.letterSpacing = "6px"; } catch {}
-  ctx.fillText("TU CÓDIGO", centro, 850);
-  try { ctx.letterSpacing = "0px"; } catch {}
-
-  // Caja del código
-  const boxW = 620, boxH = 150, boxX = centro - boxW / 2, boxY = 900, br = 28;
-  ctx.strokeStyle = C.burgundy; ctx.lineWidth = 4; ctx.setLineDash([14, 12]);
-  ctx.beginPath();
-  ctx.moveTo(boxX + br, boxY);
-  ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, br);
-  ctx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, br);
-  ctx.arcTo(boxX, boxY + boxH, boxX, boxY, br);
-  ctx.arcTo(boxX, boxY, boxX + boxW, boxY, br);
-  ctx.closePath();
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = C.burgundy;
-  ctx.font = "bold 84px 'Helvetica Neue', Arial, sans-serif";
-  ctx.fillText(codigo, centro, boxY + 104);
-
-  ctx.fillStyle = C.brown;
-  ctx.font = "38px 'Helvetica Neue', Arial, sans-serif";
-  ctx.fillText("Escanea el QR o úsalo al reservar en", centro, 1180);
-  ctx.fillStyle = C.burgundy;
-  ctx.font = "bold 36px 'Helvetica Neue', Arial, sans-serif";
-  ctx.fillText("reservas.andreacarriostudio.es", centro, 1235);
-
-  // QR
-  const qrUrl = await QRCode.toDataURL(linkDe(codigo), { width: 400, margin: 1, color: { dark: "#7d2b13", light: "#ffffff" } });
-  const qrImg = new Image();
-  await new Promise<void>((res, rej) => { qrImg.onload = () => res(); qrImg.onerror = () => rej(); qrImg.src = qrUrl; });
-  ctx.drawImage(qrImg, centro - 200, 1320, 400, 400);
-
-  return await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej()), "image/png"));
+  return await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.9));
 }
 
 export default function CompartirCodigo({ codigo }: { codigo: string }) {
   const [copiado, setCopiado] = useState(false);
   const [generando, setGenerando] = useState(false);
-
-  const compartir = async () => {
-    const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
-    if (nav.share) {
-      try { await nav.share({ title: "Andrea Carrió Studio", text: textoDe(codigo), url: linkDe(codigo) }); } catch { /* cancelado */ }
-    } else {
-      copiar();
-    }
-  };
+  const [instrucciones, setInstrucciones] = useState(false);
 
   const whatsapp = () => window.open(`https://wa.me/?text=${encodeURIComponent(textoDe(codigo))}`, "_blank");
 
   const copiar = async () => {
-    try { await navigator.clipboard.writeText(linkDe(codigo)); setCopiado(true); setTimeout(() => setCopiado(false), 1600); } catch { /* sin permiso */ }
+    try { await navigator.clipboard.writeText(linkDe(codigo)); setCopiado(true); setTimeout(() => setCopiado(false), 1800); } catch { /* sin permiso */ }
   };
 
-  const story = async () => {
+  const instagram = async () => {
     if (generando) return;
     setGenerando(true);
     try {
-      const blob = await generarImagenStory(codigo);
-      const file = new File([blob], `mi-codigo-${codigo}.png`, { type: "image/png" });
+      // Copiamos el link primero (para que lo peguen en el sticker de enlace).
+      try { await navigator.clipboard.writeText(linkDe(codigo)); } catch {}
+      const blob = await generarImagenStory();
+      const file = new File([blob], "andrea-carrio-studio.jpg", { type: "image/jpeg" });
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean; share?: (d: ShareData) => Promise<void> };
       if (nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
-        try { await nav.share({ files: [file], text: textoDe(codigo) }); } catch { /* cancelado */ }
+        try { await nav.share({ files: [file] }); } catch { /* cancelado */ }
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url; a.download = file.name; a.click();
         URL.revokeObjectURL(url);
       }
+      setInstrucciones(true);
     } catch { /* nada */ } finally {
       setGenerando(false);
     }
   };
 
-  const btn = { padding: "12px 16px", borderRadius: "9999px", fontSize: "13px", fontWeight: 700, cursor: "pointer", border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" } as const;
+  const btn = { padding: "14px 16px", borderRadius: "14px", fontSize: "14px", fontWeight: 700, cursor: "pointer", border: "none", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" } as const;
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2">
-        <button onClick={compartir} style={{ ...btn, backgroundColor: C.burgundy, color: C.cream, flex: "1 1 auto" }}>Compartir</button>
-        <button onClick={whatsapp} style={{ ...btn, backgroundColor: "#25D366", color: "#fff" }}>WhatsApp</button>
-        <button onClick={copiar} style={{ ...btn, backgroundColor: "#fff0eb", color: C.burgundy, border: `1px solid #dcc1b9` }}>{copiado ? "¡Copiado!" : "Copiar link"}</button>
-      </div>
-      <button onClick={story} disabled={generando} style={{ ...btn, backgroundColor: "#fff", color: C.burgundy, border: `1.5px solid ${C.burgundy}`, opacity: generando ? 0.6 : 1 }}>
-        {generando ? "Preparando…" : "📸 Imagen para tu Story"}
+    <div className="flex flex-col gap-2.5">
+      <button onClick={whatsapp} style={{ ...btn, backgroundColor: "#25D366", color: "#fff" }}>Enviar por WhatsApp</button>
+      <button onClick={instagram} disabled={generando} style={{ ...btn, backgroundColor: C.burgundy, color: C.cream, opacity: generando ? 0.6 : 1 }}>
+        {generando ? "Preparando tu foto…" : "Compartir en mi Instagram Story"}
       </button>
+      <button onClick={copiar} style={{ ...btn, backgroundColor: "#fff0eb", color: C.burgundy, border: "1px solid #dcc1b9" }}>{copiado ? "¡Link copiado!" : "Copiar el link"}</button>
+
+      {instrucciones && (
+        <div className="rounded-2xl p-4 mt-1 text-left" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
+          <p className="text-sm font-bold mb-2" style={{ color: C.burgundy }}>Para tu Story de Instagram 🤎</p>
+          <ol className="text-xs space-y-1.5" style={{ color: C.brown, paddingLeft: "18px", listStyle: "decimal" }}>
+            <li>Sube la foto a tu Instagram Story.</li>
+            <li>Toca el sticker <strong>“Enlace”</strong> y pega el link (ya lo he copiado por ti).</li>
+            <li>¡Publica! Tu amiga solo tiene que tocar el enlace, tu código va puesto.</li>
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
