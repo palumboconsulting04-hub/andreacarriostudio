@@ -88,7 +88,7 @@ export default function BonoGracias() {
       {codigo && (
         <div className="w-full max-w-md rounded-3xl p-6 mt-8 text-left" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
           <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Invita a una amiga y ganáis las dos</p>
-          <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando saque su bono, tú y ella os lleváis 1 clase de regalo. Comparte tu código:</p>
+          <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando se apunte al estudio (bono o mensualidad), tú y ella os lleváis un regalo. Comparte tu código:</p>
           <span className="block text-center text-sm font-bold tracking-widest py-2.5 rounded-xl mb-3" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
           <CompartirCodigo codigo={codigo} />
         </div>

@@ -58,8 +58,15 @@ export async function GET() {
   }
 
   // Código de madrina de la alumna (para invitar a amigas). Se crea si no existe.
+  // El nombre sale del bono o, si es de mensualidad, de su inscripción (nombre del
+  // adulto/madre), nunca vacío (evita códigos genéricos tipo "AMIGA").
+  let nombrePersona = (bonos[0]?.nombre ?? "").trim();
+  if (!nombrePersona) {
+    const { data: isc } = await supabaseAdmin.from("iscrizioni").select("nome").ilike("email", email).limit(1).maybeSingle();
+    nombrePersona = (isc?.nome ?? "").trim();
+  }
   let codigo = "";
-  try { codigo = await getCodigoReferido(email, bonos[0]?.nombre ?? ""); } catch { /* no bloquea el panel */ }
+  try { codigo = await getCodigoReferido(email, nombrePersona); } catch { /* no bloquea el panel */ }
 
   // Progreso de referidos: amigas traídas (dedup) + premios ganados.
   let totalAmigas = 0;

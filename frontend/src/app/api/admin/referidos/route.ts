@@ -97,10 +97,12 @@ export async function GET() {
     });
   }
 
+  // Todas las madrinas con código (para tener control de quién puede traer gente),
+  // ordenadas por amigas traídas y, a igualdad, por visitas a su enlace.
   const madrinas = [...porCodigo.values()]
     .map((m) => ({ ...m, total: m.amigas.length, amigasMensualidad: m.amigas.filter((a) => a.via === "mensualidad").length }))
-    .filter((m) => m.total > 0)
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => (b.total - a.total) || (b.visitas - a.visitas) || a.nombre.localeCompare(b.nombre));
+  const activas = madrinas.filter((m) => m.total > 0);
 
   // Cifras de negocio del canal: ingresos por bonos referidos y premios pagados (€).
   const ingresosBonos = (bonosRes.data ?? []).reduce((s, b) => s + (Number(b.precio_pagado) || 0), 0);
@@ -141,7 +143,7 @@ export async function GET() {
     amigasTraidas,
     amigasBono,
     amigasMensualidad,
-    madrinasActivas: madrinas.length,
+    madrinasActivas: activas.length,
     embajadoras: madrinas.filter((m) => m.total >= 5).length,
     ingresosBonos,
     premiosPagados,
