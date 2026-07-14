@@ -44,6 +44,8 @@ export default function MisClasesPanel() {
   const [clases, setClases] = useState<Clase[]>([]);
   const [diaSel, setDiaSel] = useState("");
   const [semana, setSemana] = useState(0);
+  const [diaSelM, setDiaSelM] = useState("");
+  const [semanaM, setSemanaM] = useState(0);
   const [msg, setMsg] = useState("");
   const [accion, setAccion] = useState(false);
   const [confirmar, setConfirmar] = useState<Clase | null>(null);
@@ -256,6 +258,73 @@ export default function MisClasesPanel() {
     setDiaSel(dsem.find(f => porFecha[f]) ?? "");
   };
 
+  // ── Calendario de mensualidad (sus clases fijas; solo ver + avisar) ──
+  const porFechaM: Record<string, Mensual[]> = {};
+  for (const m of mensualidad) (porFechaM[m.fecha] ??= []).push(m);
+  const fechasM = Object.keys(porFechaM).sort();
+  const lunesBaseM = fechasM.length ? lunesDe(new Date(fechasM[0] + "T00:00")) : lunesDe(new Date());
+  const lunesSemM = new Date(lunesBaseM); lunesSemM.setDate(lunesBaseM.getDate() + semanaM * 7);
+  const dias7M = Array.from({ length: 7 }, (_, k) => { const d = new Date(lunesSemM); d.setDate(lunesSemM.getDate() + k); return { fecha: fStr(d), corto: DIACORTO[k], num: d.getDate() }; });
+  const finSemM = new Date(lunesSemM); finSemM.setDate(lunesSemM.getDate() + 6);
+  const maxFechaM = fechasM.length ? fechasM[fechasM.length - 1] : fStr(lunesBaseM);
+  const maxSemanaM = Math.max(0, Math.floor((new Date(maxFechaM + "T00:00").getTime() - lunesBaseM.getTime()) / MSW));
+  const rangoM = `${lunesSemM.getDate()} ${MESCORTO[lunesSemM.getMonth()]} – ${finSemM.getDate()} ${MESCORTO[finSemM.getMonth()]}`;
+  const diaSelMef = diaSelM && porFechaM[diaSelM] ? diaSelM : (dias7M.find(d => porFechaM[d.fecha])?.fecha ?? "");
+  const delDiaM = diaSelMef ? (porFechaM[diaSelMef] ?? []) : [];
+  const cambiarSemanaM = (delta: number) => {
+    const nueva = Math.max(0, Math.min(maxSemanaM, semanaM + delta));
+    setSemanaM(nueva);
+    const ls = new Date(lunesBaseM); ls.setDate(lunesBaseM.getDate() + nueva * 7);
+    const dsem = Array.from({ length: 7 }, (_, k) => { const d = new Date(ls); d.setDate(ls.getDate() + k); return fStr(d); });
+    setDiaSelM(dsem.find(f => porFechaM[f]) ?? "");
+  };
+
+  const calendarioMensual = (
+    <>
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={() => cambiarSemanaM(-1)} disabled={semanaM <= 0} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semanaM <= 0 ? 0.3 : 1 }}>‹</button>
+        <p className="text-sm font-bold" style={{ color: C.burgundy, fontFamily: fSans }}>{rangoM}</p>
+        <button onClick={() => cambiarSemanaM(1)} disabled={semanaM >= maxSemanaM} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semanaM >= maxSemanaM ? 0.3 : 1 }}>›</button>
+      </div>
+      <div className="grid grid-cols-7 gap-1.5 mb-4">
+        {dias7M.map(dd => {
+          const tiene = !!porFechaM[dd.fecha];
+          const activo = dd.fecha === diaSelMef;
+          return (
+            <button key={dd.fecha} onClick={() => tiene && setDiaSelM(dd.fecha)} disabled={!tiene} className="rounded-xl py-2 text-center transition-all"
+              style={{ backgroundColor: activo ? C.burgundy : "#fff", border: `1.5px solid ${activo ? C.burgundy : C.border}`, opacity: tiene ? 1 : 0.4, cursor: tiene ? "pointer" : "default" }}>
+              <p className="text-[9px] font-bold uppercase" style={{ color: activo ? C.blush : C.muted }}>{dd.corto}</p>
+              <p className="text-sm font-bold leading-tight" style={{ color: activo ? C.cream : C.dark }}>{dd.num}</p>
+              <div className="h-1.5 flex justify-center items-center">{tiene && !activo && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: C.burgundy }} />}</div>
+            </button>
+          );
+        })}
+      </div>
+      {delDiaM.length === 0 ? (
+        <p className="text-sm text-center py-6" style={{ color: C.muted }}>Ningún día de esta semana tiene clase. Usa ‹ › para ver otras semanas.</p>
+      ) : (
+        <>
+          <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.burgundy }}>{fechaLabel(diaSelMef, delDiaM[0].dia)}</p>
+          <div className="flex flex-col gap-2">
+            {delDiaM.map(m => (
+              <div key={`${m.iscrizione_id}|${m.orario_id}|${m.fecha}`} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: m.avisado ? "#fff" : C.blush, border: `1px solid ${m.avisado ? C.border : C.burgundy}` }}>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: m.avisado ? C.muted : C.dark, fontFamily: fSans, textDecoration: m.avisado ? "line-through" : "none" }}>{m.hora}–{m.horaFin} · {DISC[m.disciplina_id] ?? m.disciplina_id}</p>
+                  <p className="text-xs" style={{ color: m.avisado ? "#b71c1c" : C.muted }}>{m.avisado ? "Avisaste que no vas" : "Tu clase"}</p>
+                </div>
+                {m.avisado ? (
+                  <button onClick={() => avisarAusencia(m, true)} disabled={!!avisando} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fff", color: C.burgundy, border: `1px solid ${C.burgundy}` }}>Sí que voy</button>
+                ) : (
+                  <button onClick={() => avisarAusencia(m, false)} disabled={!!avisando} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>No puedo ir</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
+
   const calendario = (
     fechas.length === 0 ? (
       <p className="text-sm text-center py-8" style={{ color: C.muted }}>No hay clases disponibles ahora mismo.</p>
@@ -335,22 +404,8 @@ export default function MisClasesPanel() {
         {!preview && mensualidad.length > 0 && (
           <div className="mb-5">
             <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Tus clases</p>
-            <p className="text-xs mb-3" style={{ color: C.muted }}>Estas son tus clases de la mensualidad. No hace falta reservar; si un día no puedes ir, avísanos.</p>
-            <div className="flex flex-col gap-2">
-              {mensualidad.map(m => (
-                <div key={`${m.iscrizione_id}|${m.orario_id}|${m.fecha}`} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: m.avisado ? "#fff" : C.blush, border: `1px solid ${m.avisado ? C.border : C.burgundy}` }}>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: m.avisado ? C.muted : C.dark, fontFamily: fSans, textDecoration: m.avisado ? "line-through" : "none" }}>{fechaLabel(m.fecha, m.dia)}</p>
-                    <p className="text-xs" style={{ color: C.muted }}>{m.hora}–{m.horaFin} · {DISC[m.disciplina_id] ?? m.disciplina_id}{m.avisado ? " · avisado" : ""}</p>
-                  </div>
-                  {m.avisado ? (
-                    <button onClick={() => avisarAusencia(m, true)} disabled={!!avisando} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fff", color: C.burgundy, border: `1px solid ${C.burgundy}` }}>Sí que voy</button>
-                  ) : (
-                    <button onClick={() => avisarAusencia(m, false)} disabled={!!avisando} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>No puedo ir</button>
-                  )}
-                </div>
-              ))}
-            </div>
+            <p className="text-xs mb-3" style={{ color: C.muted }}>No hace falta reservar; estas son tus clases. Si un día no puedes ir, avísanos.</p>
+            {calendarioMensual}
           </div>
         )}
 
