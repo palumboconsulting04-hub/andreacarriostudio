@@ -368,8 +368,8 @@ export default function MisClasesPanel() {
 
         {!preview && codigo && (
           <div className="rounded-2xl p-4 mt-2" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
-            <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Invita a una amiga</p>
-            <p className="text-xs mb-3" style={{ color: C.brown }}>Comparte tu código y ven acompañada.</p>
+            <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Invita a una amiga y ganáis las dos</p>
+            <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando saque su bono, tú y ella os lleváis 1 clase de regalo. Comparte tu código:</p>
             <div className="flex items-center gap-2">
               <span className="flex-1 text-center text-sm font-bold tracking-widest py-2.5 rounded-xl" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
               <button onClick={compartirCodigo} className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shrink-0" style={{ backgroundColor: C.burgundy, color: C.cream }}>Compartir</button>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { procesarBonoPagado } from "@/lib/bonos-server";
+import { getCodigoReferido } from "@/lib/referidos";
 
 // Red de seguridad: la thank-you page llama aquí con el session_id para crear el
 // bono aunque el webhook no llegue. Es idempotente (no duplica). Devuelve el
@@ -21,7 +22,13 @@ export async function POST(req: NextRequest) {
       .eq("stripe_session_id", session.id)
       .maybeSingle();
 
-    return NextResponse.json({ ok: true, bono: bono ?? null });
+    // Código de madrina de la compradora, para que pueda invitar a una amiga.
+    let codigo = "";
+    if (bono?.email) {
+      try { codigo = await getCodigoReferido(bono.email, bono.nombre ?? ""); } catch {}
+    }
+
+    return NextResponse.json({ ok: true, bono: bono ?? null, codigo });
   } catch (e) {
     console.error("confirm-bono error:", e);
     return NextResponse.json({ error: "No se pudo confirmar el bono" }, { status: 500 });

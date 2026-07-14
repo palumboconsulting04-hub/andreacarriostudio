@@ -26,12 +26,22 @@ export default function ComprarBono() {
   const [telefono, setTelefono] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
+  const [madrinaNombre, setMadrinaNombre] = useState<string | null>(null);
 
   useEffect(() => {
     setSel(null);
     if (!disciplina) { setBonos([]); return; }
     fetchBonos(disciplina).then(setBonos).catch(() => setBonos([]));
   }, [disciplina]);
+
+  // Si llega con un código de madrina, resuelve su nombre para personalizar el aviso.
+  useEffect(() => {
+    if (!ref) return;
+    fetch(`/api/referido?codigo=${encodeURIComponent(ref)}`)
+      .then(r => r.json())
+      .then(d => setMadrinaNombre(d.nombre ?? null))
+      .catch(() => {});
+  }, [ref]);
 
   // Al elegir un bono, baja suave al formulario de datos.
   useEffect(() => {
@@ -82,10 +92,24 @@ export default function ComprarBono() {
           Compra créditos y ven cuando puedas. 1 crédito = 1 clase.
         </p>
         {new Date().toISOString().slice(0, 10) < "2026-09-01" && (
-          <div className="rounded-2xl px-4 py-2.5 mb-7 text-center text-xs font-semibold max-w-md mx-auto" style={{ backgroundColor: C.blush, color: C.burgundy }}>
+          <div className="rounded-2xl px-4 py-2.5 mb-4 text-center text-xs font-semibold max-w-md mx-auto" style={{ backgroundColor: C.blush, color: C.burgundy }}>
             Los bonos empiezan el <strong>1 de septiembre</strong> · la validez cuenta desde esa fecha
           </div>
         )}
+
+        <div className="rounded-2xl px-4 py-3 mb-7 text-center max-w-md mx-auto" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
+          {ref ? (
+            <p className="text-sm font-semibold" style={{ color: C.burgundy }}>
+              {madrinaNombre ? `${madrinaNombre} te ha invitado` : "Te ha invitado una amiga"} 🤎<br />
+              <span className="text-xs font-normal" style={{ color: C.brown }}>Cuando saques tu bono, tú y {madrinaNombre ?? "tu amiga"} os lleváis 1 clase de regalo.</span>
+            </p>
+          ) : (
+            <p className="text-sm font-semibold" style={{ color: C.burgundy }}>
+              Trae a una amiga 🤎<br />
+              <span className="text-xs font-normal" style={{ color: C.brown }}>Cuando saque su bono, os lleváis 1 clase de regalo cada una.</span>
+            </p>
+          )}
+        </div>
 
         {!disciplina ? (
           <div className="rounded-3xl p-6 shadow-sm max-w-sm mx-auto" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
