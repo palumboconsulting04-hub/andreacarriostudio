@@ -15,21 +15,26 @@ export async function POST(req: NextRequest) {
   if (!nombre.trim()) return NextResponse.json({ error: "Escribe tu nombre." }, { status: 400 });
 
   const hoy = new Date().toISOString().slice(0, 10);
-  const { data } = await supabaseAdmin
-    .from("bonos").select("nombre")
-    .ilike("email", email).gt("creditos_restantes", 0).gte("caduca", hoy);
+  // Entra quien tiene un bono activo O una inscripción de mensualidad.
+  const INSCRITA = ["pagato", "pagado", "activa", "matricula_pagada"];
+  const [{ data: bonos }, { data: iscr }] = await Promise.all([
+    supabaseAdmin.from("bonos").select("nombre").ilike("email", email).gt("creditos_restantes", 0).gte("caduca", hoy),
+    supabaseAdmin.from("iscrizioni").select("nome, cognome").ilike("email", email).in("stato", INSCRITA),
+  ]);
 
-  if (!data || data.length === 0) {
-    return NextResponse.json({ error: "No encontramos un bono activo con ese correo. Usa el correo de la compra." }, { status: 401 });
+  const nombres = [
+    ...(bonos ?? []).map((b) => norm(b.nombre as string)),
+    ...(iscr ?? []).map((i) => norm(`${i.nome ?? ""} ${i.cognome ?? ""}`)),
+    ...(iscr ?? []).map((i) => norm((i.nome ?? "") as string)),
+  ].filter(Boolean);
+  if (nombres.length === 0) {
+    return NextResponse.json({ error: "No encontramos un bono ni una inscripción con ese correo. Usa el correo de tu compra o inscripción." }, { status: 401 });
   }
 
   const ne = norm(nombre);
-  const coincide = data.some(b => {
-    const nb = norm(b.nombre as string);
-    return nb === ne || nb.startsWith(ne + " ") || ne.startsWith(nb + " ");
-  });
+  const coincide = nombres.some((nb) => nb === ne || nb.startsWith(ne + " ") || ne.startsWith(nb + " "));
   if (!coincide) {
-    return NextResponse.json({ error: "El nombre no coincide con el de la compra." }, { status: 401 });
+    return NextResponse.json({ error: "El nombre no coincide con el de tu compra o inscripción." }, { status: 401 });
   }
 
   await crearSesion(email);

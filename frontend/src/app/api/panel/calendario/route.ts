@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { emailDeSesion } from "@/lib/panel-auth";
-import { generarClases } from "@/lib/calendario";
+import { generarClases, clasesDeMensualidad } from "@/lib/calendario";
 import { getCodigoReferido } from "@/lib/referidos";
 
 type BonoRow = { id: string; disciplina_id: string; nombre: string; creditos_restantes: number; creditos_totales: number; caduca: string; valido_desde: string | null; estado: string };
@@ -79,5 +79,8 @@ export async function GET() {
     } catch { /* no bloquea el panel */ }
   }
 
-  return NextResponse.json({ email, codigo, totalAmigas, premios, bonos, clases });
+  // Clases fijas de mensualidad de la alumna (solo ver + avisar si un día no puede ir).
+  const mensualidad = await clasesDeMensualidad(email);
+
+  return NextResponse.json({ email, codigo, totalAmigas, premios, bonos, clases, mensualidad });
 }

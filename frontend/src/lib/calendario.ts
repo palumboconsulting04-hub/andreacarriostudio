@@ -80,3 +80,60 @@ export async function generarClases(disciplinas: string[], hasta?: string): Prom
   clases.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
   return clases;
 }
+
+const CURSO_INICIO = "2026-09-01"; // las clases de mensualidad arrancan el 1 de septiembre
+const HORIZON_MENSUAL = 42;        // muestra ~6 semanas de clases fijas
+
+export type ClaseMensual = {
+  iscrizione_id: string; orario_id: string; disciplina_id: string;
+  fecha: string; dia: string; hora: string; horaFin: string;
+  avisado: boolean; motivo: string | null;
+};
+
+// Clases FIJAS de las mensualidades de una alumna (sus horarios de la inscripción,
+// proyectados a fechas), con la marca de si ya avisó que un día no puede ir. No elige
+// nada: solo ve sus clases y puede avisar de una ausencia puntual.
+export async function clasesDeMensualidad(email: string): Promise<ClaseMensual[]> {
+  const INSCRITA = ["pagato", "pagado", "activa", "matricula_pagada"];
+  const { data: iscr } = await supabaseAdmin
+    .from("iscrizioni").select("id").ilike("email", email).in("stato", INSCRITA);
+  const iscrIds = (iscr ?? []).map((i) => i.id as string);
+  if (iscrIds.length === 0) return [];
+
+  const { data: io } = await supabaseAdmin
+    .from("iscrizione_orari").select("iscrizione_id, orario_id").in("iscrizione_id", iscrIds);
+  const links = (io ?? []) as { iscrizione_id: string; orario_id: string }[];
+  const orarioIds = [...new Set(links.map((l) => l.orario_id))];
+  if (orarioIds.length === 0) return [];
+
+  const { data: orariData } = await supabaseAdmin
+    .from("orari").select("id, disciplina_id, giorno, ora_inizio, ora_fine").in("id", orarioIds).eq("attivo", true);
+  const orari = new Map((orariData ?? []).map((o) => [o.id as string, o as OrarioRow]));
+
+  const { data: marks } = await supabaseAdmin
+    .from("asistencia").select("iscrizione_id, orario_id, fecha, nota").in("iscrizione_id", iscrIds).eq("estado", "no_viene");
+  const aviso = new Map((marks ?? []).map((m) => [`${m.iscrizione_id}|${m.orario_id}|${m.fecha}`, m.nota as string | null]));
+
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  const startStr = hoyStr < CURSO_INICIO ? CURSO_INICIO : hoyStr;
+  const start = new Date(startStr + "T00:00"); start.setHours(0, 0, 0, 0);
+
+  const clases: ClaseMensual[] = [];
+  for (const l of links) {
+    const o = orari.get(l.orario_id);
+    if (!o) continue;
+    for (let i = 0; i <= HORIZON_MENSUAL; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      if (DIAS[o.giorno] !== d.getDay()) continue;
+      const fecha = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const key = `${l.iscrizione_id}|${o.id}|${fecha}`;
+      clases.push({
+        iscrizione_id: l.iscrizione_id, orario_id: o.id, disciplina_id: o.disciplina_id,
+        fecha, dia: o.giorno, hora: o.ora_inizio.slice(0, 5), horaFin: o.ora_fine.slice(0, 5),
+        avisado: aviso.has(key), motivo: aviso.get(key) ?? null,
+      });
+    }
+  }
+  clases.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
+  return clases;
+}

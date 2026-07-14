@@ -2025,9 +2025,10 @@ export default function AdminDashboard() {
   };
 
   const marcarTodasPresentes = async () => {
-    const objetivo = asistenciaRoster.filter(a => a.estado !== "presente");
+    // No marca presentes a quienes avisaron que no vienen.
+    const objetivo = asistenciaRoster.filter(a => a.estado !== "presente" && a.estado !== "no_viene");
     if (objetivo.length === 0) return;
-    setAsistenciaRoster(prev => prev.map(a => ({ ...a, estado: "presente" })));
+    setAsistenciaRoster(prev => prev.map(a => a.estado === "no_viene" ? a : { ...a, estado: "presente" }));
     await Promise.all(objetivo.map(a => fetch("/api/admin/asistencia", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...asistOwner(a), orario_id: asistenciaOrarioId, fecha: asistenciaFecha, estado: "presente" }),
@@ -3153,6 +3154,7 @@ export default function AdminDashboard() {
             const presentes = asistenciaRoster.filter(a => a.estado === "presente").length;
             const faltas = asistenciaRoster.filter(a => a.estado === "falta").length;
             const justificadas = asistenciaRoster.filter(a => a.estado === "justificada").length;
+            const noVienen = asistenciaRoster.filter(a => a.estado === "no_viene").length;
             const sinMarcar = asistenciaRoster.filter(a => !a.estado).length;
             const ESTADOS = [
               { key: "presente",    label: "Presente", icon: "check",      bg: "#2e7d32", soft: "#e8f5e9", color: "#2e7d32" },
@@ -3236,6 +3238,7 @@ export default function AdminDashboard() {
                             <span style={{ color: "#2e7d32", fontWeight: 600 }}>{presentes} presentes</span>
                             {" · "}<span style={{ color: "#b71c1c" }}>{faltas} faltas</span>
                             {" · "}<span style={{ color: "#e65100" }}>{justificadas} justif.</span>
+                            {noVienen > 0 && <> · <span style={{ color: "#b71c1c", fontWeight: 600 }}>{noVienen} avisaron que no van</span></>}
                             {sinMarcar > 0 && <> · {sinMarcar} sin marcar</>}
                           </p>
                           <div className="flex gap-2">
@@ -3259,10 +3262,14 @@ export default function AdminDashboard() {
                         <div className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden divide-y" style={{ borderColor: "#dcc1b9" }}>
                           {asistenciaRoster.map(a => (
                             <div key={rosterKey(a)} className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderColor: "#f0e0d8" }}>
-                              <span className="text-sm font-medium truncate flex items-center gap-2" style={{ color: "#25190f" }}>
-                                {a.nombre}
-                                {a.tipo === "bono" && <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "#fff3e0", color: "#e65100" }}>Bono</span>}
-                              </span>
+                              <div className="min-w-0">
+                                <span className="text-sm font-medium truncate flex items-center gap-2" style={{ color: "#25190f" }}>
+                                  {a.nombre}
+                                  {a.tipo === "bono" && <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "#fff3e0", color: "#e65100" }}>Bono</span>}
+                                  {a.estado === "no_viene" && <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>No viene</span>}
+                                </span>
+                                {a.estado === "no_viene" && a.nota && <p className="text-[11px] mt-0.5 truncate" style={{ color: "#89726c" }}>“{a.nota}”</p>}
+                              </div>
                               <div className="flex gap-1.5 shrink-0">
                                 {ESTADOS.map(es => {
                                   const active = a.estado === es.key;

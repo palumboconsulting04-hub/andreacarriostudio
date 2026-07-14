@@ -22,6 +22,7 @@ const DIACORTO = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 type Bono = { id: string; disciplina_id: string; nombre: string; creditos_restantes: number; creditos_totales: number; caduca: string; valido_desde: string | null; estado: string };
 type Clase = { orario_id: string; disciplina_id: string; fecha: string; dia: string; hora: string; horaFin: string; libres: number; tope: number; reserva_id: string | null };
+type Mensual = { iscrizione_id: string; orario_id: string; disciplina_id: string; fecha: string; dia: string; hora: string; horaFin: string; avisado: boolean; motivo: string | null };
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const fStr = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -49,6 +50,8 @@ export default function MisClasesPanel() {
   const [codigo, setCodigo] = useState("");
   const [refAmigas, setRefAmigas] = useState(0);
   const [refPremios, setRefPremios] = useState<{ detalle: string }[]>([]);
+  const [mensualidad, setMensualidad] = useState<Mensual[]>([]);
+  const [avisando, setAvisando] = useState<string | null>(null);
   const iniciado = useRef(false);
 
   const cargarCalendario = useCallback(async () => {
@@ -60,6 +63,7 @@ export default function MisClasesPanel() {
     setCodigo(data.codigo ?? "");
     setRefAmigas(data.totalAmigas ?? 0);
     setRefPremios(data.premios ?? []);
+    setMensualidad(data.mensualidad ?? []);
     setEstado("panel");
   }, []);
 
@@ -135,6 +139,28 @@ export default function MisClasesPanel() {
       if (!res.ok) setMsg(data.error || "No se pudo reservar.");
       await cargarCalendario();
     } finally { setAccion(false); }
+  };
+
+  const avisarAusencia = async (m: Mensual, cancelar: boolean) => {
+    if (avisando) return;
+    let motivo: string | null = null;
+    if (!cancelar) {
+      const r = window.prompt("Si quieres, dinos por qué no puedes ir (opcional). Puedes dejarlo vacío y darle a Aceptar.");
+      if (r === null) return; // canceló el aviso
+      motivo = r.trim() || null;
+    }
+    const key = `${m.iscrizione_id}|${m.orario_id}|${m.fecha}`;
+    setAvisando(key); setMsg("");
+    try {
+      const res = await fetch("/api/panel/avisar-ausencia", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ iscrizione_id: m.iscrizione_id, orario_id: m.orario_id, fecha: m.fecha, motivo, cancelar }),
+      });
+      const d = await res.json();
+      if (!res.ok) setMsg(d.error || "No se pudo avisar.");
+      else await cargarCalendario();
+    } catch { setMsg("No se pudo conectar. Inténtalo de nuevo."); }
+    finally { setAvisando(null); }
   };
 
   const cancelar = async (c: Clase) => {
@@ -306,9 +332,31 @@ export default function MisClasesPanel() {
           {!preview && <button onClick={salir} className="text-xs shrink-0" style={{ color: C.muted }}>Salir</button>}
         </div>
 
+        {!preview && mensualidad.length > 0 && (
+          <div className="mb-5">
+            <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Tus clases</p>
+            <p className="text-xs mb-3" style={{ color: C.muted }}>No hace falta reservar: estas son tus clases de la mensualidad. Si un día no puedes ir, avísanos y Andrea lo verá.</p>
+            <div className="flex flex-col gap-2">
+              {mensualidad.map(m => (
+                <div key={`${m.iscrizione_id}|${m.orario_id}|${m.fecha}`} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-2" style={{ backgroundColor: m.avisado ? "#f4ebe7" : "#fff", border: `1px solid ${m.avisado ? C.muted : C.border}` }}>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold" style={{ color: m.avisado ? C.muted : C.dark, fontFamily: fSans, textDecoration: m.avisado ? "line-through" : "none" }}>{fechaLabel(m.fecha, m.dia)} · {m.hora}</p>
+                    <p className="text-xs" style={{ color: C.muted }}>{DISC[m.disciplina_id] ?? m.disciplina_id}{m.avisado ? " · avisaste que no vas" : ""}</p>
+                  </div>
+                  {m.avisado ? (
+                    <button onClick={() => avisarAusencia(m, true)} disabled={!!avisando} className="text-xs font-bold shrink-0 px-3 py-1.5 rounded-full" style={{ backgroundColor: "#fff", color: C.burgundy, border: `1px solid ${C.burgundy}` }}>Sí que voy</button>
+                  ) : (
+                    <button onClick={() => avisarAusencia(m, false)} disabled={!!avisando} className="text-xs font-semibold shrink-0 px-3 py-1.5 rounded-full" style={{ backgroundColor: "#fff0eb", color: C.burgundy, border: `1px solid ${C.border}` }}>Un día no puedo ir</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {!preview && (
           <div className="flex flex-col gap-2 mb-4">
-            {usables.length === 0 && porEmpezar.length === 0 && (
+            {bonos.length > 0 && usables.length === 0 && porEmpezar.length === 0 && (
               <div className="rounded-2xl p-4 text-center" style={{ backgroundColor: C.blush }}>
                 <p className="text-sm font-semibold mb-2" style={{ color: C.burgundy }}>No te quedan créditos</p>
                 <button onClick={abrirComprar} className="inline-block px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>Comprar más créditos →</button>
@@ -335,7 +383,7 @@ export default function MisClasesPanel() {
           </div>
         )}
 
-        {!preview && (
+        {!preview && bonos.length > 0 && (
           <div className="flex gap-1 mb-4 p-1 rounded-full" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
             {([["reservar", "Reservar"], ["reservas", "Mis reservas"]] as const).map(([t, label]) => (
               <button key={t} onClick={() => setTab(t)} className="flex-1 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all" style={{ backgroundColor: tab === t ? C.burgundy : "transparent", color: tab === t ? C.cream : C.muted }}>
@@ -347,7 +395,7 @@ export default function MisClasesPanel() {
 
         {msg && <p className="text-sm mb-3 text-center" style={{ color: "#b71c1c" }}>{msg}</p>}
 
-        {preview || tab === "reservar" ? calendario : (
+        {(preview || bonos.length > 0) && (preview || tab === "reservar" ? calendario : (
           misReservas.length === 0 ? (
             <p className="text-sm text-center py-8" style={{ color: C.muted }}>No tienes clases reservadas. Ve a <strong style={{ color: C.burgundy }}>Reservar</strong> para elegir un día.</p>
           ) : (
@@ -364,7 +412,7 @@ export default function MisClasesPanel() {
               ))}
             </div>
           )
-        )}
+        ))}
 
         {!preview && codigo && (
           <div className="rounded-2xl p-4 mt-2" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
