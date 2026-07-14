@@ -335,18 +335,18 @@ export default function MisClasesPanel() {
         {!preview && mensualidad.length > 0 && (
           <div className="mb-5">
             <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Tus clases</p>
-            <p className="text-xs mb-3" style={{ color: C.muted }}>No hace falta reservar: estas son tus clases de la mensualidad. Si un día no puedes ir, avísanos y Andrea lo verá.</p>
+            <p className="text-xs mb-3" style={{ color: C.muted }}>Estas son tus clases de la mensualidad. No hace falta reservar; si un día no puedes ir, avísanos.</p>
             <div className="flex flex-col gap-2">
               {mensualidad.map(m => (
-                <div key={`${m.iscrizione_id}|${m.orario_id}|${m.fecha}`} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-2" style={{ backgroundColor: m.avisado ? "#f4ebe7" : "#fff", border: `1px solid ${m.avisado ? C.muted : C.border}` }}>
+                <div key={`${m.iscrizione_id}|${m.orario_id}|${m.fecha}`} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: m.avisado ? "#fff" : C.blush, border: `1px solid ${m.avisado ? C.border : C.burgundy}` }}>
                   <div className="min-w-0">
-                    <p className="text-sm font-bold" style={{ color: m.avisado ? C.muted : C.dark, fontFamily: fSans, textDecoration: m.avisado ? "line-through" : "none" }}>{fechaLabel(m.fecha, m.dia)} · {m.hora}</p>
-                    <p className="text-xs" style={{ color: C.muted }}>{DISC[m.disciplina_id] ?? m.disciplina_id}{m.avisado ? " · avisaste que no vas" : ""}</p>
+                    <p className="text-sm font-semibold" style={{ color: m.avisado ? C.muted : C.dark, fontFamily: fSans, textDecoration: m.avisado ? "line-through" : "none" }}>{fechaLabel(m.fecha, m.dia)}</p>
+                    <p className="text-xs" style={{ color: C.muted }}>{m.hora}–{m.horaFin} · {DISC[m.disciplina_id] ?? m.disciplina_id}{m.avisado ? " · avisado" : ""}</p>
                   </div>
                   {m.avisado ? (
-                    <button onClick={() => avisarAusencia(m, true)} disabled={!!avisando} className="text-xs font-bold shrink-0 px-3 py-1.5 rounded-full" style={{ backgroundColor: "#fff", color: C.burgundy, border: `1px solid ${C.burgundy}` }}>Sí que voy</button>
+                    <button onClick={() => avisarAusencia(m, true)} disabled={!!avisando} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fff", color: C.burgundy, border: `1px solid ${C.burgundy}` }}>Sí que voy</button>
                   ) : (
-                    <button onClick={() => avisarAusencia(m, false)} disabled={!!avisando} className="text-xs font-semibold shrink-0 px-3 py-1.5 rounded-full" style={{ backgroundColor: "#fff0eb", color: C.burgundy, border: `1px solid ${C.border}` }}>Un día no puedo ir</button>
+                    <button onClick={() => avisarAusencia(m, false)} disabled={!!avisando} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>No puedo ir</button>
                   )}
                 </div>
               ))}
