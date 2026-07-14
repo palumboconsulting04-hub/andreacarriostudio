@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { fetchBonos, type BonoTipo } from "@/lib/queries";
+import CompartirCodigo from "@/components/CompartirCodigo";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -58,11 +59,6 @@ export default function MisClasesPanel() {
     setEstado("panel");
   }, []);
 
-  const compartirCodigo = () => {
-    const link = `https://reservas.andreacarriostudio.es/comprar-bono?ref=${codigo}`;
-    const texto = `¡Ven a probar una clase conmigo en Andrea Carrió Studio! Usa mi código ${codigo} al sacar tu bono: ${link}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
-  };
 
   useEffect(() => {
     if (iniciado.current) return;
@@ -370,10 +366,8 @@ export default function MisClasesPanel() {
           <div className="rounded-2xl p-4 mt-2" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
             <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Invita a una amiga y ganáis las dos</p>
             <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando saque su bono, tú y ella os lleváis 1 clase de regalo. Comparte tu código:</p>
-            <div className="flex items-center gap-2">
-              <span className="flex-1 text-center text-sm font-bold tracking-widest py-2.5 rounded-xl" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
-              <button onClick={compartirCodigo} className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shrink-0" style={{ backgroundColor: C.burgundy, color: C.cream }}>Compartir</button>
-            </div>
+            <span className="block text-center text-sm font-bold tracking-widest py-2.5 rounded-xl mb-3" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
+            <CompartirCodigo codigo={codigo} />
           </div>
         )}
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import CompartirCodigo from "@/components/CompartirCodigo";
 
 const C = { burgundy: "#7d2b13", blush: "#ffdbd1", cream: "#fff8f5", bg: "#f5ede8", brown: "#56423d", muted: "#89726c", border: "#dcc1b9", dark: "#25190f" };
 const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
@@ -29,11 +30,6 @@ export default function BonoGracias() {
       .catch(() => {});
   }, [params]);
 
-  const compartirCodigo = () => {
-    const link = `https://reservas.andreacarriostudio.es/comprar-bono?ref=${codigo}`;
-    const texto = `¡Ven a probar una clase conmigo en Andrea Carrió Studio! Usa mi código ${codigo} al sacar tu bono: ${link}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
-  };
 
   const creditos = bono?.creditos_restantes ?? 0;
   const disc = bono ? (DISC[bono.disciplina_id] ?? bono.disciplina_id) : "";
@@ -93,10 +89,8 @@ export default function BonoGracias() {
         <div className="w-full max-w-md rounded-3xl p-6 mt-8 text-left" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
           <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Invita a una amiga y ganáis las dos</p>
           <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando saque su bono, tú y ella os lleváis 1 clase de regalo. Comparte tu código:</p>
-          <div className="flex items-center gap-2">
-            <span className="flex-1 text-center text-sm font-bold tracking-widest py-2.5 rounded-xl" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
-            <button onClick={compartirCodigo} className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shrink-0" style={{ backgroundColor: C.burgundy, color: C.cream }}>Compartir</button>
-          </div>
+          <span className="block text-center text-sm font-bold tracking-widest py-2.5 rounded-xl mb-3" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
+          <CompartirCodigo codigo={codigo} />
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import CompartirCodigo from "@/components/CompartirCodigo";
 
 const C = { burgundy: "#7d2b13", blush: "#ffdbd1", cream: "#fff8f5", bg: "#f5ede8", brown: "#56423d", muted: "#89726c", border: "#dcc1b9", dark: "#25190f" };
 const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
@@ -45,13 +46,6 @@ export default function Invita() {
     }
   };
 
-  const compartir = () => {
-    if (!data) return;
-    const link = `https://reservas.andreacarriostudio.es/comprar-bono?ref=${data.codigo}`;
-    const texto = `¡Ven a probar una clase conmigo en Andrea Carrió Studio! Usa mi código ${data.codigo} y ganamos las dos: ${link}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
-  };
-
   return (
     <div style={{ backgroundColor: C.bg, minHeight: "100vh" }} className="px-4 py-12">
       <div className="max-w-md mx-auto">
@@ -75,8 +69,8 @@ export default function Invita() {
             <div className="rounded-3xl p-6 text-center" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
               <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Tu código{data.nombre ? `, ${data.nombre}` : ""}</p>
               <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando tu amiga lo use al sacar su bono o su mensualidad, ganáis las dos.</p>
-              <span className="block text-lg font-bold tracking-widest py-3 rounded-xl mb-3" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{data.codigo}</span>
-              <button onClick={compartir} className="w-full py-3 rounded-full text-sm font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>Compartir por WhatsApp</button>
+              <span className="block text-lg font-bold tracking-widest py-3 rounded-xl mb-4" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{data.codigo}</span>
+              <CompartirCodigo codigo={data.codigo} />
             </div>
 
             <div className="rounded-3xl p-6" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
