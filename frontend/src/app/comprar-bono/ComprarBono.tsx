@@ -43,6 +43,9 @@ export default function ComprarBono() {
       .then(d => setMadrinaNombre(d.nombre ?? null))
       .catch(() => {});
     try {
+      // Guarda el código para que se traslade también al flujo de mensualidad
+      // (si la amiga acaba apuntándose a una cuota en vez de un bono).
+      sessionStorage.setItem("acs_ref", ref);
       const key = `acs_ref_visit_${ref}`;
       if (!sessionStorage.getItem(key)) {
         sessionStorage.setItem(key, "1");
@@ -121,6 +124,11 @@ export default function ComprarBono() {
             </p>
           )}
         </div>
+
+        <p className="text-center text-xs mb-7 max-w-md mx-auto" style={{ color: C.muted }}>
+          ¿Prefieres venir cada semana con una cuota mensual?{" "}
+          <a href={ref ? `/?ref=${ref}` : "/"} style={{ color: C.burgundy, fontWeight: 700, textDecoration: "underline" }}>Apuntarme a una mensualidad →</a>
+        </p>
 
         {!disciplina ? (
           <div className="rounded-3xl p-6 shadow-sm max-w-sm mx-auto" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
