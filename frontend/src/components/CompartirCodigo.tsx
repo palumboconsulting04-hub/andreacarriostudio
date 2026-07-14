@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const C = { burgundy: "#7d2b13", cream: "#fff8f5", brown: "#56423d", muted: "#89726c", dark: "#25190f" };
 
@@ -85,6 +85,17 @@ export default function CompartirCodigo({ codigo }: { codigo: string }) {
   const [copiado, setCopiado] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [instrucciones, setInstrucciones] = useState(false);
+  const [imgFile, setImgFile] = useState<File | null>(null);
+
+  // Pre-generamos la imagen al cargar. Si se generase dentro del clic, el await pierde
+  // el "gesto de usuario" y el compartir nativo de Instagram no se abre en muchos móviles.
+  useEffect(() => {
+    let cancel = false;
+    generarImagenStory()
+      .then((blob) => { if (!cancel) setImgFile(new File([blob], "andrea-carrio-studio.jpg", { type: "image/jpeg" })); })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, []);
 
   const whatsapp = () => window.open(`https://wa.me/?text=${encodeURIComponent(textoDe(codigo, "wa"))}`, "_blank");
 
@@ -93,26 +104,33 @@ export default function CompartirCodigo({ codigo }: { codigo: string }) {
   };
 
   const instagram = async () => {
-    if (generando) return;
-    setGenerando(true);
-    try {
-      // Copiamos el link primero (para que lo peguen en el sticker de enlace).
-      try { await navigator.clipboard.writeText(linkDe(codigo, "ig")); } catch {}
-      const blob = await generarImagenStory();
-      const file = new File([blob], "andrea-carrio-studio.jpg", { type: "image/jpeg" });
-      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean; share?: (d: ShareData) => Promise<void> };
-      if (nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
-        try { await nav.share({ files: [file] }); } catch { /* cancelado */ }
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = file.name; a.click();
-        URL.revokeObjectURL(url);
-      }
-      setInstrucciones(true);
-    } catch { /* nada */ } finally {
-      setGenerando(false);
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean; share?: (d: ShareData) => Promise<void> };
+    let file = imgFile;
+    let compartido = false;
+    // Con la foto ya lista, compartimos SIN awaits previos → conserva el gesto y abre
+    // el menú de Instagram. Si aún no estuviera lista (raro), la generamos al momento.
+    if (file && nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
+      try { await nav.share({ files: [file] }); compartido = true; } catch { /* cancelado o bloqueado */ }
     }
+    if (!compartido) {
+      if (!file) {
+        setGenerando(true);
+        try { file = new File([await generarImagenStory()], "andrea-carrio-studio.jpg", { type: "image/jpeg" }); setImgFile(file); } catch {}
+        setGenerando(false);
+      }
+      if (!compartido && file && nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
+        try { await nav.share({ files: [file] }); compartido = true; } catch {}
+      }
+      // Último recurso: descargar la foto para que la suban a mano.
+      if (!compartido && file) {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+      }
+    }
+    try { await navigator.clipboard.writeText(linkDe(codigo, "ig")); } catch {}
+    setInstrucciones(true);
   };
 
   const btn = { padding: "14px 16px", borderRadius: "14px", fontSize: "14px", fontWeight: 700, cursor: "pointer", border: "none", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" } as const;
