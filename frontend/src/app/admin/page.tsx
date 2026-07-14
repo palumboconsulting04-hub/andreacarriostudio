@@ -5515,7 +5515,19 @@ export default function AdminDashboard() {
                     ];
                     const tonoBg: Record<string, string> = { auto: "#e8f5e9", mano: "#fff3e0", no: "#eceff1" };
                     const tonoFg: Record<string, string> = { auto: "#2e7d32", mano: "#e65100", no: "#607d8b" };
+                    // Cómo y cuándo se materializa el regalo (mecánica real, no descuento en checkout).
+                    const comoAmiga = [
+                      { con: "Bono 5/12", recibe: "1 clase de regalo", cuando: "al comprar", donde: "Banner antes de pagar · en \"Mis clases\" · email de bienvenida" },
+                      { con: "Mensualidad", recibe: "10€ de descuento", cuando: "en su 1ª cuota (septiembre)", donde: "Aviso antes de pagar · su factura de Stripe" },
+                    ];
+                    const comoMadrina = [
+                      { con: "Bono", recibe: "1 clase de regalo", cuando: "al confirmarse la compra de su amiga", donde: "En \"Mis clases\" · email de aviso" },
+                      { con: "Mensualidad", recibe: "10€ en su cuota", cuando: "en su próxima factura", donde: "Su factura de Stripe · email de aviso" },
+                    ];
+                    const th = (h: string) => <th key={h} className="text-left px-3 py-2 text-[11px] font-bold" style={{ color: "#7d2b13", borderBottom: "2px solid #dcc1b9", whiteSpace: "nowrap" }}>{h}</th>;
+                    const td = (v: string, extra = false) => <td className={`px-3 py-2 text-[11px] ${extra ? "font-semibold" : ""}`} style={{ color: extra ? "#56423d" : "#25190f", borderBottom: "1px solid #f0ddd5" }}>{v}</td>;
                     return (
+                      <>
                       <details className="mt-3">
                         <summary style={{ cursor: "pointer", fontWeight: 700, color: "#7d2b13" }}>Ver todas las casuísticas</summary>
                         <div className="mt-3 overflow-x-auto">
@@ -5563,6 +5575,42 @@ export default function AdminDashboard() {
                           Reglas de oro: el premio salta solo si la amiga viene con un código válido y saca al menos un <strong>Bono de 5</strong> (nunca con la clase suelta). Los premios en clases tienen coste casi cero (plaza libre); los de cuota los apruebas tú. La amiga siempre debe ser <strong>nueva</strong>.
                         </p>
                       </details>
+
+                      <details className="mt-2">
+                        <summary style={{ cursor: "pointer", fontWeight: 700, color: "#7d2b13" }}>Cómo y cuándo llega el regalo</summary>
+                        <p className="mt-2 text-[11px]" style={{ color: "#89726c" }}>
+                          <strong>No es un descuento al pagar.</strong> La persona paga lo normal; el premio se aplica <strong>después</strong> y es automático (menos el mes gratis de Embajadora).
+                        </p>
+
+                        <p className="mt-3 mb-1 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#89726c" }}>La amiga (la nueva)</p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse" style={{ minWidth: 620 }}>
+                            <thead><tr>{["Entra con", "Recibe", "Cuándo", "Dónde lo ve"].map(th)}</tr></thead>
+                            <tbody>
+                              {comoAmiga.map((r, i) => (
+                                <tr key={i} style={{ backgroundColor: i % 2 ? "#fffaf7" : "#fff" }}>
+                                  {td(r.con)}{td(r.recibe, true)}{td(r.cuando)}{td(r.donde)}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <p className="mt-3 mb-1 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#89726c" }}>La madrina (quien recomienda)</p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse" style={{ minWidth: 620 }}>
+                            <thead><tr>{["Tiene", "Recibe", "Cuándo", "Dónde lo ve"].map(th)}</tr></thead>
+                            <tbody>
+                              {comoMadrina.map((r, i) => (
+                                <tr key={i} style={{ backgroundColor: i % 2 ? "#fffaf7" : "#fff" }}>
+                                  {td(r.con)}{td(r.recibe, true)}{td(r.cuando)}{td(r.donde)}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </details>
+                      </>
                     );
                   })()}
                 </div>
