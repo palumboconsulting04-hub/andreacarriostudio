@@ -1,7 +1,11 @@
 import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { stripe } from "@/lib/stripe";
 import { Resend } from "resend";
 import { emailDeCodigo, getCodigoReferido } from "@/lib/referidos";
+
+// Descuento en la cuota (mensualidad) por traer/venir de una amiga: 10€.
+const DESCUENTO_CUOTA_CENT = 1000;
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://reservas.andreacarriostudio.es";
@@ -66,10 +70,10 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
   // La compradora recibe su propio código de madrina para poder invitar a amigas.
   try { await getCodigoReferido(emailComprador, m.nombre ?? ""); } catch (e) { console.error("codigo referido:", e); }
 
-  // Fase 2 — premio de referido: solo con Bono 5/12 (nunca clase suelta).
+  // Premio de referido: solo con Bono 5/12 (nunca clase suelta).
   if (referidoPor && emailMadrina && creditos >= 5) {
-    try { await aplicarPremioReferido(emailMadrina, emailComprador, m.nombre ?? "", m.disciplina_id ?? "", validoDesde); }
-    catch (e) { console.error("premio referido:", e); }
+    try { await premiarReferidoBono(referidoPor, emailComprador, m.nombre ?? "", m.disciplina_id ?? "", validoDesde); }
+    catch (e) { console.error("premio referido bono:", e); }
   }
 }
 
@@ -94,38 +98,87 @@ export async function crearBonoRegalo(email: string, nombre: string, disciplina:
   return data?.id ?? null;
 }
 
-// Premio de bienvenida para la amiga que entra por MENSUALIDAD (adultas barre/pilates):
-// +1 clase de la OTRA disciplina, para que pruebe algo nuevo (cross-sell). En niñas
-// (ballet) no hay bonos, así que no se da automático (se gestiona a mano). Solo debe
-// llamarse si la inscripción vino de un referido válido (iscrizioni.referido_por).
-export async function premioBienvenidaAmigaMensualidad(email: string, nombre: string, disciplinas: string[]): Promise<void> {
-  if (!email) return;
-  const set = new Set(disciplinas);
-  let regalo: string | null = null;
-  if (set.has("barre-fit") && !set.has("pilates-mat")) regalo = "pilates-mat";
-  else if (set.has("pilates-mat") && !set.has("barre-fit")) regalo = "barre-fit";
-  // Tiene ambas, o ninguna de barre/pilates (p. ej. niñas): no hay clase nueva que regalar.
-  if (!regalo) return;
+// ── Premios del programa "Trae a tu amiga" ──
+// Regla: cada persona gana según lo que tiene → 10€ en su cuota si paga mensualidad,
+// o 1 clase si es de bono. Todo automático.
+
+// Cliente de Stripe de una persona si paga mensualidad (para descuentos de cuota).
+async function customerDeMensualidad(email: string): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from("iscrizioni").select("stripe_customer_id")
+    .eq("email", email.toLowerCase()).not("stripe_customer_id", "is", null)
+    .limit(1).maybeSingle();
+  return data?.stripe_customer_id ?? null;
+}
+
+// Disciplina del último bono de una persona (para el regalo de clase). Barre por defecto.
+async function disciplinaBonoDe(email: string): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from("bonos").select("disciplina_id")
+    .eq("email", email.toLowerCase()).order("created_at", { ascending: false })
+    .limit(1).maybeSingle();
+  return data?.disciplina_id ?? "barre-fit";
+}
+
+function validoDesdeHoy(): string {
   const hoy = new Date().toISOString().slice(0, 10);
-  const validoDesde = hoy < BONO_INICIO_CURSO ? BONO_INICIO_CURSO : hoy;
-  await crearBonoRegalo(email, nombre, regalo, validoDesde);
+  return hoy < BONO_INICIO_CURSO ? BONO_INICIO_CURSO : hoy;
 }
 
-// Aplica el premio de referido: +1 clase de regalo a la madrina y a la amiga, y avisa a la madrina.
-async function aplicarPremioReferido(emailMadrina: string, amigaEmail: string, amigaNombre: string, disciplina: string, validoDesde: string) {
+// Registra un premio otorgado (histórico + idempotencia del mes gratis).
+async function registrarPremio(codigo: string, email: string, tipo: string, detalle: string, importeCent: number | null, customerId: string | null, txnId: string | null, bonoId: string | null) {
+  await supabaseAdmin.from("premios_referido").insert({
+    madrina_codigo: codigo, madrina_email: email, tipo, detalle,
+    importe_cent: importeCent, stripe_customer_id: customerId,
+    stripe_balance_txn_id: txnId, bono_id: bonoId,
+  });
+}
+
+// Premia a la MADRINA según SU tipo: 10€ en su cuota (mensualidad) o 1 clase (bono).
+async function premiarMadrina(codigo: string, amigaEmail: string) {
   const { data: mad } = await supabaseAdmin
-    .from("referidos_codigo").select("nombre").eq("email", emailMadrina).maybeSingle();
+    .from("referidos_codigo").select("email, nombre").eq("codigo", codigo).maybeSingle();
+  const emailMadrina = (mad?.email ?? "").toLowerCase();
+  if (!emailMadrina || emailMadrina === amigaEmail.toLowerCase()) return; // sin madrina o autorreferido
   const nombreMadrina = mad?.nombre ?? "";
-  await crearBonoRegalo(emailMadrina, nombreMadrina, disciplina, validoDesde);
-  await crearBonoRegalo(amigaEmail, amigaNombre, disciplina, validoDesde);
-  try { await enviarEmailPremioMadrina(emailMadrina, nombreMadrina, amigaNombre, disciplina); }
-  catch (e) { console.error("email premio madrina:", e); }
+  const customerId = await customerDeMensualidad(emailMadrina);
+  if (customerId) {
+    const txn = await stripe.customers.createBalanceTransaction(customerId, {
+      amount: -DESCUENTO_CUOTA_CENT, currency: "eur",
+      description: `Trae a tu amiga · madrina · código ${codigo}`,
+    });
+    await registrarPremio(codigo, emailMadrina, "cuota10", "10€ en su cuota", DESCUENTO_CUOTA_CENT, customerId, txn.id, null);
+    try { await enviarEmailPremioMadrina(emailMadrina, nombreMadrina, "10€ de descuento en tu próxima cuota"); } catch (e) { console.error("email premio madrina:", e); }
+  } else {
+    const disc = await disciplinaBonoDe(emailMadrina);
+    const bonoId = await crearBonoRegalo(emailMadrina, nombreMadrina, disc, validoDesdeHoy());
+    await registrarPremio(codigo, emailMadrina, "clase", "+1 clase", null, null, null, bonoId);
+    try { await enviarEmailPremioMadrina(emailMadrina, nombreMadrina, "1 clase de regalo"); } catch (e) { console.error("email premio madrina:", e); }
+  }
 }
 
-// Aviso a la madrina de que su amiga se apuntó y tiene 1 clase de regalo.
-async function enviarEmailPremioMadrina(email: string, nombreMadrina: string, amigaNombre: string, disciplina: string) {
+// La amiga entra con un BONO 5/12 → +1 clase; y se premia a la madrina según su tipo.
+export async function premiarReferidoBono(codigo: string, amigaEmail: string, amigaNombre: string, disciplina: string, validoDesde: string) {
+  await crearBonoRegalo(amigaEmail, amigaNombre, disciplina, validoDesde);
+  await premiarMadrina(codigo, amigaEmail);
+}
+
+// La amiga entra por MENSUALIDAD → 10€ en su cuota; y se premia a la madrina según su tipo.
+export async function premiarReferidoMensualidad(codigo: string, amigaEmail: string, amigaCustomerId: string | null) {
+  if (amigaCustomerId) {
+    try {
+      await stripe.customers.createBalanceTransaction(amigaCustomerId, {
+        amount: -DESCUENTO_CUOTA_CENT, currency: "eur",
+        description: `Trae a tu amiga · amiga · código ${codigo}`,
+      });
+    } catch (e) { console.error("descuento amiga mensualidad:", e); }
+  }
+  await premiarMadrina(codigo, amigaEmail);
+}
+
+// Aviso a la madrina de que su amiga se apuntó y ya tiene su premio.
+async function enviarEmailPremioMadrina(email: string, nombreMadrina: string, premioTexto: string) {
   const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
-  const disc = DISC_LABEL[disciplina] ?? disciplina;
   const panel = `${APP_URL}/mis-clases?entrar=1&email=${encodeURIComponent(email)}`;
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/></head>
 <body style="margin:0;padding:0;background:#f5ede8;font-family:'Helvetica Neue',Arial,sans-serif;">
@@ -133,10 +186,10 @@ async function enviarEmailPremioMadrina(email: string, nombreMadrina: string, am
     <table width="100%" style="max-width:520px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 8px 40px rgba(37,25,15,0.10);">
       <tr><td style="padding:34px 40px 8px;text-align:center;">
         <h1 style="margin:0 0 12px;font-size:24px;font-weight:600;color:#25190f;font-family:Georgia,serif;">¡Gracias por invitar${nombreMadrina ? `, ${nombreMadrina}` : ""}! 🤎</h1>
-        <p style="margin:0;font-size:15px;color:#56423d;line-height:1.7;">Tu amiga <strong>${amigaNombre || "una amiga"}</strong> se ha apuntado con tu código, así que te hemos añadido <strong>1 clase de regalo de ${disc}</strong> en tu área "Mis clases".</p>
+        <p style="margin:0;font-size:15px;color:#56423d;line-height:1.7;">Una amiga se ha apuntado con tu código, así que ya tienes <strong>${premioTexto}</strong>. ¡Gracias por confiar en el estudio!</p>
       </td></tr>
       <tr><td style="padding:20px 32px 36px;text-align:center;">
-        <a href="${panel}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:14px;font-weight:700;padding:15px 40px;border-radius:9999px;">Ver mi clase de regalo →</a>
+        <a href="${panel}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:14px;font-weight:700;padding:15px 40px;border-radius:9999px;">Entrar a mi área →</a>
       </td></tr>
       <tr><td style="background:#fff8f5;border-top:1px solid #f0ddd5;padding:24px 32px;text-align:center;">
         <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#25190f;">Andrea Carrió Studio</p>
@@ -144,7 +197,7 @@ async function enviarEmailPremioMadrina(email: string, nombreMadrina: string, am
     </table>
   </td></tr></table>
 </body></html>`;
-  await resend.emails.send({ from, to: email, subject: `¡${amigaNombre || "Tu amiga"} se ha apuntado! Tienes 1 clase de regalo 🤎`, html });
+  await resend.emails.send({ from, to: email, subject: `¡Una amiga se ha apuntado con tu código! 🤎`, html });
 }
 
 // Aviso a Andrea de cada compra de bono (mismo buzón que las matrículas nuevas).

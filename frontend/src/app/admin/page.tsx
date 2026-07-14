@@ -5455,9 +5455,8 @@ export default function AdminDashboard() {
             const fFecha = (f: string) => { if (!f) return ""; const [, m, d] = f.split("-"); return `${+d} ${M[+m - 1]}`; };
             // Nivel de la madrina según cuántas amigas ha traído (regla del programa).
             const nivel = (n: number) => {
-              if (n >= 5) return { l: "Embajadora Oro", emoji: "👑", bg: "#fff8e1", fg: "#b8860b", premio: "Mes gratis + taller + detalle + muro de embajadoras" };
-              if (n >= 3) return { l: "Embajadora", emoji: "⭐", bg: "#fff3e0", fg: "#e65100", premio: "1 mes gratis" };
-              return { l: "Madrina", emoji: "🤎", bg: "#f3e9e4", fg: "#7d2b13", premio: "Premio por cada amiga (bono → +1 clase automática)" };
+              if (n >= 5) return { l: "Embajadora", emoji: "👑", bg: "#fff8e1", fg: "#b8860b" };
+              return { l: "Madrina", emoji: "🤎", bg: "#f3e9e4", fg: "#7d2b13" };
             };
             const cards = refResumen ? [
               { l: "Códigos emitidos", v: refResumen.codigosEmitidos },
@@ -5485,8 +5484,8 @@ export default function AdminDashboard() {
 
                 <div className="rounded-2xl p-4 text-xs leading-relaxed" style={{ backgroundColor: "#fff8f5", border: "1px solid #f0ddd5", color: "#89726c" }}>
                   <p className="font-bold uppercase tracking-widest mb-1" style={{ color: "#7d2b13" }}>Cómo se premia</p>
-                  Cuando una amiga entra con un <strong>bono</strong>, la madrina y la amiga reciben <strong>+1 clase automática</strong>. Si entra por <strong>mensualidad</strong> (barre/pilates), la amiga también se lleva <strong>+1 clase automática de la otra disciplina</strong> (para que la pruebe).
-                  Los premios de la <strong>madrina en mensualidad</strong> y los de <strong>Embajadora</strong> (15€ en la cuota, 1 mes gratis) los apruebas tú con un botón: se aplican solos en Stripe y quedan marcados como otorgados.
+                  Cada persona gana según lo que tiene: <strong>10€ en su cuota</strong> si paga mensualidad, o <strong>1 clase</strong> si es de bono. Es por cada amiga que trae, y <strong>automático</strong> (se aplica solo en Stripe).
+                  Lo único a mano: el <strong>mes gratis de Embajadora</strong> (al llegar a 5 amigas), que apruebas con un botón.
                   {(() => {
                     type Fila = { amiga: string; ganaMadrina: string; ganaAmiga: string; como: string; tono: "auto" | "mano" | "no" };
                     const grupos: { madrina: string; filas: Fila[] }[] = [
@@ -5494,24 +5493,22 @@ export default function AdminDashboard() {
                         madrina: "La madrina tiene BONO",
                         filas: [
                           { amiga: "Saca un Bono de 5 o 12", ganaMadrina: "+1 clase", ganaAmiga: "+1 clase", como: "Automático", tono: "auto" },
-                          { amiga: "Entra por mensualidad (barre/pilates)", ganaMadrina: "+1 clase", ganaAmiga: "+1 clase (otra disciplina)", como: "Amiga auto · madrina a mano", tono: "mano" },
+                          { amiga: "Entra por mensualidad", ganaMadrina: "+1 clase", ganaAmiga: "10€ en su cuota", como: "Automático", tono: "auto" },
                           { amiga: "Saca una clase suelta", ganaMadrina: "—", ganaAmiga: "—", como: "Sin premio (mínimo Bono 5)", tono: "no" },
-                          { amiga: "Llega a 3+ amigas (Embajadora)", ganaMadrina: "Detalle a mano", ganaAmiga: "—", como: "A mano", tono: "mano" },
+                          { amiga: "Llega a 5 amigas (Embajadora)", ganaMadrina: "Detalle a mano (no paga cuota)", ganaAmiga: "—", como: "A mano", tono: "mano" },
                         ],
                       },
                       {
                         madrina: "La madrina tiene MENSUALIDAD",
                         filas: [
-                          { amiga: "Saca un Bono de 5 o 12", ganaMadrina: "+1 clase", ganaAmiga: "+1 clase", como: "Automático", tono: "auto" },
-                          { amiga: "Entra por mensualidad (barre/pilates)", ganaMadrina: "15€ en su cuota", ganaAmiga: "+1 clase (otra disciplina)", como: "Amiga auto · madrina a mano", tono: "mano" },
+                          { amiga: "Saca un Bono de 5 o 12", ganaMadrina: "10€ en su cuota", ganaAmiga: "+1 clase", como: "Automático", tono: "auto" },
+                          { amiga: "Entra por mensualidad", ganaMadrina: "10€ en su cuota", ganaAmiga: "10€ en su cuota", como: "Automático", tono: "auto" },
                           { amiga: "Saca una clase suelta", ganaMadrina: "—", ganaAmiga: "—", como: "Sin premio (mínimo Bono 5)", tono: "no" },
-                          { amiga: "Llega a 3 amigas (Embajadora)", ganaMadrina: "1 mes gratis", ganaAmiga: "—", como: "A mano", tono: "mano" },
-                          { amiga: "Llega a 5 amigas (Embajadora Oro)", ganaMadrina: "Mes gratis + taller + detalle", ganaAmiga: "—", como: "A mano", tono: "mano" },
+                          { amiga: "Llega a 5 amigas (Embajadora)", ganaMadrina: "1 mes gratis", ganaAmiga: "—", como: "A mano (botón)", tono: "mano" },
                         ],
                       },
                     ];
                     const especiales: { caso: string; resultado: string }[] = [
-                      { caso: "La amiga entra por mensualidad de niñas (ballet)", resultado: "El premio se da a mano (no hay bonos de ballet)." },
                       { caso: "Alguien usa su propio código", resultado: "No cuenta (autorreferido)." },
                       { caso: "Código mal escrito o inexistente", resultado: "Compra normal, sin premio." },
                       { caso: "La amiga pide el reembolso de su bono", resultado: "Su bono se anula; el premio ya dado NO se quita solo → revísalo." },
@@ -5591,40 +5588,27 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                             {(() => {
-                              const otorgadosPorAmiga = m.premios.filter(p => p.tipo === "clase" || p.tipo === "cuota15").length;
-                              const pendientesAmiga = Math.max(0, m.amigasMensualidad - otorgadosPorAmiga);
                               const mesOtorgado = m.premios.some(p => p.tipo === "mes_gratis");
-                              const mesPendiente = m.total >= 3 && !mesOtorgado;
-                              const tipoAmiga = m.tieneMensualidad ? "cuota15" : "clase";
-                              const labelAmiga = m.tieneMensualidad ? "15€ en su cuota" : "+1 clase";
-                              const busy = (t: string) => refOtorgando === `${m.codigo}:${t}`;
+                              const mesPendiente = m.total >= 5 && !mesOtorgado;
+                              const busy = refOtorgando === `${m.codigo}:mes_gratis`;
                               return (
                                 <div className="px-4 py-2.5 space-y-2" style={{ backgroundColor: "#fffbf9", borderTop: "1px solid #f0ddd5" }}>
-                                  {(pendientesAmiga > 0 || mesPendiente) ? (
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <span className="text-[11px] font-semibold" style={{ color: "#7d2b13" }}>Premios pendientes:</span>
-                                      {pendientesAmiga > 0 && (
-                                        <button disabled={!!refOtorgando}
-                                          onClick={() => otorgarPremio(m.codigo, tipoAmiga, `¿Otorgar ${labelAmiga} a ${m.nombre || m.email}? Quedan ${pendientesAmiga} por amiga de mensualidad.`)}
-                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold disabled:opacity-50"
-                                          style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
-                                          {busy(tipoAmiga) ? "Aplicando…" : `${labelAmiga} · ${pendientesAmiga}`}
-                                        </button>
-                                      )}
-                                      {mesPendiente && m.tieneMensualidad && (
+                                  {mesPendiente ? (
+                                    m.tieneMensualidad ? (
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-[11px] font-semibold" style={{ color: "#b8860b" }}>👑 Embajadora (5 amigas):</span>
                                         <button disabled={!!refOtorgando}
                                           onClick={() => otorgarPremio(m.codigo, "mes_gratis", `¿Otorgar 1 MES GRATIS a ${m.nombre || m.email}? Se aplicará como crédito en su próxima cuota de Stripe.`)}
                                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold disabled:opacity-50"
                                           style={{ backgroundColor: "#b8860b", color: "#fff8f5" }}>
-                                          {busy("mes_gratis") ? "Aplicando…" : "👑 1 mes gratis"}
+                                          {busy ? "Aplicando…" : "Otorgar 1 mes gratis"}
                                         </button>
-                                      )}
-                                      {mesPendiente && !m.tieneMensualidad && (
-                                        <span className="text-[11px]" style={{ color: "#b8860b" }}>⭐ Embajadora — no paga mensualidad: dale el detalle a mano.</span>
-                                      )}
-                                    </div>
+                                      </div>
+                                    ) : (
+                                      <p className="text-[11px]" style={{ color: "#b8860b" }}>👑 Embajadora (5 amigas) — no paga mensualidad: dale el detalle a mano.</p>
+                                    )
                                   ) : (
-                                    <p className="text-[11px]" style={{ color: "#89726c" }}><span className="font-semibold" style={{ color: "#7d2b13" }}>Premio:</span> {nv.premio}</p>
+                                    <p className="text-[11px]" style={{ color: "#89726c" }}>Premios por amiga (10€ en cuota o +1 clase) <strong>automáticos</strong>. El mes gratis aparece aquí al llegar a 5 amigas.</p>
                                   )}
                                   {m.premios.length > 0 && (
                                     <div className="flex flex-wrap gap-1.5">

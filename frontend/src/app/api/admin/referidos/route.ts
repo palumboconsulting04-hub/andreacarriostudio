@@ -107,7 +107,7 @@ export async function GET() {
     amigasBono,
     amigasMensualidad,
     madrinasActivas: madrinas.length,
-    embajadoras: madrinas.filter((m) => m.total >= 3).length,
+    embajadoras: madrinas.filter((m) => m.total >= 5).length,
     ingresosBonos,
     premiosPagados,
   };

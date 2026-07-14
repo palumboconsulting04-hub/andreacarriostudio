@@ -3,7 +3,7 @@ import crypto from "crypto";
 import type Stripe from "stripe";
 import { stripe, BONO_BILLING_ANCHOR, MATRICULA_PI_TIPO } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { procesarBonoPagado, premioBienvenidaAmigaMensualidad } from "@/lib/bonos-server";
+import { procesarBonoPagado, premiarReferidoMensualidad } from "@/lib/bonos-server";
 
 const FB_PIXEL_ID = "2024231855152441";
 const sha256 = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
@@ -233,17 +233,13 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
     .eq("stripe_payment_intent_id", pi.id);
 
   // Premio "Trae a tu amiga": si la inscripción vino de un referido válido, la amiga
-  // (barre/pilates) se lleva 1 clase de la otra disciplina. No bloquea si falla.
+  // se lleva 10€ en su cuota y la madrina su premio según su tipo. No bloquea si falla.
   const referidoPor = rows.find((r) => r.referido_por)?.referido_por ?? null;
   if (referidoPor) {
     try {
-      await premioBienvenidaAmigaMensualidad(
-        rows[0]?.email ?? "",
-        rows[0]?.nome ?? "",
-        rows.map((r) => r.disciplina_id).filter(Boolean) as string[],
-      );
+      await premiarReferidoMensualidad(referidoPor, rows[0]?.email ?? "", customerId);
     } catch (e) {
-      console.error("premio amiga mensualidad:", e);
+      console.error("premio referido mensualidad:", e);
     }
   }
 
