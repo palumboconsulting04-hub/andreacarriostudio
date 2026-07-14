@@ -5488,17 +5488,33 @@ export default function AdminDashboard() {
                   Cuando una amiga entra con un <strong>bono</strong>, la madrina y la amiga reciben <strong>+1 clase automática</strong>. Si entra por <strong>mensualidad</strong> (barre/pilates), la amiga también se lleva <strong>+1 clase automática de la otra disciplina</strong> (para que la pruebe).
                   Los premios de la <strong>madrina en mensualidad</strong> y los de <strong>Embajadora</strong> (15€ en la cuota, 1 mes gratis) los apruebas tú con un botón: se aplican solos en Stripe y quedan marcados como otorgados.
                   {(() => {
-                    const casos: { caso: string; madrina: string; amiga: string; como: string; tono: "auto" | "mano" | "no" }[] = [
-                      { caso: "La amiga saca un Bono de 5 o 12 clases con el código", madrina: "+1 clase", amiga: "+1 clase", como: "Automático", tono: "auto" },
-                      { caso: "La amiga saca una clase suelta (1 crédito)", madrina: "—", amiga: "—", como: "Sin premio (mínimo Bono 5)", tono: "no" },
-                      { caso: "La amiga entra por mensualidad (barre/pilates) · madrina de mensualidad", madrina: "15€ en su próxima cuota", amiga: "+1 clase (otra disciplina)", como: "Amiga auto · madrina a mano", tono: "mano" },
-                      { caso: "La amiga entra por mensualidad (barre/pilates) · madrina de bono", madrina: "+1 clase", amiga: "+1 clase (otra disciplina)", como: "Amiga auto · madrina a mano", tono: "mano" },
-                      { caso: "La amiga entra por mensualidad de niñas (ballet)", madrina: "según su tipo (a mano)", amiga: "detalle a mano (no hay bonos de ballet)", como: "A mano", tono: "mano" },
-                      { caso: "La madrina llega a 3 amigas (Embajadora)", madrina: "1 mes gratis", amiga: "—", como: "A mano (botón)", tono: "mano" },
-                      { caso: "La madrina llega a 5 amigas (Embajadora Oro)", madrina: "Mes gratis + taller + detalle", amiga: "—", como: "A mano", tono: "mano" },
-                      { caso: "Alguien usa su propio código", madrina: "—", amiga: "—", como: "No cuenta (autorreferido)", tono: "no" },
-                      { caso: "Código mal escrito o inexistente", madrina: "—", amiga: "—", como: "Compra normal, sin premio", tono: "no" },
-                      { caso: "La amiga pide el reembolso de su bono", madrina: "Su bono se anula; el premio ya dado NO se quita solo", amiga: "—", como: "Revísalo a mano", tono: "mano" },
+                    type Fila = { amiga: string; ganaMadrina: string; ganaAmiga: string; como: string; tono: "auto" | "mano" | "no" };
+                    const grupos: { madrina: string; filas: Fila[] }[] = [
+                      {
+                        madrina: "La madrina tiene BONO",
+                        filas: [
+                          { amiga: "Saca un Bono de 5 o 12", ganaMadrina: "+1 clase", ganaAmiga: "+1 clase", como: "Automático", tono: "auto" },
+                          { amiga: "Entra por mensualidad (barre/pilates)", ganaMadrina: "+1 clase", ganaAmiga: "+1 clase (otra disciplina)", como: "Amiga auto · madrina a mano", tono: "mano" },
+                          { amiga: "Saca una clase suelta", ganaMadrina: "—", ganaAmiga: "—", como: "Sin premio (mínimo Bono 5)", tono: "no" },
+                          { amiga: "Llega a 3+ amigas (Embajadora)", ganaMadrina: "Detalle a mano", ganaAmiga: "—", como: "A mano", tono: "mano" },
+                        ],
+                      },
+                      {
+                        madrina: "La madrina tiene MENSUALIDAD",
+                        filas: [
+                          { amiga: "Saca un Bono de 5 o 12", ganaMadrina: "+1 clase", ganaAmiga: "+1 clase", como: "Automático", tono: "auto" },
+                          { amiga: "Entra por mensualidad (barre/pilates)", ganaMadrina: "15€ en su cuota", ganaAmiga: "+1 clase (otra disciplina)", como: "Amiga auto · madrina a mano", tono: "mano" },
+                          { amiga: "Saca una clase suelta", ganaMadrina: "—", ganaAmiga: "—", como: "Sin premio (mínimo Bono 5)", tono: "no" },
+                          { amiga: "Llega a 3 amigas (Embajadora)", ganaMadrina: "1 mes gratis", ganaAmiga: "—", como: "A mano", tono: "mano" },
+                          { amiga: "Llega a 5 amigas (Embajadora Oro)", ganaMadrina: "Mes gratis + taller + detalle", ganaAmiga: "—", como: "A mano", tono: "mano" },
+                        ],
+                      },
+                    ];
+                    const especiales: { caso: string; resultado: string }[] = [
+                      { caso: "La amiga entra por mensualidad de niñas (ballet)", resultado: "El premio se da a mano (no hay bonos de ballet)." },
+                      { caso: "Alguien usa su propio código", resultado: "No cuenta (autorreferido)." },
+                      { caso: "Código mal escrito o inexistente", resultado: "Compra normal, sin premio." },
+                      { caso: "La amiga pide el reembolso de su bono", resultado: "Su bono se anula; el premio ya dado NO se quita solo → revísalo." },
                     ];
                     const tonoBg: Record<string, string> = { auto: "#e8f5e9", mano: "#fff3e0", no: "#eceff1" };
                     const tonoFg: Record<string, string> = { auto: "#2e7d32", mano: "#e65100", no: "#607d8b" };
@@ -5506,28 +5522,46 @@ export default function AdminDashboard() {
                       <details className="mt-3">
                         <summary style={{ cursor: "pointer", fontWeight: 700, color: "#7d2b13" }}>Ver todas las casuísticas</summary>
                         <div className="mt-3 overflow-x-auto">
-                          <table className="w-full border-collapse" style={{ minWidth: 560 }}>
+                          <table className="w-full border-collapse" style={{ minWidth: 680 }}>
                             <thead>
                               <tr>
-                                {["Qué pasa", "Gana la madrina", "Gana la amiga", "¿Cómo?"].map(h => (
+                                {["Situación de la madrina", "Qué hace la amiga", "Gana la madrina", "Gana la amiga", "¿Cómo?"].map(h => (
                                   <th key={h} className="text-left px-3 py-2 text-[11px] font-bold" style={{ color: "#7d2b13", borderBottom: "2px solid #dcc1b9", whiteSpace: "nowrap" }}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
-                              {casos.map((c, i) => (
-                                <tr key={i} style={{ backgroundColor: i % 2 ? "#fffbf9" : "#fff" }}>
-                                  <td className="px-3 py-2 text-[11px]" style={{ color: "#25190f", borderBottom: "1px solid #f0ddd5" }}>{c.caso}</td>
-                                  <td className="px-3 py-2 text-[11px] font-semibold" style={{ color: "#56423d", borderBottom: "1px solid #f0ddd5" }}>{c.madrina}</td>
-                                  <td className="px-3 py-2 text-[11px] font-semibold" style={{ color: "#56423d", borderBottom: "1px solid #f0ddd5" }}>{c.amiga}</td>
+                              {grupos.map((g, gi) => g.filas.map((f, fi) => (
+                                <tr key={`${gi}-${fi}`} style={{ backgroundColor: gi % 2 ? "#fffaf7" : "#fff" }}>
+                                  {fi === 0 && (
+                                    <td rowSpan={g.filas.length} className="px-3 py-2 text-[11px] font-bold align-top" style={{ color: "#7d2b13", backgroundColor: "#fff2ec", borderBottom: "2px solid #dcc1b9", borderRight: "1px solid #e6cdc4", whiteSpace: "nowrap" }}>{g.madrina}</td>
+                                  )}
+                                  <td className="px-3 py-2 text-[11px]" style={{ color: "#25190f", borderBottom: "1px solid #f0ddd5" }}>{f.amiga}</td>
+                                  <td className="px-3 py-2 text-[11px] font-semibold" style={{ color: "#56423d", borderBottom: "1px solid #f0ddd5" }}>{f.ganaMadrina}</td>
+                                  <td className="px-3 py-2 text-[11px] font-semibold" style={{ color: "#56423d", borderBottom: "1px solid #f0ddd5" }}>{f.ganaAmiga}</td>
                                   <td className="px-3 py-2" style={{ borderBottom: "1px solid #f0ddd5" }}>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ backgroundColor: tonoBg[c.tono], color: tonoFg[c.tono] }}>{c.como}</span>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ backgroundColor: tonoBg[f.tono], color: tonoFg[f.tono] }}>{f.como}</span>
                                   </td>
+                                </tr>
+                              )))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <p className="mt-4 mb-1 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#89726c" }}>Casos especiales</p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse" style={{ minWidth: 460 }}>
+                            <tbody>
+                              {especiales.map((e, i) => (
+                                <tr key={i} style={{ backgroundColor: i % 2 ? "#fffaf7" : "#fff" }}>
+                                  <td className="px-3 py-2 text-[11px]" style={{ color: "#25190f", borderBottom: "1px solid #f0ddd5", width: "46%" }}>{e.caso}</td>
+                                  <td className="px-3 py-2 text-[11px]" style={{ color: "#56423d", borderBottom: "1px solid #f0ddd5" }}>{e.resultado}</td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
                         </div>
+
                         <p className="mt-3 text-[11px]" style={{ color: "#89726c" }}>
                           Reglas de oro: el premio salta solo si la amiga viene con un código válido y saca al menos un <strong>Bono de 5</strong> (nunca con la clase suelta). Los premios en clases tienen coste casi cero (plaza libre); los de cuota los apruebas tú. La amiga siempre debe ser <strong>nueva</strong>.
                         </p>
