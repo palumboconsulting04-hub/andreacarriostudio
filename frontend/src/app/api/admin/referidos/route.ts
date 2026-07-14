@@ -25,7 +25,7 @@ export async function GET() {
   const [codigosRes, bonosRes, iscrRes, mensualRes, premiosRes] = await Promise.all([
     supabaseAdmin.from("referidos_codigo").select("codigo, email, nombre"),
     supabaseAdmin.from("bonos")
-      .select("nombre, email, referido_por, created_at, estado")
+      .select("nombre, email, referido_por, created_at, estado, precio_pagado")
       .not("referido_por", "is", null),
     supabaseAdmin.from("iscrizioni")
       .select("nome, cognome, email, referido_por, created_at, stato")
@@ -95,11 +95,21 @@ export async function GET() {
     .filter((m) => m.total > 0)
     .sort((a, b) => b.total - a.total);
 
+  // Cifras de negocio del canal: ingresos por bonos referidos y premios pagados (€).
+  const ingresosBonos = (bonosRes.data ?? []).reduce((s, b) => s + (Number(b.precio_pagado) || 0), 0);
+  const premiosPagados = (premiosRes.data ?? []).reduce((s, p) => s + (Number(p.importe_cent) || 0), 0) / 100;
+  const amigasBono = madrinas.reduce((s, m) => s + m.amigas.filter((a) => a.via === "bono").length, 0);
+  const amigasMensualidad = madrinas.reduce((s, m) => s + m.amigas.filter((a) => a.via === "mensualidad").length, 0);
+
   const resumen = {
     codigosEmitidos: (codigosRes.data ?? []).length,
     amigasTraidas: madrinas.reduce((s, m) => s + m.total, 0),
+    amigasBono,
+    amigasMensualidad,
     madrinasActivas: madrinas.length,
     embajadoras: madrinas.filter((m) => m.total >= 3).length,
+    ingresosBonos,
+    premiosPagados,
   };
 
   return NextResponse.json({ madrinas, resumen });

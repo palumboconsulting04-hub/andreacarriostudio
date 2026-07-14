@@ -833,7 +833,7 @@ export default function AdminDashboard() {
   type AmigaRef = { nombre: string; email: string; via: "bono" | "mensualidad"; fecha: string; estado: string };
   type PremioRef = { tipo: string; detalle: string; importeCent: number | null; fecha: string };
   type MadrinaRef = { codigo: string; nombre: string; email: string; amigas: AmigaRef[]; total: number; amigasMensualidad: number; tieneMensualidad: boolean; premios: PremioRef[] };
-  type ResumenRef = { codigosEmitidos: number; amigasTraidas: number; madrinasActivas: number; embajadoras: number };
+  type ResumenRef = { codigosEmitidos: number; amigasTraidas: number; amigasBono: number; amigasMensualidad: number; madrinasActivas: number; embajadoras: number; ingresosBonos: number; premiosPagados: number };
   const [refMadrinas, setRefMadrinas] = useState<MadrinaRef[]>([]);
   const [refResumen, setRefResumen] = useState<ResumenRef | null>(null);
   const [refOtorgando, setRefOtorgando] = useState<string | null>(null); // `${codigo}:${tipo}` en curso
@@ -844,7 +844,7 @@ export default function AdminDashboard() {
       .catch(() => {});
   };
   useEffect(() => {
-    if (activeSection !== "Referidos") return;
+    if (activeSection !== "Referidos" && activeSection !== "Marketing") return;
     cargarReferidos();
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
   const otorgarPremio = async (codigo: string, tipo: string, aviso: string) => {
@@ -5091,6 +5091,50 @@ export default function AdminDashboard() {
                     {marketingData.length} respuesta{marketingData.length === 1 ? "" : "s"} del cuestionario tras la compra
                   </p>
                 </div>
+
+                {/* Resultados del programa Trae a tu amiga (member-get-member) */}
+                {refResumen && (
+                  <div className="rounded-2xl p-5 border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff6f2" }}>
+                    <div className="flex items-center justify-between gap-2 mb-4">
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Trae a una amiga · Member-get-member</p>
+                        <p className="text-xs" style={{ color: "#89726c" }}>Resultados del programa de recomendación</p>
+                      </div>
+                      <button onClick={() => setActiveSection("Referidos")} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                        Gestionar premios →
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {[
+                        { l: "Amigas traídas", v: `${refResumen.amigasTraidas}`, sub: `${refResumen.amigasBono} bono · ${refResumen.amigasMensualidad} cuota` },
+                        { l: "Ingresos (bonos)", v: `${refResumen.ingresosBonos}€`, sub: "traídos por referidas" },
+                        { l: "Premios pagados", v: `${refResumen.premiosPagados}€`, sub: "cuota / mes gratis" },
+                        { l: "Embajadoras", v: `${refResumen.embajadoras}`, sub: `${refResumen.madrinasActivas} madrinas activas` },
+                      ].map(k => (
+                        <div key={k.l} className="rounded-xl p-3 text-center" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
+                          <p className="text-xl font-bold" style={{ color: "#7d2b13" }}>{k.v}</p>
+                          <p className="text-[11px] font-semibold" style={{ color: "#56423d" }}>{k.l}</p>
+                          <p className="text-[10px]" style={{ color: "#bcb0ab" }}>{k.sub}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {refMadrinas.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>Top madrinas</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {refMadrinas.slice(0, 6).map(m => (
+                            <span key={m.codigo} className="text-[11px] px-2.5 py-1 rounded-full" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9", color: "#56423d" }}>
+                              {m.nombre || m.email} · <strong style={{ color: "#7d2b13" }}>{m.total}</strong>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {refResumen.amigasTraidas === 0 && (
+                      <p className="text-xs mt-3" style={{ color: "#89726c" }}>Aún no hay amigas traídas. Cuando alguien compre con el código de otra alumna, aparecerá aquí.</p>
+                    )}
+                  </div>
+                )}
 
                 {/* Resúmenes: cómo nos conocen + dónde anunciarse */}
                 {marketingData.length > 0 && (
