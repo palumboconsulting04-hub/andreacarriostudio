@@ -135,7 +135,7 @@ async function registrarPremio(codigo: string, email: string, tipo: string, deta
 }
 
 // Premia a la MADRINA según SU tipo: 10€ en su cuota (mensualidad) o 1 clase (bono).
-async function premiarMadrina(codigo: string, amigaEmail: string) {
+export async function premiarMadrina(codigo: string, amigaEmail: string) {
   const { data: mad } = await supabaseAdmin
     .from("referidos_codigo").select("email, nombre").eq("codigo", codigo).maybeSingle();
   const emailMadrina = (mad?.email ?? "").toLowerCase();
@@ -163,17 +163,16 @@ export async function premiarReferidoBono(codigo: string, amigaEmail: string, am
   await premiarMadrina(codigo, amigaEmail);
 }
 
-// La amiga entra por MENSUALIDAD → 10€ en su cuota; y se premia a la madrina según su tipo.
-export async function premiarReferidoMensualidad(codigo: string, amigaEmail: string, amigaCustomerId: string | null) {
-  if (amigaCustomerId) {
-    try {
-      await stripe.customers.createBalanceTransaction(amigaCustomerId, {
-        amount: -DESCUENTO_CUOTA_CENT, currency: "eur",
-        description: `Trae a tu amiga · amiga · código ${codigo}`,
-      });
-    } catch (e) { console.error("descuento amiga mensualidad:", e); }
-  }
-  await premiarMadrina(codigo, amigaEmail);
+// Descuento de 10€ en la cuota de la AMIGA que entra por mensualidad. Debe aplicarse
+// ANTES de crear la suscripción para que el crédito caiga en su PRIMERA factura (si se
+// aplicara después de crear la suscripción, y el alta es posterior al 1-sep sin periodo
+// de prueba, la primera cuota ya se habría cobrado y el crédito iría a la segunda).
+export async function descuentoCuotaAmiga(amigaCustomerId: string | null, codigo: string) {
+  if (!amigaCustomerId) return;
+  await stripe.customers.createBalanceTransaction(amigaCustomerId, {
+    amount: -DESCUENTO_CUOTA_CENT, currency: "eur",
+    description: `Trae a tu amiga · amiga · código ${codigo}`,
+  });
 }
 
 // Aviso a la madrina de que su amiga se apuntó y ya tiene su premio.

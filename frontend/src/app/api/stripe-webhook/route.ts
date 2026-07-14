@@ -3,7 +3,7 @@ import crypto from "crypto";
 import type Stripe from "stripe";
 import { stripe, BONO_BILLING_ANCHOR, MATRICULA_PI_TIPO } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { procesarBonoPagado, premiarReferidoMensualidad } from "@/lib/bonos-server";
+import { procesarBonoPagado, descuentoCuotaAmiga, premiarMadrina } from "@/lib/bonos-server";
 
 const FB_PIXEL_ID = "2024231855152441";
 const sha256 = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
@@ -221,6 +221,16 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
   if (BONO_BILLING_ANCHOR > ahora + 3600) {
     subParams.trial_end = BONO_BILLING_ANCHOR;
   }
+
+  // Trae a tu amiga: el descuento de 10€ de la AMIGA se aplica ANTES de crear la
+  // suscripción, para que el crédito caiga en su PRIMERA cuota (si el alta es posterior
+  // al 1-sep, la primera factura se cobra al crear la suscripción). No bloquea si falla.
+  const referidoPor = rows.find((r) => r.referido_por)?.referido_por ?? null;
+  if (referidoPor) {
+    try { await descuentoCuotaAmiga(customerId, referidoPor); }
+    catch (e) { console.error("descuento amiga referido:", e); }
+  }
+
   const sub = await stripe.subscriptions.create(subParams);
 
   await supabaseAdmin
@@ -232,15 +242,10 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
     })
     .eq("stripe_payment_intent_id", pi.id);
 
-  // Premio "Trae a tu amiga": si la inscripción vino de un referido válido, la amiga
-  // se lleva 10€ en su cuota y la madrina su premio según su tipo. No bloquea si falla.
-  const referidoPor = rows.find((r) => r.referido_por)?.referido_por ?? null;
+  // Premio de la MADRINA (según su tipo). Va después: no depende del orden de la cuota.
   if (referidoPor) {
-    try {
-      await premiarReferidoMensualidad(referidoPor, rows[0]?.email ?? "", customerId);
-    } catch (e) {
-      console.error("premio referido mensualidad:", e);
-    }
+    try { await premiarMadrina(referidoPor, rows[0]?.email ?? ""); }
+    catch (e) { console.error("premio madrina referido:", e); }
   }
 
   // Conversión Purchase a Meta por servidor (CAPI). No bloquea si falla.

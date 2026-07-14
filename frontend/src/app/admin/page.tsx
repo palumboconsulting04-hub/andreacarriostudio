@@ -5518,7 +5518,7 @@ export default function AdminDashboard() {
                     // Cómo y cuándo se materializa el regalo (mecánica real, no descuento en checkout).
                     const comoAmiga = [
                       { con: "Bono 5/12", recibe: "1 clase de regalo", cuando: "al comprar", donde: "Banner antes de pagar · en \"Mis clases\" · email de bienvenida" },
-                      { con: "Mensualidad", recibe: "10€ de descuento", cuando: "en su 1ª cuota (septiembre)", donde: "Aviso antes de pagar · su factura de Stripe" },
+                      { con: "Mensualidad", recibe: "10€ de descuento", cuando: "en su primera cuota", donde: "Aviso antes de pagar · su factura de Stripe" },
                     ];
                     const comoMadrina = [
                       { con: "Bono", recibe: "1 clase de regalo", cuando: "al confirmarse la compra de su amiga", donde: "En \"Mis clases\" · email de aviso" },
