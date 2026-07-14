@@ -61,5 +61,23 @@ export async function GET() {
   let codigo = "";
   try { codigo = await getCodigoReferido(email, bonos[0]?.nombre ?? ""); } catch { /* no bloquea el panel */ }
 
-  return NextResponse.json({ email, codigo, bonos, clases });
+  // Progreso de referidos: amigas traídas (dedup) + premios ganados.
+  let totalAmigas = 0;
+  let premios: { detalle: string }[] = [];
+  if (codigo) {
+    try {
+      const [aB, aI, pr] = await Promise.all([
+        supabaseAdmin.from("bonos").select("email").eq("referido_por", codigo),
+        supabaseAdmin.from("iscrizioni").select("email").eq("referido_por", codigo),
+        supabaseAdmin.from("premios_referido").select("detalle").eq("madrina_codigo", codigo),
+      ]);
+      totalAmigas = new Set([
+        ...(aB.data ?? []).map(r => (r.email ?? "").toLowerCase()),
+        ...(aI.data ?? []).map(r => (r.email ?? "").toLowerCase()),
+      ].filter(Boolean)).size;
+      premios = (pr.data ?? []).map(p => ({ detalle: p.detalle ?? "" }));
+    } catch { /* no bloquea el panel */ }
+  }
+
+  return NextResponse.json({ email, codigo, totalAmigas, premios, bonos, clases });
 }

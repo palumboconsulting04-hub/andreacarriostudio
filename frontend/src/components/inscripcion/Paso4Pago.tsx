@@ -398,6 +398,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
     matricula: totalMatricula,
     metodoPago: estado.metodoPago,
     notifyAdmin: true,
+    referida: !!madrinaRef,
     inscripciones: bozze.map((b, i) => ({
       disciplina: b.disciplinaNombre,
       plan: b.planNombre,

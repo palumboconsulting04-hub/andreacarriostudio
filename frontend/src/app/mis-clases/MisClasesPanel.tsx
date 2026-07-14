@@ -47,6 +47,8 @@ export default function MisClasesPanel() {
   const [accion, setAccion] = useState(false);
   const [confirmar, setConfirmar] = useState<Clase | null>(null);
   const [codigo, setCodigo] = useState("");
+  const [refAmigas, setRefAmigas] = useState(0);
+  const [refPremios, setRefPremios] = useState<{ detalle: string }[]>([]);
   const iniciado = useRef(false);
 
   const cargarCalendario = useCallback(async () => {
@@ -56,6 +58,8 @@ export default function MisClasesPanel() {
     setBonos(data.bonos ?? []);
     setClases(data.clases ?? []);
     setCodigo(data.codigo ?? "");
+    setRefAmigas(data.totalAmigas ?? 0);
+    setRefPremios(data.premios ?? []);
     setEstado("panel");
   }, []);
 
@@ -368,6 +372,18 @@ export default function MisClasesPanel() {
             <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando saque su bono, tú y ella os lleváis 1 clase de regalo. Comparte tu código:</p>
             <span className="block text-center text-sm font-bold tracking-widest py-2.5 rounded-xl mb-3" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
             <CompartirCodigo codigo={codigo} />
+            {refAmigas > 0 && (
+              <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${C.border}` }}>
+                <p className="text-xs" style={{ color: C.brown }}>Ya has traído <strong style={{ color: C.burgundy }}>{refAmigas}</strong> {refAmigas === 1 ? "amiga" : "amigas"} 🤎</p>
+                {refPremios.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {refPremios.map((p, i) => (
+                      <span key={i} className="text-[11px] px-2.5 py-1 rounded-full" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>✓ {p.detalle}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

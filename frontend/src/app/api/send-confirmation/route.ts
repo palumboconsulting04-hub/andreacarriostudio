@@ -18,6 +18,7 @@ export interface InscripcionEmailData {
   matricula: number;
   metodoPago: string;
   notifyAdmin?: boolean;
+  referida?: boolean;
 }
 
 const METODO_LABEL: Record<string, string> = {
@@ -33,7 +34,7 @@ export function buildEmailHtml(data: InscripcionEmailData): string {
 }
 
 function buildHtml(data: InscripcionEmailData): string {
-  const { nombre, apellido, inscripciones, totalMensual, matricula, metodoPago } = data;
+  const { nombre, apellido, inscripciones, totalMensual, matricula, metodoPago, referida } = data;
   const esNinas = inscripciones.some(i => i.alumna);
   const saludo = esNinas ? `${nombre} ${apellido}` : nombre;
 
@@ -156,6 +157,18 @@ function buildHtml(data: InscripcionEmailData): string {
               </p>
             </td>
           </tr>
+
+          ${referida ? `
+          <!-- Regalo por venir de una amiga -->
+          <tr>
+            <td style="padding:0 32px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff6f2;border:1px solid #7d2b13;border-radius:16px;"><tr><td style="padding:16px 20px;text-align:center;">
+                <p style="margin:0;font-size:14px;font-weight:700;color:#7d2b13;">🎁 Y como vienes de una amiga…</p>
+                <p style="margin:6px 0 0;font-size:13px;color:#56423d;line-height:1.6;">tienes <strong>10€ de descuento en tu primera mensualidad</strong>. Se aplica solo, no tienes que hacer nada.</p>
+              </td></tr></table>
+            </td>
+          </tr>
+          ` : ""}
 
           <!-- Inscripciones -->
           ${inscripcionesHtml}
