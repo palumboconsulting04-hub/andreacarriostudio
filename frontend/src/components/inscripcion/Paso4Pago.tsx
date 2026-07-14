@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { loadStripe, type Appearance } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { findCoupon, applyCoupon, type Coupon } from "@/lib/coupons";
@@ -331,6 +331,19 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
   const [couponAplicado, setCouponAplicado] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
 
+  // Trae a tu amiga: si la clienta llegó con un ?ref= válido, resolvemos el nombre
+  // de la madrina para avisarle de su descuento antes de pagar.
+  const [madrinaRef, setMadrinaRef] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ref = sessionStorage.getItem("acs_ref");
+    if (!ref) return;
+    fetch(`/api/referido?codigo=${encodeURIComponent(ref)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.nombre) setMadrinaRef(d.nombre); })
+      .catch(() => {});
+  }, []);
+
   const segundaInscripcion = !!existingContattoId;
   const bozzeNinas = bozze.map((b, i) => ({ bozza: b, idx: i })).filter(({ bozza }) => bozza.esNinas);
   const totalMensual = bozze.reduce((s, b) => s + b.planPrecio, 0);
@@ -553,6 +566,15 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
           Volver
         </button>
       </div>
+
+      {madrinaRef && (
+        <div className="rounded-2xl px-4 py-3 mb-6 text-center max-w-md" style={{ backgroundColor: "#fff6f2", border: "1px solid #7d2b13" }}>
+          <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>
+            Vienes de {madrinaRef} 🤎<br />
+            <span className="text-xs font-normal" style={{ color: "#56423d" }}>Tienes <strong>10€ de descuento en tu primera mensualidad</strong> por venir de una amiga.</span>
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Form */}

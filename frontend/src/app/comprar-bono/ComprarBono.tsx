@@ -100,8 +100,8 @@ export default function ComprarBono() {
         <div className="rounded-2xl px-4 py-3 mb-7 text-center max-w-md mx-auto" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
           {ref ? (
             <p className="text-sm font-semibold" style={{ color: C.burgundy }}>
-              {madrinaNombre ? `${madrinaNombre} te ha invitado` : "Te ha invitado una amiga"} 🤎<br />
-              <span className="text-xs font-normal" style={{ color: C.brown }}>Cuando saques tu bono, tú y {madrinaNombre ?? "tu amiga"} os lleváis 1 clase de regalo.</span>
+              Vienes de {madrinaNombre ?? "una amiga"} 🤎<br />
+              <span className="text-xs font-normal" style={{ color: C.brown }}>Te llevas <strong>1 clase de regalo</strong> por venir de una amiga: se añade a tu bono al comprar.</span>
             </p>
           ) : (
             <p className="text-sm font-semibold" style={{ color: C.burgundy }}>
@@ -181,6 +181,11 @@ export default function ComprarBono() {
                 <input style={inputStyle} placeholder="Email * (con este entrarás a reservar)" type="email" value={email} onChange={e => setEmail(e.target.value)} />
                 <input style={inputStyle} placeholder="WhatsApp *" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
                 {error && <p className="text-sm text-red-600">{error}</p>}
+                {ref && (
+                  <div className="rounded-xl px-3 py-2 text-center text-xs font-semibold" style={{ backgroundColor: "#fff0eb", color: C.burgundy }}>
+                    🎁 +1 clase de regalo por venir de una amiga
+                  </div>
+                )}
                 <button onClick={pagar} disabled={!formValido || enviando}
                   className="w-full py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest transition-all"
                   style={{ backgroundColor: formValido ? C.burgundy : C.border, color: "#fff8f5", fontFamily: fSans, letterSpacing: "0.08em", cursor: formValido ? "pointer" : "not-allowed", opacity: enviando ? 0.7 : 1 }}>
