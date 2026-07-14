@@ -70,10 +70,13 @@ export async function procesarBonoPagado(session: Stripe.Checkout.Session): Prom
   // La compradora recibe su propio código de madrina para poder invitar a amigas.
   try { await getCodigoReferido(emailComprador, m.nombre ?? ""); } catch (e) { console.error("codigo referido:", e); }
 
-  // Premio de referido: solo con Bono 5/12 (nunca clase suelta).
+  // Premio de referido: solo con Bono 5/12 (nunca clase suelta) y si la amiga es NUEVA.
   if (referidoPor && emailMadrina && creditos >= 5) {
-    try { await premiarReferidoBono(referidoPor, emailComprador, m.nombre ?? "", m.disciplina_id ?? "", validoDesde); }
-    catch (e) { console.error("premio referido bono:", e); }
+    try {
+      if (await esClienteNueva(emailComprador, { excluirBonoSession: session.id })) {
+        await premiarReferidoBono(referidoPor, emailComprador, m.nombre ?? "", m.disciplina_id ?? "", validoDesde);
+      }
+    } catch (e) { console.error("premio referido bono:", e); }
   }
 }
 
@@ -125,13 +128,54 @@ function validoDesdeHoy(): string {
   return hoy < BONO_INICIO_CURSO ? BONO_INICIO_CURSO : hoy;
 }
 
-// Registra un premio otorgado (histórico + idempotencia del mes gratis).
-async function registrarPremio(codigo: string, email: string, tipo: string, detalle: string, importeCent: number | null, customerId: string | null, txnId: string | null, bonoId: string | null) {
+// Registra un premio otorgado (histórico + idempotencia del mes gratis + poder
+// revertirlo si la amiga que lo originó pide un reembolso).
+async function registrarPremio(codigo: string, email: string, tipo: string, detalle: string, importeCent: number | null, customerId: string | null, txnId: string | null, bonoId: string | null, amigaEmail: string | null = null) {
   await supabaseAdmin.from("premios_referido").insert({
     madrina_codigo: codigo, madrina_email: email, tipo, detalle,
     importe_cent: importeCent, stripe_customer_id: customerId,
-    stripe_balance_txn_id: txnId, bono_id: bonoId,
+    stripe_balance_txn_id: txnId, bono_id: bonoId, amiga_email: (amigaEmail ?? "").toLowerCase() || null,
   });
+}
+
+// ¿Es la amiga una clienta NUEVA? (aparte de esta compra, sin otro bono comprado ni
+// otra inscripción de mensualidad). Evita premiar a clientas existentes o a quien se
+// autorregala con otra compra.
+export async function esClienteNueva(email: string, opts: { excluirBonoSession?: string; excluirPi?: string }): Promise<boolean> {
+  const em = (email || "").toLowerCase();
+  if (!em) return false;
+  const { data: bonos } = await supabaseAdmin
+    .from("bonos").select("stripe_session_id").ilike("email", em).gt("precio_pagado", 0);
+  if ((bonos ?? []).some((b) => b.stripe_session_id !== opts.excluirBonoSession)) return false;
+  const { data: iscr } = await supabaseAdmin
+    .from("iscrizioni").select("stripe_payment_intent_id, stato").ilike("email", em);
+  const previa = (iscr ?? []).some((i) =>
+    i.stripe_payment_intent_id !== opts.excluirPi &&
+    ["matricula_pagada", "activa", "impago", "cancelada", "pagado"].includes(i.stato ?? ""));
+  if (previa) return false;
+  return true;
+}
+
+// Revierte los premios de la madrina originados por una amiga (cuando la amiga pide
+// un reembolso): devuelve el crédito de cuota en Stripe y anula el bono de regalo.
+export async function revertirPremiosReferido(amigaEmail: string) {
+  const em = (amigaEmail || "").toLowerCase();
+  if (!em) return;
+  const { data: premios } = await supabaseAdmin
+    .from("premios_referido").select("id, importe_cent, stripe_customer_id, bono_id").ilike("amiga_email", em);
+  for (const p of premios ?? []) {
+    if (p.stripe_customer_id && p.importe_cent) {
+      try {
+        await stripe.customers.createBalanceTransaction(p.stripe_customer_id, {
+          amount: p.importe_cent, currency: "eur", description: "Reverso Trae a tu amiga (reembolso de la amiga)",
+        });
+      } catch (e) { console.error("reverso saldo:", e); }
+    }
+    if (p.bono_id) {
+      try { await supabaseAdmin.from("bonos").update({ creditos_restantes: 0, estado: "anulado" }).eq("id", p.bono_id); } catch (e) { console.error("reverso bono:", e); }
+    }
+  }
+  await supabaseAdmin.from("premios_referido").delete().ilike("amiga_email", em);
 }
 
 // Premia a la MADRINA según SU tipo: 10€ en su cuota (mensualidad) o 1 clase (bono).
@@ -147,12 +191,12 @@ export async function premiarMadrina(codigo: string, amigaEmail: string) {
       amount: -DESCUENTO_CUOTA_CENT, currency: "eur",
       description: `Trae a tu amiga · madrina · código ${codigo}`,
     });
-    await registrarPremio(codigo, emailMadrina, "cuota10", "10€ en su cuota", DESCUENTO_CUOTA_CENT, customerId, txn.id, null);
+    await registrarPremio(codigo, emailMadrina, "cuota10", "10€ en su cuota", DESCUENTO_CUOTA_CENT, customerId, txn.id, null, amigaEmail);
     try { await enviarEmailPremioMadrina(emailMadrina, nombreMadrina, "10€ de descuento en tu próxima cuota"); } catch (e) { console.error("email premio madrina:", e); }
   } else {
     const disc = await disciplinaBonoDe(emailMadrina);
     const bonoId = await crearBonoRegalo(emailMadrina, nombreMadrina, disc, validoDesdeHoy());
-    await registrarPremio(codigo, emailMadrina, "clase", "+1 clase", null, null, null, bonoId);
+    await registrarPremio(codigo, emailMadrina, "clase", "+1 clase", null, null, null, bonoId, amigaEmail);
     try { await enviarEmailPremioMadrina(emailMadrina, nombreMadrina, "1 clase de regalo"); } catch (e) { console.error("email premio madrina:", e); }
   }
 }

@@ -34,13 +34,24 @@ export default function ComprarBono() {
     fetchBonos(disciplina).then(setBonos).catch(() => setBonos([]));
   }, [disciplina]);
 
-  // Si llega con un código de madrina, resuelve su nombre para personalizar el aviso.
+  // Si llega con un código de madrina, resuelve su nombre para personalizar el aviso
+  // y registra la visita (funnel), una sola vez por sesión.
   useEffect(() => {
     if (!ref) return;
     fetch(`/api/referido?codigo=${encodeURIComponent(ref)}`)
       .then(r => r.json())
       .then(d => setMadrinaNombre(d.nombre ?? null))
       .catch(() => {});
+    try {
+      const key = `acs_ref_visit_${ref}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+        fetch("/api/referido/visita", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ codigo: ref, session_id: sessionStorage.getItem("acs_fsid") || null }),
+        }).catch(() => {});
+      }
+    } catch { /* sessionStorage no disponible */ }
   }, [ref]);
 
   // Al elegir un bono, baja suave al formulario de datos.

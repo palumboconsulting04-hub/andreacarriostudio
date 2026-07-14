@@ -832,8 +832,8 @@ export default function AdminDashboard() {
   // ── Referidos (Trae a tu amiga): madrinas y las amigas que han traído ──
   type AmigaRef = { nombre: string; email: string; via: "bono" | "mensualidad"; fecha: string; estado: string };
   type PremioRef = { tipo: string; detalle: string; importeCent: number | null; fecha: string };
-  type MadrinaRef = { codigo: string; nombre: string; email: string; amigas: AmigaRef[]; total: number; amigasMensualidad: number; tieneMensualidad: boolean; premios: PremioRef[] };
-  type ResumenRef = { codigosEmitidos: number; amigasTraidas: number; amigasBono: number; amigasMensualidad: number; madrinasActivas: number; embajadoras: number; ingresosBonos: number; premiosPagados: number };
+  type MadrinaRef = { codigo: string; nombre: string; email: string; amigas: AmigaRef[]; total: number; amigasMensualidad: number; tieneMensualidad: boolean; premios: PremioRef[]; visitas: number };
+  type ResumenRef = { codigosEmitidos: number; amigasTraidas: number; amigasBono: number; amigasMensualidad: number; madrinasActivas: number; embajadoras: number; ingresosBonos: number; premiosPagados: number; visitas: number; conversion: number };
   const [refMadrinas, setRefMadrinas] = useState<MadrinaRef[]>([]);
   const [refResumen, setRefResumen] = useState<ResumenRef | null>(null);
   const [refOtorgando, setRefOtorgando] = useState<string | null>(null); // `${codigo}:${tipo}` en curso
@@ -5117,6 +5117,14 @@ export default function AdminDashboard() {
                           <p className="text-[10px]" style={{ color: "#bcb0ab" }}>{k.sub}</p>
                         </div>
                       ))}
+                    </div>
+                    <div className="rounded-xl p-3 mt-2.5 flex items-center justify-center gap-2 flex-wrap text-center" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
+                      <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#89726c" }}>Funnel:</span>
+                      <span className="text-xs" style={{ color: "#56423d" }}><strong style={{ color: "#7d2b13" }}>{refResumen.visitas}</strong> tocaron el link</span>
+                      <span style={{ color: "#bcb0ab" }}>→</span>
+                      <span className="text-xs" style={{ color: "#56423d" }}><strong style={{ color: "#7d2b13" }}>{refResumen.amigasTraidas}</strong> compraron</span>
+                      <span style={{ color: "#bcb0ab" }}>→</span>
+                      <span className="text-xs font-bold" style={{ color: "#2e7d32" }}>{refResumen.conversion}% conversión</span>
                     </div>
                     {refMadrinas.length > 0 && (
                       <div className="mt-4">

@@ -13,7 +13,7 @@ type Madrina = {
   codigo: string; nombre: string; email: string;
   amigas: Amiga[]; total: number;
   amigasMensualidad: number; tieneMensualidad: boolean;
-  premios: Premio[];
+  premios: Premio[]; visitas: number;
 };
 
 // Programa "Trae a tu amiga": por cada madrina (referidos_codigo), las amigas que
@@ -22,7 +22,7 @@ type Madrina = {
 export async function GET() {
   if (!(await isAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const [codigosRes, bonosRes, iscrRes, mensualRes, premiosRes] = await Promise.all([
+  const [codigosRes, bonosRes, iscrRes, mensualRes, premiosRes, visitasRes] = await Promise.all([
     supabaseAdmin.from("referidos_codigo").select("codigo, email, nombre"),
     supabaseAdmin.from("bonos")
       .select("nombre, email, referido_por, created_at, estado, precio_pagado")
@@ -36,8 +36,13 @@ export async function GET() {
       .not("stripe_customer_id", "is", null),
     supabaseAdmin.from("premios_referido")
       .select("madrina_codigo, tipo, detalle, importe_cent, created_at"),
+    supabaseAdmin.from("referido_visitas").select("codigo"),
   ]);
   if (codigosRes.error) return NextResponse.json({ error: codigosRes.error.message }, { status: 500 });
+
+  // Visitas al enlace por código (funnel).
+  const visitasPorCodigo = new Map<string, number>();
+  for (const v of (visitasRes.data ?? [])) visitasPorCodigo.set(v.codigo, (visitasPorCodigo.get(v.codigo) ?? 0) + 1);
 
   // Emails que tienen una mensualidad activa en Stripe.
   const emailsMensualidad = new Set<string>();
@@ -59,6 +64,7 @@ export async function GET() {
       amigas: [], total: 0, amigasMensualidad: 0,
       tieneMensualidad: emailsMensualidad.has((c.email ?? "").toLowerCase()),
       premios: premiosPorCodigo.get(c.codigo) ?? [],
+      visitas: visitasPorCodigo.get(c.codigo) ?? 0,
     });
   }
 
@@ -100,16 +106,23 @@ export async function GET() {
   const premiosPagados = (premiosRes.data ?? []).reduce((s, p) => s + (Number(p.importe_cent) || 0), 0) / 100;
   const amigasBono = madrinas.reduce((s, m) => s + m.amigas.filter((a) => a.via === "bono").length, 0);
   const amigasMensualidad = madrinas.reduce((s, m) => s + m.amigas.filter((a) => a.via === "mensualidad").length, 0);
+  // Funnel: visitas al enlace (solo códigos existentes) y conversión a compra.
+  let visitas = 0;
+  for (const [cod, n] of visitasPorCodigo) if (porCodigo.has(cod)) visitas += n;
+  const amigasTraidas = madrinas.reduce((s, m) => s + m.total, 0);
+  const conversion = visitas > 0 ? Math.round((amigasTraidas / visitas) * 100) : 0;
 
   const resumen = {
     codigosEmitidos: (codigosRes.data ?? []).length,
-    amigasTraidas: madrinas.reduce((s, m) => s + m.total, 0),
+    amigasTraidas,
     amigasBono,
     amigasMensualidad,
     madrinasActivas: madrinas.length,
     embajadoras: madrinas.filter((m) => m.total >= 5).length,
     ingresosBonos,
     premiosPagados,
+    visitas,
+    conversion,
   };
 
   return NextResponse.json({ madrinas, resumen });

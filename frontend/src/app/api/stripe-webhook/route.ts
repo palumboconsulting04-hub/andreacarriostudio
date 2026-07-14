@@ -3,7 +3,7 @@ import crypto from "crypto";
 import type Stripe from "stripe";
 import { stripe, BONO_BILLING_ANCHOR, MATRICULA_PI_TIPO } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { procesarBonoPagado, descuentoCuotaAmiga, premiarMadrina } from "@/lib/bonos-server";
+import { procesarBonoPagado, descuentoCuotaAmiga, premiarMadrina, esClienteNueva, revertirPremiosReferido } from "@/lib/bonos-server";
 import { getCodigoReferido } from "@/lib/referidos";
 
 const FB_PIXEL_ID = "2024231855152441";
@@ -155,12 +155,16 @@ export async function POST(req: NextRequest) {
 async function anularBonoReembolsado(paymentIntentId: string) {
   const { data: bono } = await supabaseAdmin
     .from("bonos")
-    .select("id, estado")
+    .select("id, estado, email, referido_por")
     .eq("stripe_payment_intent_id", paymentIntentId)
     .maybeSingle();
   if (!bono || bono.estado === "reembolsado") return;
   await supabaseAdmin.from("reservas_clase").delete().eq("bono_id", bono.id);
   await supabaseAdmin.from("bonos").update({ creditos_restantes: 0, estado: "reembolsado" }).eq("id", bono.id);
+  // Si esta compra vino de un referido, revierte el premio que se dio a la madrina.
+  if (bono.referido_por && bono.email) {
+    try { await revertirPremiosReferido(bono.email); } catch (e) { console.error("reverso premios referido:", e); }
+  }
 }
 
 // Crea la suscripción mensual del bono con la tarjeta guardada en el pago de la
@@ -225,9 +229,12 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
 
   // Trae a tu amiga: el descuento de 10€ de la AMIGA se aplica ANTES de crear la
   // suscripción, para que el crédito caiga en su PRIMERA cuota (si el alta es posterior
-  // al 1-sep, la primera factura se cobra al crear la suscripción). No bloquea si falla.
+  // al 1-sep, la primera factura se cobra al crear la suscripción). Solo si la amiga es
+  // NUEVA (sin compras previas). No bloquea si falla.
   const referidoPor = rows.find((r) => r.referido_por)?.referido_por ?? null;
-  if (referidoPor) {
+  const amigaEmail = rows[0]?.email ?? "";
+  const amigaNueva = referidoPor ? await esClienteNueva(amigaEmail, { excluirPi: pi.id }).catch(() => false) : false;
+  if (referidoPor && amigaNueva) {
     try { await descuentoCuotaAmiga(customerId, referidoPor); }
     catch (e) { console.error("descuento amiga referido:", e); }
   }
@@ -244,8 +251,8 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
     .eq("stripe_payment_intent_id", pi.id);
 
   // Premio de la MADRINA (según su tipo). Va después: no depende del orden de la cuota.
-  if (referidoPor) {
-    try { await premiarMadrina(referidoPor, rows[0]?.email ?? ""); }
+  if (referidoPor && amigaNueva) {
+    try { await premiarMadrina(referidoPor, amigaEmail); }
     catch (e) { console.error("premio madrina referido:", e); }
   }
 
