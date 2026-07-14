@@ -191,11 +191,22 @@ function buildHtml(data: InscripcionEmailData): string {
 
           <!-- CTA -->
           <tr>
-            <td style="padding:0 32px 40px;text-align:center;">
+            <td style="padding:0 32px 24px;text-align:center;">
               <p style="margin:0 0 16px;font-size:13px;color:#56423d;">Únete a nuestro grupo de WhatsApp para estar al tanto de todo:</p>
               <a href="https://chat.whatsapp.com/Gi2SUxvVc0xCqtw8egpkQu?mode=gi_t" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:1px;padding:15px 36px;border-radius:9999px;">
                 Unirme al grupo &rarr;
               </a>
+            </td>
+          </tr>
+
+          <!-- Invita a una amiga -->
+          <tr>
+            <td style="padding:0 32px 40px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff6f2;border:1px solid #7d2b13;border-radius:16px;"><tr><td style="padding:20px 24px;text-align:center;">
+                <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#7d2b13;">Invita a una amiga y ganáis las dos 🤎</p>
+                <p style="margin:0 0 14px;font-size:13px;color:#56423d;line-height:1.6;">Cuando entre con tu código, tú y ella os lleváis un regalo: 1 clase o 10€ en tu cuota.</p>
+                <a href="https://reservas.andreacarriostudio.es/invita?email=${encodeURIComponent(data.email)}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:1px;padding:14px 34px;border-radius:9999px;">Ver mi código &rarr;</a>
+              </td></tr></table>
             </td>
           </tr>
 

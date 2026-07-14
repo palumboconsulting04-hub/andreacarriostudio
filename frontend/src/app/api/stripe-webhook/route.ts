@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 import { stripe, BONO_BILLING_ANCHOR, MATRICULA_PI_TIPO } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { procesarBonoPagado, descuentoCuotaAmiga, premiarMadrina } from "@/lib/bonos-server";
+import { getCodigoReferido } from "@/lib/referidos";
 
 const FB_PIXEL_ID = "2024231855152441";
 const sha256 = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
@@ -247,6 +248,11 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
     try { await premiarMadrina(referidoPor, rows[0]?.email ?? ""); }
     catch (e) { console.error("premio madrina referido:", e); }
   }
+
+  // Genera el código de referido de la nueva alumna, para que ella también pueda
+  // invitar a amigas (antes solo se generaba a las de bono). No bloquea si falla.
+  try { await getCodigoReferido(rows[0]?.email ?? "", rows[0]?.nome ?? ""); }
+  catch (e) { console.error("codigo referido mensualidad:", e); }
 
   // Conversión Purchase a Meta por servidor (CAPI). No bloquea si falla.
   await sendCapiPurchase(pi, rows[0]?.telefono ?? null);
