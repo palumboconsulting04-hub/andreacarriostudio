@@ -94,6 +94,23 @@ export async function crearBonoRegalo(email: string, nombre: string, disciplina:
   return data?.id ?? null;
 }
 
+// Premio de bienvenida para la amiga que entra por MENSUALIDAD (adultas barre/pilates):
+// +1 clase de la OTRA disciplina, para que pruebe algo nuevo (cross-sell). En niñas
+// (ballet) no hay bonos, así que no se da automático (se gestiona a mano). Solo debe
+// llamarse si la inscripción vino de un referido válido (iscrizioni.referido_por).
+export async function premioBienvenidaAmigaMensualidad(email: string, nombre: string, disciplinas: string[]): Promise<void> {
+  if (!email) return;
+  const set = new Set(disciplinas);
+  let regalo: string | null = null;
+  if (set.has("barre-fit") && !set.has("pilates-mat")) regalo = "pilates-mat";
+  else if (set.has("pilates-mat") && !set.has("barre-fit")) regalo = "barre-fit";
+  // Tiene ambas, o ninguna de barre/pilates (p. ej. niñas): no hay clase nueva que regalar.
+  if (!regalo) return;
+  const hoy = new Date().toISOString().slice(0, 10);
+  const validoDesde = hoy < BONO_INICIO_CURSO ? BONO_INICIO_CURSO : hoy;
+  await crearBonoRegalo(email, nombre, regalo, validoDesde);
+}
+
 // Aplica el premio de referido: +1 clase de regalo a la madrina y a la amiga, y avisa a la madrina.
 async function aplicarPremioReferido(emailMadrina: string, amigaEmail: string, amigaNombre: string, disciplina: string, validoDesde: string) {
   const { data: mad } = await supabaseAdmin

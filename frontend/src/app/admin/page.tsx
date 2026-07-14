@@ -5485,14 +5485,15 @@ export default function AdminDashboard() {
 
                 <div className="rounded-2xl p-4 text-xs leading-relaxed" style={{ backgroundColor: "#fff8f5", border: "1px solid #f0ddd5", color: "#89726c" }}>
                   <p className="font-bold uppercase tracking-widest mb-1" style={{ color: "#7d2b13" }}>Cómo se premia</p>
-                  Cuando una amiga compra un <strong>bono</strong>, la madrina y la amiga reciben <strong>+1 clase automática</strong> (ya funciona solo).
-                  Los premios de <strong>mensualidad</strong> y de <strong>Embajadora</strong> (15€ en la cuota, 1 mes gratis) los apruebas tú con un botón: se aplican solos en Stripe y quedan marcados como otorgados.
+                  Cuando una amiga entra con un <strong>bono</strong>, la madrina y la amiga reciben <strong>+1 clase automática</strong>. Si entra por <strong>mensualidad</strong> (barre/pilates), la amiga también se lleva <strong>+1 clase automática de la otra disciplina</strong> (para que la pruebe).
+                  Los premios de la <strong>madrina en mensualidad</strong> y los de <strong>Embajadora</strong> (15€ en la cuota, 1 mes gratis) los apruebas tú con un botón: se aplican solos en Stripe y quedan marcados como otorgados.
                   {(() => {
                     const casos: { caso: string; madrina: string; amiga: string; como: string; tono: "auto" | "mano" | "no" }[] = [
                       { caso: "La amiga saca un Bono de 5 o 12 clases con el código", madrina: "+1 clase", amiga: "+1 clase", como: "Automático", tono: "auto" },
                       { caso: "La amiga saca una clase suelta (1 crédito)", madrina: "—", amiga: "—", como: "Sin premio (mínimo Bono 5)", tono: "no" },
-                      { caso: "La amiga se apunta a mensualidad · la madrina paga mensualidad", madrina: "15€ en su próxima cuota", amiga: "—", como: "A mano (botón)", tono: "mano" },
-                      { caso: "La amiga se apunta a mensualidad · la madrina tiene bono", madrina: "+1 clase", amiga: "—", como: "A mano (botón)", tono: "mano" },
+                      { caso: "La amiga entra por mensualidad (barre/pilates) · madrina de mensualidad", madrina: "15€ en su próxima cuota", amiga: "+1 clase (otra disciplina)", como: "Amiga auto · madrina a mano", tono: "mano" },
+                      { caso: "La amiga entra por mensualidad (barre/pilates) · madrina de bono", madrina: "+1 clase", amiga: "+1 clase (otra disciplina)", como: "Amiga auto · madrina a mano", tono: "mano" },
+                      { caso: "La amiga entra por mensualidad de niñas (ballet)", madrina: "según su tipo (a mano)", amiga: "detalle a mano (no hay bonos de ballet)", como: "A mano", tono: "mano" },
                       { caso: "La madrina llega a 3 amigas (Embajadora)", madrina: "1 mes gratis", amiga: "—", como: "A mano (botón)", tono: "mano" },
                       { caso: "La madrina llega a 5 amigas (Embajadora Oro)", madrina: "Mes gratis + taller + detalle", amiga: "—", como: "A mano", tono: "mano" },
                       { caso: "Alguien usa su propio código", madrina: "—", amiga: "—", como: "No cuenta (autorreferido)", tono: "no" },
