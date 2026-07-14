@@ -48,7 +48,7 @@ export default function ComprarBono() {
         sessionStorage.setItem(key, "1");
         fetch("/api/referido/visita", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ codigo: ref, session_id: sessionStorage.getItem("acs_fsid") || null }),
+          body: JSON.stringify({ codigo: ref, session_id: sessionStorage.getItem("acs_fsid") || null, canal: params.get("c") || null }),
         }).catch(() => {});
       }
     } catch { /* sessionStorage no disponible */ }

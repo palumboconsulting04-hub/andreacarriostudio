@@ -94,7 +94,7 @@ export default function Home() {
         sessionStorage.setItem(key, "1");
         fetch("/api/referido/visita", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ codigo: ref, session_id: sessionIdRef.current || null }),
+          body: JSON.stringify({ codigo: ref, session_id: sessionIdRef.current || null, canal: p.get("c") || null }),
         }).catch(() => {});
       }
     }

@@ -5,9 +5,10 @@ import { useState } from "react";
 const C = { burgundy: "#7d2b13", cream: "#fff8f5", brown: "#56423d", muted: "#89726c", dark: "#25190f" };
 
 // El enlace lleva el código puesto: la amiga solo tiene que tocarlo (no teclea nada).
-const linkDe = (codigo: string) => `https://reservas.andreacarriostudio.es/comprar-bono?ref=${codigo}`;
-const textoDe = (codigo: string) =>
-  `Te invito a probar una clase conmigo en Andrea Carrió Studio 🤎 Danza & Pilates en Valencia (zona Alfahuir). Toca mi enlace y ven: ganamos las dos un regalo 👉 ${linkDe(codigo)}`;
+// El parámetro c= marca el canal (wa/ig/copy) para medir por dónde convierte mejor.
+const linkDe = (codigo: string, canal = "") => `https://reservas.andreacarriostudio.es/comprar-bono?ref=${codigo}${canal ? `&c=${canal}` : ""}`;
+const textoDe = (codigo: string, canal = "") =>
+  `Te invito a probar una clase conmigo en Andrea Carrió Studio 🤎 Danza & Pilates en Valencia (zona Alfahuir). Toca mi enlace y ven: ganamos las dos un regalo 👉 ${linkDe(codigo, canal)}`;
 
 // Dibuja texto con sombra para que se lea sobre la foto.
 function texto(ctx: CanvasRenderingContext2D, t: string, x: number, y: number, font: string, color: string, spacing = 0) {
@@ -85,10 +86,10 @@ export default function CompartirCodigo({ codigo }: { codigo: string }) {
   const [generando, setGenerando] = useState(false);
   const [instrucciones, setInstrucciones] = useState(false);
 
-  const whatsapp = () => window.open(`https://wa.me/?text=${encodeURIComponent(textoDe(codigo))}`, "_blank");
+  const whatsapp = () => window.open(`https://wa.me/?text=${encodeURIComponent(textoDe(codigo, "wa"))}`, "_blank");
 
   const copiar = async () => {
-    try { await navigator.clipboard.writeText(linkDe(codigo)); setCopiado(true); setTimeout(() => setCopiado(false), 1800); } catch { /* sin permiso */ }
+    try { await navigator.clipboard.writeText(linkDe(codigo, "copy")); setCopiado(true); setTimeout(() => setCopiado(false), 1800); } catch { /* sin permiso */ }
   };
 
   const instagram = async () => {
@@ -96,7 +97,7 @@ export default function CompartirCodigo({ codigo }: { codigo: string }) {
     setGenerando(true);
     try {
       // Copiamos el link primero (para que lo peguen en el sticker de enlace).
-      try { await navigator.clipboard.writeText(linkDe(codigo)); } catch {}
+      try { await navigator.clipboard.writeText(linkDe(codigo, "ig")); } catch {}
       const blob = await generarImagenStory();
       const file = new File([blob], "andrea-carrio-studio.jpg", { type: "image/jpeg" });
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean; share?: (d: ShareData) => Promise<void> };

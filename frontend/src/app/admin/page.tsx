@@ -833,7 +833,7 @@ export default function AdminDashboard() {
   type AmigaRef = { nombre: string; email: string; via: "bono" | "mensualidad"; fecha: string; estado: string };
   type PremioRef = { tipo: string; detalle: string; importeCent: number | null; fecha: string };
   type MadrinaRef = { codigo: string; nombre: string; email: string; amigas: AmigaRef[]; total: number; amigasMensualidad: number; tieneMensualidad: boolean; premios: PremioRef[]; visitas: number };
-  type ResumenRef = { codigosEmitidos: number; amigasTraidas: number; amigasBono: number; amigasMensualidad: number; madrinasActivas: number; embajadoras: number; ingresosBonos: number; premiosPagados: number; visitas: number; conversion: number };
+  type ResumenRef = { codigosEmitidos: number; amigasTraidas: number; amigasBono: number; amigasMensualidad: number; madrinasActivas: number; embajadoras: number; ingresosBonos: number; premiosPagados: number; visitas: number; conversion: number; canales: { wa: number; ig: number; copy: number; directo: number }; semanas: { label: string; n: number }[] };
   const [refMadrinas, setRefMadrinas] = useState<MadrinaRef[]>([]);
   const [refResumen, setRefResumen] = useState<ResumenRef | null>(null);
   const [refOtorgando, setRefOtorgando] = useState<string | null>(null); // `${codigo}:${tipo}` en curso
@@ -5125,6 +5125,25 @@ export default function AdminDashboard() {
                       <span className="text-xs" style={{ color: "#56423d" }}><strong style={{ color: "#7d2b13" }}>{refResumen.amigasTraidas}</strong> compraron</span>
                       <span style={{ color: "#bcb0ab" }}>→</span>
                       <span className="text-xs font-bold" style={{ color: "#2e7d32" }}>{refResumen.conversion}% conversión</span>
+                    </div>
+                    <div className="rounded-xl p-3 mt-2.5 text-center" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
+                      <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "#89726c" }}>Por dónde llegan</p>
+                      <p className="text-xs" style={{ color: "#56423d" }}>WhatsApp <strong style={{ color: "#7d2b13" }}>{refResumen.canales.wa}</strong> · Instagram <strong style={{ color: "#7d2b13" }}>{refResumen.canales.ig}</strong> · Copiado <strong style={{ color: "#7d2b13" }}>{refResumen.canales.copy}</strong> · Directo <strong style={{ color: "#7d2b13" }}>{refResumen.canales.directo}</strong></p>
+                    </div>
+                    <div className="rounded-xl p-3 mt-2.5" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
+                      <p className="text-[11px] font-bold uppercase tracking-widest mb-2 text-center" style={{ color: "#89726c" }}>Amigas por semana</p>
+                      <div className="flex items-end justify-between gap-1.5" style={{ height: "64px" }}>
+                        {(() => {
+                          const max = Math.max(1, ...refResumen.semanas.map(s => s.n));
+                          return refResumen.semanas.map((s, i) => (
+                            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1" style={{ height: "100%" }}>
+                              <span className="text-[10px] font-bold" style={{ color: "#7d2b13" }}>{s.n || ""}</span>
+                              <div className="w-full rounded-t" style={{ height: `${(s.n / max) * 100}%`, minHeight: s.n ? "4px" : "0", backgroundColor: "#7d2b13" }} />
+                              <span className="text-[9px]" style={{ color: "#bcb0ab" }}>{s.label}</span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
                     </div>
                     {refMadrinas.length > 0 && (
                       <div className="mt-4">

@@ -99,7 +99,7 @@ export default function Invita() {
 
             <div className="rounded-3xl p-6" style={{ backgroundColor: "#fff8e1", border: "1px solid #b8860b" }}>
               <p className="text-sm font-bold mb-1" style={{ color: "#b8860b", fontFamily: fSans }}>👑 Sé Embajadora del estudio</p>
-              <p className="text-xs" style={{ color: C.brown }}>Trae <strong>5 amigas</strong> y tienes <strong>1 mes gratis</strong> + privilegios de Embajadora: prioridad en las reservas, sorpresas y tu sitio en el muro de Embajadoras.</p>
+              <p className="text-xs" style={{ color: C.brown }}>Trae <strong>5 amigas</strong> y tienes <strong>1 mes gratis</strong>, un detalle especial de Andrea y sorpresas para las Embajadoras.</p>
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px]" style={{ color: C.muted }}>Vas por {Math.min(data.totalAmigas, 5)} de 5</span>

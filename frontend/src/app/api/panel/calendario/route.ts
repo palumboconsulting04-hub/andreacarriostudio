@@ -69,7 +69,7 @@ export async function GET() {
       const [aB, aI, pr] = await Promise.all([
         supabaseAdmin.from("bonos").select("email").eq("referido_por", codigo),
         supabaseAdmin.from("iscrizioni").select("email").eq("referido_por", codigo),
-        supabaseAdmin.from("premios_referido").select("detalle").eq("madrina_codigo", codigo),
+        supabaseAdmin.from("premios_referido").select("detalle").eq("madrina_codigo", codigo).neq("tipo", "aviso_embajadora"),
       ]);
       totalAmigas = new Set([
         ...(aB.data ?? []).map(r => (r.email ?? "").toLowerCase()),

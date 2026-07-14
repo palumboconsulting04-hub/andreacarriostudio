@@ -35,8 +35,9 @@ export async function GET() {
       .select("email, stripe_customer_id")
       .not("stripe_customer_id", "is", null),
     supabaseAdmin.from("premios_referido")
-      .select("madrina_codigo, tipo, detalle, importe_cent, created_at"),
-    supabaseAdmin.from("referido_visitas").select("codigo"),
+      .select("madrina_codigo, tipo, detalle, importe_cent, created_at")
+      .neq("tipo", "aviso_embajadora"),
+    supabaseAdmin.from("referido_visitas").select("codigo, canal"),
   ]);
   if (codigosRes.error) return NextResponse.json({ error: codigosRes.error.message }, { status: 500 });
 
@@ -112,6 +113,29 @@ export async function GET() {
   const amigasTraidas = madrinas.reduce((s, m) => s + m.total, 0);
   const conversion = visitas > 0 ? Math.round((amigasTraidas / visitas) * 100) : 0;
 
+  // Visitas por canal (solo códigos existentes): WhatsApp / Instagram / Copiar / Directo.
+  const canales = { wa: 0, ig: 0, copy: 0, directo: 0 };
+  for (const v of (visitasRes.data ?? [])) {
+    if (!porCodigo.has(v.codigo)) continue;
+    const c = (v.canal ?? "").toLowerCase();
+    if (c === "wa") canales.wa++;
+    else if (c === "ig") canales.ig++;
+    else if (c === "copy") canales.copy++;
+    else canales.directo++;
+  }
+
+  // Tendencia: amigas traídas en las últimas 6 semanas.
+  const todasAmigas = madrinas.flatMap((m) => m.amigas);
+  const hoy = new Date();
+  const semanas: { label: string; n: number }[] = [];
+  for (let w = 5; w >= 0; w--) {
+    const fin = new Date(hoy); fin.setUTCDate(hoy.getUTCDate() - w * 7);
+    const ini = new Date(fin); ini.setUTCDate(fin.getUTCDate() - 6);
+    const iniS = ini.toISOString().slice(0, 10), finS = fin.toISOString().slice(0, 10);
+    const n = todasAmigas.filter((a) => a.fecha >= iniS && a.fecha <= finS).length;
+    semanas.push({ label: `${+iniS.slice(8, 10)}/${+iniS.slice(5, 7)}`, n });
+  }
+
   const resumen = {
     codigosEmitidos: (codigosRes.data ?? []).length,
     amigasTraidas,
@@ -123,6 +147,8 @@ export async function GET() {
     premiosPagados,
     visitas,
     conversion,
+    canales,
+    semanas,
   };
 
   return NextResponse.json({ madrinas, resumen });

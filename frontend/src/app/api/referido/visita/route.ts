@@ -7,9 +7,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const codigo = (body?.codigo ?? "").toString().trim().toUpperCase().slice(0, 20);
   const session_id = ((body?.session_id ?? "").toString().slice(0, 80)) || null;
+  const canal = ((body?.canal ?? "").toString().toLowerCase().slice(0, 20)) || null;
   if (!codigo) return NextResponse.json({ ok: false });
   try {
-    await supabaseAdmin.from("referido_visitas").insert({ codigo, session_id });
+    await supabaseAdmin.from("referido_visitas").insert({ codigo, session_id, canal });
   } catch { /* no bloquea la página */ }
   return NextResponse.json({ ok: true });
 }

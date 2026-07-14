@@ -178,6 +178,29 @@ export async function revertirPremiosReferido(amigaEmail: string) {
   await supabaseAdmin.from("premios_referido").delete().ilike("amiga_email", em);
 }
 
+const TOPE_PREMIOS_MES = 10;   // máx premios por madrina al mes (anti-abuso)
+const AMIGAS_EMBAJADORA = 5;   // 5 amigas → mes gratis (aviso a Andrea)
+
+// Nº de amigas distintas que ha traído un código (bono + mensualidad).
+async function contarAmigas(codigo: string): Promise<number> {
+  const [b, i] = await Promise.all([
+    supabaseAdmin.from("bonos").select("email").eq("referido_por", codigo),
+    supabaseAdmin.from("iscrizioni").select("email").eq("referido_por", codigo),
+  ]);
+  return new Set([
+    ...(b.data ?? []).map((r) => (r.email ?? "").toLowerCase()),
+    ...(i.data ?? []).map((r) => (r.email ?? "").toLowerCase()),
+  ].filter(Boolean)).size;
+}
+
+// Aviso por email a Andrea (mismo buzón que las compras).
+async function avisoAdmin(asunto: string, cuerpoHtml: string) {
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+  if (!adminEmail) return;
+  const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
+  await resend.emails.send({ from, to: adminEmail, subject: asunto, html: `<div style="font-family:Arial,sans-serif;color:#333;max-width:520px;margin:0 auto;padding:24px;">${cuerpoHtml}</div>` });
+}
+
 // Premia a la MADRINA según SU tipo: 10€ en su cuota (mensualidad) o 1 clase (bono).
 export async function premiarMadrina(codigo: string, amigaEmail: string) {
   const { data: mad } = await supabaseAdmin
@@ -185,6 +208,17 @@ export async function premiarMadrina(codigo: string, amigaEmail: string) {
   const emailMadrina = (mad?.email ?? "").toLowerCase();
   if (!emailMadrina || emailMadrina === amigaEmail.toLowerCase()) return; // sin madrina o autorreferido
   const nombreMadrina = mad?.nombre ?? "";
+
+  // Tope anti-abuso: no más de TOPE_PREMIOS_MES premios por madrina al mes.
+  const inicioMes = new Date(); inicioMes.setUTCDate(1); inicioMes.setUTCHours(0, 0, 0, 0);
+  const { count: premiosMes } = await supabaseAdmin
+    .from("premios_referido").select("id", { count: "exact", head: true })
+    .eq("madrina_codigo", codigo).in("tipo", ["cuota10", "clase"]).gte("created_at", inicioMes.toISOString());
+  if ((premiosMes ?? 0) >= TOPE_PREMIOS_MES) {
+    try { await avisoAdmin(`Posible abuso de referidos — ${nombreMadrina || emailMadrina}`, `<h2 style="color:#7d2b13;margin:0 0 8px;">Revisar referidos</h2><p><strong>${nombreMadrina || emailMadrina}</strong> (código ${codigo}) ha superado ${TOPE_PREMIOS_MES} premios este mes. No se ha aplicado el premio de esta amiga; revísalo por si acaso.</p>`); } catch (e) { console.error("aviso abuso:", e); }
+    return;
+  }
+
   const customerId = await customerDeMensualidad(emailMadrina);
   if (customerId) {
     const txn = await stripe.customers.createBalanceTransaction(customerId, {
@@ -199,6 +233,19 @@ export async function premiarMadrina(codigo: string, amigaEmail: string) {
     await registrarPremio(codigo, emailMadrina, "clase", "+1 clase", null, null, null, bonoId, amigaEmail);
     try { await enviarEmailPremioMadrina(emailMadrina, nombreMadrina, "1 clase de regalo"); } catch (e) { console.error("email premio madrina:", e); }
   }
+
+  // ¿Ha llegado a Embajadora (5 amigas)? Avisa a Andrea una sola vez para el mes gratis.
+  try {
+    if (await contarAmigas(codigo) >= AMIGAS_EMBAJADORA) {
+      const { count: yaAviso } = await supabaseAdmin
+        .from("premios_referido").select("id", { count: "exact", head: true })
+        .eq("madrina_codigo", codigo).eq("tipo", "aviso_embajadora");
+      if (!(yaAviso ?? 0)) {
+        await registrarPremio(codigo, emailMadrina, "aviso_embajadora", "5 amigas", null, null, null, null, null);
+        await avisoAdmin(`Nueva Embajadora — ${nombreMadrina || emailMadrina}`, `<h2 style="color:#b8860b;margin:0 0 8px;">👑 Nueva Embajadora</h2><p><strong>${nombreMadrina || emailMadrina}</strong> (código ${codigo}) ha llegado a <strong>5 amigas</strong>. Otórgale su <strong>1 mes gratis</strong> desde Admin → Referidos.</p>`);
+      }
+    }
+  } catch (e) { console.error("aviso embajadora:", e); }
 }
 
 // La amiga entra con un BONO 5/12 → +1 clase; y se premia a la madrina según su tipo.

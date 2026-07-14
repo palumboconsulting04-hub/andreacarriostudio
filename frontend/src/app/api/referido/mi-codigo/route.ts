@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   const [aBono, aIscr, premiosRes] = await Promise.all([
     supabaseAdmin.from("bonos").select("email").eq("referido_por", codigo),
     supabaseAdmin.from("iscrizioni").select("email").eq("referido_por", codigo),
-    supabaseAdmin.from("premios_referido").select("detalle, created_at").eq("madrina_codigo", codigo).order("created_at", { ascending: false }),
+    supabaseAdmin.from("premios_referido").select("detalle, created_at").eq("madrina_codigo", codigo).neq("tipo", "aviso_embajadora").order("created_at", { ascending: false }),
   ]);
   const totalAmigas = new Set([
     ...(aBono.data ?? []).map((r) => (r.email ?? "").toLowerCase()),
