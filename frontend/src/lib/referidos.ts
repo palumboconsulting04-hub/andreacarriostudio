@@ -1,4 +1,15 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { crearToken } from "@/lib/panel-auth";
+
+const APP_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://reservas.andreacarriostudio.es";
+
+// Enlace mágico a /invita: abre el código de la alumna sin pedirle login (token
+// firmado del email, válido 1 año). Para meterlo en los emails.
+export function enlaceInvita(email: string): string {
+  const em = (email || "").toLowerCase().trim();
+  const t = crearToken(em, 365 * 24 * 3600);
+  return `${APP_URL}/invita?email=${encodeURIComponent(em)}&t=${encodeURIComponent(t)}`;
+}
 
 // Código legible a partir del nombre: mayúsculas, sin acentos, solo letras.
 function base(nombre: string): string {

@@ -15,26 +15,18 @@ export default function Invita() {
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [autocargando, setAutocargando] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<Data | null>(null);
 
-  useEffect(() => {
-    const e = new URLSearchParams(window.location.search).get("email");
-    if (e) setEmail(e);
-  }, []);
-
-  const emailOk = /\S+@\S+\.\S+/.test(email.trim());
-  const puede = emailOk && !!nombre.trim() && !cargando;
-
-  const ver = async () => {
-    if (!puede) return;
+  const verCon = async (em: string, nom: string, tok = "") => {
     setCargando(true);
     setError("");
     try {
       const res = await fetch("/api/referido/mi-codigo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), nombre: nombre.trim() }),
+        body: JSON.stringify({ email: em.trim(), nombre: nom.trim(), token: tok }),
       });
       const d = await res.json();
       if (!res.ok) setError(d.error ?? "No se pudo obtener tu código.");
@@ -43,8 +35,22 @@ export default function Invita() {
       setError("No se pudo conectar. Inténtalo de nuevo.");
     } finally {
       setCargando(false);
+      setAutocargando(false);
     }
   };
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const e = p.get("email");
+    const t = p.get("t");
+    if (e) setEmail(e);
+    // Enlace mágico: si trae email + token, abre el código directo (sin login).
+    if (e && t) { setAutocargando(true); verCon(e, "", t); }
+  }, []);
+
+  const emailOk = /\S+@\S+\.\S+/.test(email.trim());
+  const puede = emailOk && !!nombre.trim() && !cargando;
+  const ver = () => { if (puede) verCon(email, nombre); };
 
   return (
     <div style={{ backgroundColor: C.bg, minHeight: "100vh" }} className="px-4 py-12">
@@ -52,7 +58,9 @@ export default function Invita() {
         <h1 className="text-3xl sm:text-4xl text-center mb-2" style={{ fontFamily: fSerif, color: C.burgundy }}>Invita a una amiga</h1>
         <p className="text-center text-sm mb-8" style={{ color: C.muted }}>Comparte tu código y ganáis las dos.</p>
 
-        {!data ? (
+        {!data && autocargando ? (
+          <div className="rounded-3xl p-8 text-center" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.muted }}>Un momento…</div>
+        ) : !data ? (
           <div className="rounded-3xl p-6 shadow-sm space-y-3" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
             <p className="text-sm mb-1" style={{ color: C.brown }}>Entra con el correo y el nombre de tu inscripción o de tu bono.</p>
             <input style={inputStyle} placeholder="Tu email *" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
