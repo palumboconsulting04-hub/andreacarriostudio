@@ -192,12 +192,14 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
   // Idempotencia: si ya tienen suscripción, no crear otra.
   if (rows.some((r) => r.stripe_subscription_id)) return;
 
-  // Precio recurrente (Stripe) de cada plan inscrito.
+  // Precio recurrente (Stripe) de cada plan inscrito + su cuota en € (para poder
+  // cobrar el mes en curso, entero o a mitad, en altas a mitad de curso).
   const items: { price: string }[] = [];
+  let cuotaCent = 0;
   for (const r of rows) {
     const { data: plan } = await supabaseAdmin
       .from("piani")
-      .select("stripe_price_id")
+      .select("stripe_price_id, prezzo")
       .eq("id", r.piano_id)
       .eq("disciplina_id", r.disciplina_id)
       .single();
@@ -205,6 +207,7 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
       throw new Error(`Plan sin stripe_price_id: ${r.piano_id}/${r.disciplina_id}`);
     }
     items.push({ price: plan.stripe_price_id });
+    cuotaCent += Math.round((plan.prezzo ?? 0) * 100);
   }
 
   // La tarjeta queda como predeterminada del cliente y de la suscripción.
@@ -223,8 +226,28 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
     default_payment_method: paymentMethodId,
     metadata: { origen: "inscripcion-bono" },
   };
+  // Cobro del mes EN CURSO para altas a mitad de curso (después del 1-sep). Se cobra
+  // aparte ahora: MEDIA cuota si se apunta el día 15 o después (solo verá ~15 días),
+  // si no, cuota entera. Las cuotas llenas siguientes caen el día 1 de cada mes.
+  let cobrarParcialCent = 0;
+  let parcialDesc = "";
   if (BONO_BILLING_ANCHOR > ahora + 3600) {
+    // Antes del 1-sep: prueba hasta el 1-sep; la primera cuota LLENA cae el 1-sep.
     subParams.trial_end = BONO_BILLING_ANCHOR;
+  } else {
+    // Alta a mitad de curso: prueba hasta el día 1 del mes siguiente (para que las
+    // cuotas llenas caigan el día 1) y el mes en curso se cobra ahora.
+    const madridNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
+    const dia = madridNow.getDate();
+    const primeroSiguiente = new Date(madridNow.getFullYear(), madridNow.getMonth() + 1, 1);
+    subParams.trial_end = Math.floor(primeroSiguiente.getTime() / 1000);
+    if (cuotaCent > 0) {
+      const mitad = dia >= 15;
+      cobrarParcialCent = mitad ? Math.round(cuotaCent / 2) : cuotaCent;
+      parcialDesc = mitad
+        ? "Media cuota del mes en curso (alta a partir del día 15) — Andrea Carrió Studio"
+        : "Cuota del mes en curso — Andrea Carrió Studio";
+    }
   }
 
   // Trae a tu amiga: el descuento de 10€ de la AMIGA se aplica ANTES de crear la
@@ -249,6 +272,25 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
       stripe_customer_id: customerId,
     })
     .eq("stripe_payment_intent_id", pi.id);
+
+  // Cobra el mes en curso (media o entera) en altas a mitad de curso. Con la tarjeta
+  // ya guardada (off-session). No bloquea el alta si falla; queda el error en el log.
+  if (cobrarParcialCent > 0) {
+    try {
+      await stripe.paymentIntents.create({
+        amount: cobrarParcialCent,
+        currency: "eur",
+        customer: customerId,
+        payment_method: paymentMethodId,
+        off_session: true,
+        confirm: true,
+        description: parcialDesc,
+        metadata: { tipo: "cuota-mes-en-curso", email: rows[0]?.email ?? "" },
+      });
+    } catch (e) {
+      console.error("cobro mes en curso (parcial) falló:", e);
+    }
+  }
 
   // Premio de la MADRINA (según su tipo). Va después: no depende del orden de la cuota.
   if (referidoPor && amigaNueva) {
