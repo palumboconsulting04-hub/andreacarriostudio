@@ -32,6 +32,54 @@ const hoyStr = () => fStr(new Date());
 const fechaLabel = (fecha: string, dia: string) => { const [, m, d] = fecha.split("-"); return `${dia} ${+d} de ${MESES[+m - 1]}`; };
 const caducaLabel = (f: string) => { const [y, m, d] = f.split("-"); return `${+d}/${+m}/${y.slice(2)}`; };
 const inicioLabel = (f: string) => new Date(`${f}T00:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
+const primerDeMes = (fecha: string) => { const [y, m] = fecha.split("-"); return new Date(+y, +m - 1, 1); };
+const INI_DIA = ["L", "M", "X", "J", "V", "S", "D"];
+
+// Vista de mes: cuadrícula del mes con un puntito en los días que tienen clase.
+// La comparten los dos calendarios (bono y mensualidad); cada uno pinta debajo
+// las clases del día que se toque.
+function MesGrid({ mesCur, irMes, minMes, maxMes, hayClase, diaSel, onDia, onSemana }: {
+  mesCur: Date; irMes: (d: Date) => void; minMes: Date; maxMes: Date;
+  hayClase: (f: string) => boolean; diaSel: string; onDia: (f: string) => void; onSemana: () => void;
+}) {
+  const y = mesCur.getFullYear(), mo = mesCur.getMonth();
+  const offset = (new Date(y, mo, 1).getDay() + 6) % 7; // lunes = 0
+  const nDias = new Date(y, mo + 1, 0).getDate();
+  const celdas: (string | null)[] = [];
+  for (let i = 0; i < offset; i++) celdas.push(null);
+  for (let d = 1; d <= nDias; d++) celdas.push(fStr(new Date(y, mo, d)));
+  while (celdas.length % 7 !== 0) celdas.push(null);
+  const puedePrev = new Date(y, mo, 1) > minMes;
+  const puedeNext = new Date(y, mo, 1) < maxMes;
+  const arrow = "w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none";
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-3">
+        <button onClick={() => puedePrev && irMes(new Date(y, mo - 1, 1))} disabled={!puedePrev} className={arrow} style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: puedePrev ? 1 : 0.3 }}>‹</button>
+        <p className="flex-1 text-center text-sm font-bold capitalize" style={{ color: C.burgundy, fontFamily: fSans }}>{MESES[mo]} {y}</p>
+        <button onClick={() => puedeNext && irMes(new Date(y, mo + 1, 1))} disabled={!puedeNext} className={arrow} style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: puedeNext ? 1 : 0.3 }}>›</button>
+        <button onClick={onSemana} className="px-3 h-9 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: C.blush, color: C.burgundy, border: `1px solid ${C.border}` }}>Semana</button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {INI_DIA.map((d, i) => <p key={i} className="text-[10px] font-bold text-center" style={{ color: C.muted }}>{d}</p>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-4">
+        {celdas.map((f, i) => {
+          if (!f) return <div key={i} />;
+          const tiene = hayClase(f);
+          const activo = f === diaSel;
+          return (
+            <button key={i} onClick={() => tiene && onDia(f)} disabled={!tiene} className="aspect-square rounded-lg flex flex-col items-center justify-center"
+              style={{ backgroundColor: activo ? C.burgundy : (tiene ? "#fff" : "transparent"), border: `1.5px solid ${tiene ? (activo ? C.burgundy : C.border) : "transparent"}`, cursor: tiene ? "pointer" : "default" }}>
+              <span className="text-xs font-bold leading-none" style={{ color: activo ? C.cream : C.dark, opacity: tiene ? 1 : 0.4 }}>{+f.slice(8)}</span>
+              <span className="mt-0.5 h-1 flex items-center justify-center">{tiene && !activo && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: C.burgundy }} />}</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
 
 export default function MisClasesPanel() {
   const params = useSearchParams();
@@ -45,6 +93,11 @@ export default function MisClasesPanel() {
   const [diaSel, setDiaSel] = useState("");
   const [semana, setSemana] = useState(0);
   const [semanaM, setSemanaM] = useState(0);
+  const [vistaMes, setVistaMes] = useState(false);
+  const [mesCur, setMesCur] = useState<Date | null>(null);
+  const [vistaMesM, setVistaMesM] = useState(false);
+  const [mesCurM, setMesCurM] = useState<Date | null>(null);
+  const [diaMesM, setDiaMesM] = useState("");
   const [msg, setMsg] = useState("");
   const [accion, setAccion] = useState(false);
   const [confirmar, setConfirmar] = useState<Clase | null>(null);
@@ -272,6 +325,21 @@ export default function MisClasesPanel() {
     setDiaSel(dsem.find(f => porFecha[f]) ?? "");
   };
 
+  // Vista de mes del calendario de bono.
+  const minMesB = fechas.length ? primerDeMes(fechas[0]) : primerDeMes(hoyStr());
+  const maxMesB = fechas.length ? primerDeMes(fechas[fechas.length - 1]) : minMesB;
+  const selDiaMesB = (f: string) => { setDiaSel(f); setSemana(Math.round((lunesDe(new Date(f + "T00:00")).getTime() - lunesBase.getTime()) / MSW)); };
+  const irMesB = (nuevo: Date) => {
+    setMesCur(nuevo);
+    const primera = fechas.find(f => { const d = new Date(f + "T00:00"); return d.getMonth() === nuevo.getMonth() && d.getFullYear() === nuevo.getFullYear(); });
+    if (primera) selDiaMesB(primera);
+  };
+  const abrirMesB = () => {
+    const a = diaSel && porFecha[diaSel] ? new Date(diaSel + "T00:00") : lunesSem;
+    irMesB(new Date(a.getFullYear(), a.getMonth(), 1));
+    setVistaMes(true);
+  };
+
   // ── Calendario de mensualidad: TODAS sus clases fijas de la semana visible ──
   const porFechaM: Record<string, Mensual[]> = {};
   for (const m of mensualidad) (porFechaM[m.fecha] ??= []).push(m);
@@ -286,38 +354,69 @@ export default function MisClasesPanel() {
   // Las clases de la semana visible, agrupadas por día (así ve su horario completo).
   const semanaClasesM = dias7M.map(f => ({ fecha: f, clases: porFechaM[f] ?? [] })).filter(x => x.clases.length > 0);
 
+  // Vista de mes del calendario de mensualidad.
+  const minMesM = fechasM.length ? primerDeMes(fechasM[0]) : primerDeMes(hoyStr());
+  const maxMesM = fechasM.length ? primerDeMes(fechasM[fechasM.length - 1]) : minMesM;
+  const irMesM = (nuevo: Date) => {
+    setMesCurM(nuevo);
+    const primera = fechasM.find(f => { const d = new Date(f + "T00:00"); return d.getMonth() === nuevo.getMonth() && d.getFullYear() === nuevo.getFullYear(); });
+    setDiaMesM(primera ?? "");
+  };
+  const abrirMesM = () => {
+    const a = diaMesM && porFechaM[diaMesM] ? new Date(diaMesM + "T00:00") : lunesSemM;
+    irMesM(new Date(a.getFullYear(), a.getMonth(), 1));
+    setVistaMesM(true);
+  };
+
+  const cardMensual = (m: Mensual) => (
+    <div key={`${m.iscrizione_id}|${m.orario_id}|${m.fecha}`} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: m.avisado ? "#fff" : C.blush, border: `1px solid ${m.avisado ? C.border : C.burgundy}` }}>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold" style={{ color: m.avisado ? C.muted : C.dark, fontFamily: fSans, textDecoration: m.avisado ? "line-through" : "none" }}>{m.hora}–{m.horaFin} · {DISC[m.disciplina_id] ?? m.disciplina_id}</p>
+        <p className="text-xs" style={{ color: m.avisado ? "#b71c1c" : C.muted }}>{m.avisado ? "Avisaste que no vas" : "Tu clase"}</p>
+      </div>
+      {m.avisado ? (
+        <button onClick={() => avisarAusencia(m, true)} disabled={!!avisando} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fff", color: C.burgundy, border: `1px solid ${C.burgundy}` }}>Sí que voy</button>
+      ) : (
+        <button onClick={() => avisarAusencia(m, false)} disabled={!!avisando} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>No puedo ir</button>
+      )}
+    </div>
+  );
+
   const calendarioMensual = (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setSemanaM(s => Math.max(0, s - 1))} disabled={semanaM <= 0} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semanaM <= 0 ? 0.3 : 1 }}>‹</button>
-        <p className="text-sm font-bold" style={{ color: C.burgundy, fontFamily: fSans }}>{rangoM}</p>
-        <button onClick={() => setSemanaM(s => Math.min(maxSemanaM, s + 1))} disabled={semanaM >= maxSemanaM} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semanaM >= maxSemanaM ? 0.3 : 1 }}>›</button>
-      </div>
-      {semanaClasesM.length === 0 ? (
-        <p className="text-sm text-center py-6" style={{ color: C.muted }}>Ningún día de esta semana tiene clase. Usa ‹ › para ver otras semanas.</p>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {semanaClasesM.map(({ fecha, clases }) => (
-            <div key={fecha}>
-              <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.burgundy }}>{fechaLabel(fecha, clases[0].dia)}</p>
-              <div className="flex flex-col gap-2">
-                {clases.map(m => (
-                  <div key={`${m.iscrizione_id}|${m.orario_id}|${m.fecha}`} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: m.avisado ? "#fff" : C.blush, border: `1px solid ${m.avisado ? C.border : C.burgundy}` }}>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: m.avisado ? C.muted : C.dark, fontFamily: fSans, textDecoration: m.avisado ? "line-through" : "none" }}>{m.hora}–{m.horaFin} · {DISC[m.disciplina_id] ?? m.disciplina_id}</p>
-                      <p className="text-xs" style={{ color: m.avisado ? "#b71c1c" : C.muted }}>{m.avisado ? "Avisaste que no vas" : "Tu clase"}</p>
-                    </div>
-                    {m.avisado ? (
-                      <button onClick={() => avisarAusencia(m, true)} disabled={!!avisando} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fff", color: C.burgundy, border: `1px solid ${C.burgundy}` }}>Sí que voy</button>
-                    ) : (
-                      <button onClick={() => avisarAusencia(m, false)} disabled={!!avisando} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>No puedo ir</button>
-                    )}
-                  </div>
-                ))}
-              </div>
+      {vistaMesM && mesCurM ? (
+        <>
+          <MesGrid mesCur={mesCurM} irMes={irMesM} minMes={minMesM} maxMes={maxMesM} hayClase={f => !!porFechaM[f]} diaSel={diaMesM} onDia={setDiaMesM} onSemana={() => setVistaMesM(false)} />
+          {diaMesM && porFechaM[diaMesM]?.length ? (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.burgundy }}>{fechaLabel(diaMesM, porFechaM[diaMesM][0].dia)}</p>
+              <div className="flex flex-col gap-2">{porFechaM[diaMesM].map(cardMensual)}</div>
             </div>
-          ))}
-        </div>
+          ) : (
+            <p className="text-sm text-center py-4" style={{ color: C.muted }}>Toca un día marcado para ver tu clase.</p>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="flex items-center gap-2 mb-4">
+            <button onClick={() => setSemanaM(s => Math.max(0, s - 1))} disabled={semanaM <= 0} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semanaM <= 0 ? 0.3 : 1 }}>‹</button>
+            <p className="flex-1 text-center text-sm font-bold" style={{ color: C.burgundy, fontFamily: fSans }}>{rangoM}</p>
+            <button onClick={() => setSemanaM(s => Math.min(maxSemanaM, s + 1))} disabled={semanaM >= maxSemanaM} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semanaM >= maxSemanaM ? 0.3 : 1 }}>›</button>
+            <button onClick={abrirMesM} className="px-3 h-9 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: C.blush, color: C.burgundy, border: `1px solid ${C.border}` }}>Mes</button>
+          </div>
+          {semanaClasesM.length === 0 ? (
+            <p className="text-sm text-center py-6" style={{ color: C.muted }}>Ningún día de esta semana tiene clase. Usa ‹ › o «Mes» para ver otras fechas.</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {semanaClasesM.map(({ fecha, clases }) => (
+                <div key={fecha}>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.burgundy }}>{fechaLabel(fecha, clases[0].dia)}</p>
+                  <div className="flex flex-col gap-2">{clases.map(cardMensual)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </>
   );
@@ -327,27 +426,34 @@ export default function MisClasesPanel() {
       <p className="text-sm text-center py-8" style={{ color: C.muted }}>No hay clases disponibles ahora mismo.</p>
     ) : (
       <>
-        <div className="flex items-center justify-between mb-3">
-          <button onClick={() => cambiarSemana(-1)} disabled={semana <= 0} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semana <= 0 ? 0.3 : 1 }}>‹</button>
-          <p className="text-sm font-bold" style={{ color: C.burgundy, fontFamily: fSans }}>{rango}</p>
-          <button onClick={() => cambiarSemana(1)} disabled={semana >= maxSemana} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semana >= maxSemana ? 0.3 : 1 }}>›</button>
-        </div>
-        <div className="grid grid-cols-7 gap-1.5 mb-4">
-          {dias7.map(dd => {
-            const tiene = !!porFecha[dd.fecha];
-            const activo = dd.fecha === diaSel;
-            return (
-              <button key={dd.fecha} onClick={() => tiene && setDiaSel(dd.fecha)} disabled={!tiene} className="rounded-xl py-2 text-center transition-all"
-                style={{ backgroundColor: activo ? C.burgundy : "#fff", border: `1.5px solid ${activo ? C.burgundy : C.border}`, opacity: tiene ? 1 : 0.4, cursor: tiene ? "pointer" : "default" }}>
-                <p className="text-[9px] font-bold uppercase" style={{ color: activo ? C.blush : C.muted }}>{dd.corto}</p>
-                <p className="text-sm font-bold leading-tight" style={{ color: activo ? C.cream : C.dark }}>{dd.num}</p>
-                <div className="h-1.5 flex justify-center items-center">{tiene && !activo && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: C.burgundy }} />}</div>
-              </button>
-            );
-          })}
-        </div>
+        {vistaMes && mesCur ? (
+          <MesGrid mesCur={mesCur} irMes={irMesB} minMes={minMesB} maxMes={maxMesB} hayClase={f => !!porFecha[f]} diaSel={diaSel} onDia={selDiaMesB} onSemana={() => setVistaMes(false)} />
+        ) : (
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <button onClick={() => cambiarSemana(-1)} disabled={semana <= 0} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semana <= 0 ? 0.3 : 1 }}>‹</button>
+              <p className="flex-1 text-center text-sm font-bold" style={{ color: C.burgundy, fontFamily: fSans }}>{rango}</p>
+              <button onClick={() => cambiarSemana(1)} disabled={semana >= maxSemana} className="w-9 h-9 rounded-full flex items-center justify-center text-xl leading-none" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.burgundy, opacity: semana >= maxSemana ? 0.3 : 1 }}>›</button>
+              <button onClick={abrirMesB} className="px-3 h-9 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: C.blush, color: C.burgundy, border: `1px solid ${C.border}` }}>Mes</button>
+            </div>
+            <div className="grid grid-cols-7 gap-1.5 mb-4">
+              {dias7.map(dd => {
+                const tiene = !!porFecha[dd.fecha];
+                const activo = dd.fecha === diaSel;
+                return (
+                  <button key={dd.fecha} onClick={() => tiene && setDiaSel(dd.fecha)} disabled={!tiene} className="rounded-xl py-2 text-center transition-all"
+                    style={{ backgroundColor: activo ? C.burgundy : "#fff", border: `1.5px solid ${activo ? C.burgundy : C.border}`, opacity: tiene ? 1 : 0.4, cursor: tiene ? "pointer" : "default" }}>
+                    <p className="text-[9px] font-bold uppercase" style={{ color: activo ? C.blush : C.muted }}>{dd.corto}</p>
+                    <p className="text-sm font-bold leading-tight" style={{ color: activo ? C.cream : C.dark }}>{dd.num}</p>
+                    <div className="h-1.5 flex justify-center items-center">{tiene && !activo && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: C.burgundy }} />}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
         {delDia.length === 0 ? (
-          <p className="text-sm text-center py-6" style={{ color: C.muted }}>Ningún día de esta semana tiene clase. Usa ‹ › para ver otras semanas.</p>
+          <p className="text-sm text-center py-6" style={{ color: C.muted }}>Ningún día de esta semana tiene clase. Usa ‹ › o «Mes» para ver otras fechas.</p>
         ) : (
           <>
             <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.burgundy }}>{fechaLabel(diaSel, delDia[0].dia)}</p>
