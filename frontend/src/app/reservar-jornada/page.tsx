@@ -80,7 +80,7 @@ export default function ReservarJornada() {
           <p className="text-base max-w-md leading-relaxed mb-2" style={{ color: C.brown }}>
             Esa hora está completa, pero te he apuntado a su lista de espera:
           </p>
-          {s && <p className="text-lg font-bold mb-8" style={{ color: C.burgundy, fontFamily: fSans }}>{s.titulo} · {s.hora}</p>}
+          {s && <p className="text-lg font-bold mb-8" style={{ color: C.burgundy, fontFamily: fSans }}>{s.dia} · {s.titulo} · {s.hora}</p>}
           <p className="text-sm max-w-md leading-relaxed" style={{ color: C.brown }}>
             Si abro otra clase a esa hora, serás de las primeras en saberlo 💕<br /><strong>Andrea</strong>
           </p>
@@ -100,7 +100,7 @@ export default function ReservarJornada() {
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>¡Muchísimas gracias por confirmar la asistencia de <strong>{nombre}</strong> a las Jornadas de Puertas Abiertas de Andrea Carrió Studio!</p>
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Me hace muchísima ilusión que pueda acompañarnos ese día y conocer el estudio.</p>
               <div className="rounded-2xl px-4 py-3 mb-4" style={{ backgroundColor: C.blush }}>
-                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: Viernes 24 de julio</p>
+                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: {s?.dia}</p>
                 <p className="text-sm font-semibold" style={{ color: C.burgundy }}>⏰ Horario: {s?.titulo} · {s?.hora}</p>
               </div>
               <p className="text-sm font-bold mb-1.5" style={{ color: C.dark }}>¿Qué necesita traer?</p>
@@ -125,7 +125,7 @@ export default function ReservarJornada() {
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>¡Muchísimas gracias por confirmar tu asistencia a las Jornadas de Puertas Abiertas de Andrea Carrió Studio!</p>
               <p className="text-sm leading-relaxed mb-3" style={{ color: C.brown }}>Estoy deseando conocerte y compartir contigo esta experiencia.</p>
               <div className="rounded-2xl px-4 py-3 mb-4" style={{ backgroundColor: C.blush }}>
-                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: Viernes 24 de julio</p>
+                <p className="text-sm font-semibold" style={{ color: C.burgundy }}>📅 Fecha: {s?.dia}</p>
                 <p className="text-sm font-semibold" style={{ color: C.burgundy }}>⏰ Horario: {s?.titulo} · {s?.hora}</p>
               </div>
               <p className="text-sm font-bold mb-1.5" style={{ color: C.dark }}>¿Qué necesitas traer?</p>
@@ -193,8 +193,9 @@ export default function ReservarJornada() {
         <p className="text-center text-sm mb-7" style={{ color: C.muted }}>Elige tu hora. Si está completa, te apuntas a su lista de espera 👇</p>
 
         <div className="rounded-3xl p-6 shadow-sm mb-5" style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}>
-          {bloque("🌅 NIÑAS · Mañana", "Clases de prueba de ballet para peques.", ["nin-pre", "nin-ballet-1", "nin-ballet-2"])}
-          {bloque("🌆 ADULTAS · Tarde", "", ["adu-barre-1", "adu-pilates", "adu-barre-2"])}
+          {bloque("🌅 VIERNES 24 · Niñas (mañana)", "Clases de prueba de ballet para peques.", ["nin-pre", "nin-ballet-1", "nin-ballet-2"])}
+          {bloque("🌆 VIERNES 24 · Adultas (tarde)", "", ["adu-barre-1", "adu-pilates", "adu-barre-2"])}
+          {bloque("🌅 SÁBADO 25 · Adultas (mañana)", "Barre Fit — dos grupos.", ["adu-sab-barre-1", "adu-sab-barre-2"])}
         </div>
 
         <div className="rounded-3xl p-6 shadow-sm space-y-3" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>

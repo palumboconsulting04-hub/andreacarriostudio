@@ -4498,7 +4498,7 @@ export default function AdminDashboard() {
                   return (
                     <div key={bloque}>
                       <p className="text-xs font-bold uppercase tracking-widest mb-2 mt-1" style={{ color: "#89726c" }}>
-                        {bloque === "ninas" ? "🌅 Mañana · Niñas" : "🌆 Tarde · Adultas"}
+                        {bloque === "ninas" ? "🌅 Mañana · Niñas" : "🌆 Adultas (Barre y Pilates)"}
                       </p>
                       <div className="space-y-2.5">
                         {slotsBloque.map(slot => {
@@ -4515,6 +4515,7 @@ export default function AdminDashboard() {
                                   <div>
                                     <span className="text-base font-bold" style={{ color: "#25190f" }}>{slot.hora}</span>
                                     <span className="text-sm ml-2" style={{ color: "#56423d" }}>{slot.titulo}</span>
+                                    <span className="block text-xs mt-0.5" style={{ color: "#89726c" }}>{slot.dia}</span>
                                   </div>
                                   <span className="text-sm font-bold flex items-center gap-1.5" style={{ color: lleno ? "#b71c1c" : "#7d2b13" }}>
                                     {lleno ? "COMPLETO" : `${gente.length}/${slot.tope}`}
