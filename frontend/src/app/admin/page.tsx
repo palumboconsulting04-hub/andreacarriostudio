@@ -1753,7 +1753,8 @@ export default function AdminDashboard() {
       let bonosMesCount = 0, bonosMesIng = 0, bonosHoyCount = 0;
       const bTd = now2.getDate();
       for (const b of bonosAll) {
-        if (b.estado === "cancelado") continue;
+        // Un bono cancelado o reembolsado no es facturación (el dinero no se queda).
+        if (b.estado === "cancelado" || b.estado === "reembolsado") continue;
         const mes = (b.created_at ?? "").substring(0, 7);
         const precio = b.precio_pagado ?? 0;
         if (mes === curMonthStr) {
