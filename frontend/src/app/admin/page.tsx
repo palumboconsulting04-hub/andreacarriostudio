@@ -1631,7 +1631,13 @@ export default function AdminDashboard() {
     ]);
     const pm: Record<string, number> = {};
     for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[]) pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
-    setKpiStudents(((isc ?? []) as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+    // Solo quienes aportan a la facturación de ESTE mes: suscripción activa (cuota
+    // recurrente) o matrícula cobrada este mes. Las de meses anteriores no cuentan.
+    const dNow = new Date();
+    const curM = `${dNow.getFullYear()}-${String(dNow.getMonth() + 1).padStart(2, "0")}`;
+    setKpiStudents(((isc ?? []) as unknown as KpiStudentRow[])
+      .map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null }))
+      .filter((i) => isPaid(i.stato) || i.created_at.substring(0, 7) === curM));
     setKpiLoading(false);
   };
 
@@ -1708,19 +1714,24 @@ export default function AdminDashboard() {
       const now2 = new Date();
       const tm = now2.getMonth(), ty = now2.getFullYear();
       const curMonthStr = `${ty}-${String(tm + 1).padStart(2, "0")}`;
+      const prevD = new Date(ty, tm - 1, 1);
+      const prevMonthStr = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, "0")}`;
       let factMes = 0, factAnt = 0, pendAmt = 0;
       for (const isc of allIsc) {
         const prezzo = pm[`${isc.piano_id}:${isc.disciplina_id}`] ?? 0;
         const mat = isc.matricula ?? 0;
+        const mesIsc = isc.created_at.substring(0, 7);
         if (isc.stato === "attesa") {
           pendAmt += prezzo;
         } else if (isPaid(isc.stato)) {
-          factMes += prezzo + mat;
-          if (isc.created_at.substring(0, 7) < curMonthStr) factAnt += prezzo + mat;
+          // Cuota mensual recurrente (se cobra cada mes) + matrícula SOLO el mes que se cobró.
+          factMes += prezzo + (mesIsc === curMonthStr ? mat : 0);
+          if (mesIsc <= prevMonthStr) factAnt += prezzo;
+          if (mesIsc === prevMonthStr) factAnt += mat;
         } else if (isc.stato === "matricula_pagada") {
-          // El bono empieza en septiembre: hoy solo cuenta la matrícula.
-          factMes += mat;
-          if (isc.created_at.substring(0, 7) < curMonthStr) factAnt += mat;
+          // El bono empieza en septiembre: solo cuenta la matrícula, y solo el mes que se cobró.
+          if (mesIsc === curMonthStr) factMes += mat;
+          else if (mesIsc === prevMonthStr) factAnt += mat;
         }
       }
       // Sumar matrículas manuales (efectivo / bizum) de renovaciones.
@@ -1731,11 +1742,6 @@ export default function AdminDashboard() {
         if (r.updated_at && r.updated_at.substring(0, 7) < curMonthStr) factAnt += amt;
       }
       // Sumar cuotas mensuales manuales (pagos_manuales), por su fecha real de cobro.
-      const prevMonthStr = (() => {
-        const pm = tm === 0 ? 11 : tm - 1;
-        const py = tm === 0 ? ty - 1 : ty;
-        return `${py}-${String(pm + 1).padStart(2, "0")}`;
-      })();
       for (const p of pagosM) {
         const mesPago = (p.fecha ?? "").substring(0, 7);
         if (mesPago === curMonthStr) factMes += p.importe ?? 0;
