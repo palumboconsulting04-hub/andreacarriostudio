@@ -62,7 +62,7 @@ type KpiStudentRow = {
 // Desglose de la facturación del mes por origen (matrícula / bono / mensualidad).
 type FactItem = { nombre: string; email: string; detalle: string; importe: number };
 type FactCat = { key: string; label: string; total: number; items: FactItem[]; nota?: string };
-type LineaIngreso = { fecha: string; concepto: string; cliente: string; metodo: string; importe: number };
+type LineaIngreso = { fecha: string; concepto: string; disciplina: string; cliente: string; metodo: string; importe: number };
 
 type OcupacionClase = { id: string; giorno: string; ora_inizio: string; ora_fine: string; ocupados: number; total: number };
 type OcupacionDisciplina = { disciplina_id: string; nombre: string; ocupados: number; total: number; clases: OcupacionClase[] };
@@ -1161,9 +1161,9 @@ export default function AdminDashboard() {
     const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
     const num = (n: number) => n.toFixed(2).replace(".", ",");
     const filas = [
-      ["Fecha", "Concepto", "Cliente", "Método", "Importe (€)"].map(esc).join(";"),
-      ...asesorData.lineas.map(l => [l.fecha, l.concepto, l.cliente, l.metodo, num(l.importe)].map(esc).join(";")),
-      ["", "", "", "TOTAL", num(asesorData.total)].map(esc).join(";"),
+      ["Fecha", "Concepto", "Clase", "Cliente", "Método", "Importe (€)"].map(esc).join(";"),
+      ...asesorData.lineas.map(l => [l.fecha, l.concepto, l.disciplina, l.cliente, l.metodo, num(l.importe)].map(esc).join(";")),
+      ["", "", "", "", "TOTAL", num(asesorData.total)].map(esc).join(";"),
     ];
     const blob = new Blob(["﻿" + filas.join("\r\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -2983,7 +2983,7 @@ export default function AdminDashboard() {
                             <div key={i} className="flex items-center justify-between gap-3 px-4 py-2" style={{ borderTop: "1px solid #f7ece7" }}>
                               <div className="min-w-0">
                                 <p className="text-sm truncate" style={{ color: "#25190f" }}>{l.cliente}</p>
-                                <p className="text-xs" style={{ color: "#89726c" }}>{l.concepto} · {l.metodo}</p>
+                                <p className="text-xs" style={{ color: "#89726c" }}>{l.concepto}{l.disciplina && l.disciplina !== "—" ? ` · ${l.disciplina}` : ""} · {l.metodo}</p>
                               </div>
                               <span className="text-sm font-semibold shrink-0" style={{ color: "#25190f" }}>{l.importe.toFixed(2).replace(".", ",")} €</span>
                             </div>

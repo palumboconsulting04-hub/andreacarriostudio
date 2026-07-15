@@ -7,16 +7,24 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 //  - Cuotas mensuales cobradas por Stripe (desde septiembre) → ingresos_stripe.
 
 export type LineaIngreso = {
-  fecha: string;    // YYYY-MM-DD
-  concepto: string; // Matrícula / Bono / Cuota…
+  fecha: string;      // YYYY-MM-DD
+  concepto: string;   // Matrícula / Bono / Cuota…
+  disciplina: string; // Barre / Pilates / Ballet / —
   cliente: string;
-  metodo: string;   // Tarjeta (web) / Bizum / Efectivo / Tarjeta
-  importe: number;  // €
+  metodo: string;     // Tarjeta (web) / Bizum / Efectivo / Tarjeta
+  importe: number;    // €
 };
 
 const INSCRITA = ["pagato", "pagado", "activa", "matricula_pagada"];
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const dstr = (d: string) => (d || "").slice(0, 10);
+// Disciplina legible para la columna "Clase": barre / pilates / ballet.
+const DISC_LABEL: Record<string, string> = {
+  "barre-fit": "Barre", "pilates-mat": "Pilates",
+  "pre-ballet": "Ballet", "ballet-i": "Ballet", "ballet-ii": "Ballet",
+};
+const disc = (id: string) => DISC_LABEL[id] ?? (id ? cap(id) : "—");
+const discGrupo = (g: string) => (/ballet/i.test(g || "") ? "Ballet" : (g || "—"));
 
 export async function ingresosDelMes(mes: string): Promise<{ lineas: LineaIngreso[]; total: number }> {
   const ini = `${mes}-01`;
@@ -24,9 +32,9 @@ export async function ingresosDelMes(mes: string): Promise<{ lineas: LineaIngres
   const sig = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
 
   const [iscr, bonos, renov, pagos, stripeCuotas] = await Promise.all([
-    supabaseAdmin.from("iscrizioni").select("nome, cognome, matricula, stato, created_at").in("stato", INSCRITA).gte("created_at", ini).lt("created_at", sig),
-    supabaseAdmin.from("bonos").select("nombre, precio_pagado, estado, created_at").gte("created_at", ini).lt("created_at", sig),
-    supabaseAdmin.from("renovaciones").select("nombre, apellidos, nombre_madre, importe_matricula, estado_pago, metodo_pago, updated_at").eq("estado_pago", "pagado").neq("metodo_pago", "web").gte("updated_at", ini).lt("updated_at", sig),
+    supabaseAdmin.from("iscrizioni").select("nome, cognome, disciplina_id, matricula, stato, created_at").in("stato", INSCRITA).gte("created_at", ini).lt("created_at", sig),
+    supabaseAdmin.from("bonos").select("nombre, disciplina_id, precio_pagado, estado, created_at").gte("created_at", ini).lt("created_at", sig),
+    supabaseAdmin.from("renovaciones").select("nombre, apellidos, nombre_madre, grupo, importe_matricula, estado_pago, metodo_pago, updated_at").eq("estado_pago", "pagado").neq("metodo_pago", "web").gte("updated_at", ini).lt("updated_at", sig),
     supabaseAdmin.from("pagos_manuales").select("alumna_nombre, concepto, importe, metodo, fecha").gte("fecha", ini).lt("fecha", sig),
     supabaseAdmin.from("ingresos_stripe").select("nombre, email, concepto, importe, metodo, fecha").gte("fecha", ini).lt("fecha", sig),
   ]);
@@ -34,24 +42,24 @@ export async function ingresosDelMes(mes: string): Promise<{ lineas: LineaIngres
   const lineas: LineaIngreso[] = [];
   for (const i of iscr.data ?? []) {
     const mat = Number(i.matricula) || 0;
-    if (mat > 0) lineas.push({ fecha: dstr(i.created_at as string), concepto: "Matrícula", cliente: `${i.nome ?? ""} ${i.cognome ?? ""}`.trim() || "—", metodo: "Tarjeta (web)", importe: mat });
+    if (mat > 0) lineas.push({ fecha: dstr(i.created_at as string), concepto: "Matrícula", disciplina: disc(i.disciplina_id as string), cliente: `${i.nome ?? ""} ${i.cognome ?? ""}`.trim() || "—", metodo: "Tarjeta (web)", importe: mat });
   }
   for (const b of bonos.data ?? []) {
     if (b.estado === "cancelado" || b.estado === "reembolsado") continue;
     const imp = Number(b.precio_pagado) || 0;
-    if (imp > 0) lineas.push({ fecha: dstr(b.created_at as string), concepto: "Bono", cliente: (b.nombre as string) || "—", metodo: "Tarjeta (web)", importe: imp });
+    if (imp > 0) lineas.push({ fecha: dstr(b.created_at as string), concepto: "Bono", disciplina: disc(b.disciplina_id as string), cliente: (b.nombre as string) || "—", metodo: "Tarjeta (web)", importe: imp });
   }
   for (const r of renov.data ?? []) {
     const imp = Number(r.importe_matricula) || 0;
-    if (imp > 0) lineas.push({ fecha: dstr(r.updated_at as string), concepto: "Matrícula", cliente: `${r.nombre ?? ""} ${r.apellidos ?? ""}`.trim() || (r.nombre_madre as string) || "—", metodo: cap((r.metodo_pago as string) || "efectivo"), importe: imp });
+    if (imp > 0) lineas.push({ fecha: dstr(r.updated_at as string), concepto: "Matrícula", disciplina: discGrupo(r.grupo as string), cliente: `${r.nombre ?? ""} ${r.apellidos ?? ""}`.trim() || (r.nombre_madre as string) || "—", metodo: cap((r.metodo_pago as string) || "efectivo"), importe: imp });
   }
   for (const p of pagos.data ?? []) {
     const imp = Number(p.importe) || 0;
-    if (imp > 0) lineas.push({ fecha: dstr(p.fecha as string), concepto: (p.concepto as string) || "Cuota", cliente: (p.alumna_nombre as string) || "—", metodo: cap((p.metodo as string) || "efectivo"), importe: imp });
+    if (imp > 0) lineas.push({ fecha: dstr(p.fecha as string), concepto: (p.concepto as string) || "Cuota", disciplina: "—", cliente: (p.alumna_nombre as string) || "—", metodo: cap((p.metodo as string) || "efectivo"), importe: imp });
   }
   for (const s of stripeCuotas.data ?? []) {
     const imp = Number(s.importe) || 0;
-    if (imp > 0) lineas.push({ fecha: dstr(s.fecha as string), concepto: (s.concepto as string) || "Cuota", cliente: (s.nombre as string) || (s.email as string) || "—", metodo: cap((s.metodo as string) || "tarjeta"), importe: imp });
+    if (imp > 0) lineas.push({ fecha: dstr(s.fecha as string), concepto: (s.concepto as string) || "Cuota", disciplina: "—", cliente: (s.nombre as string) || (s.email as string) || "—", metodo: cap((s.metodo as string) || "tarjeta"), importe: imp });
   }
 
   lineas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.concepto.localeCompare(b.concepto));
@@ -64,9 +72,9 @@ export function ingresosCSV(lineas: LineaIngreso[], total: number): string {
   const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
   const num = (n: number) => n.toFixed(2).replace(".", ",");
   const filas = [
-    ["Fecha", "Concepto", "Cliente", "Método", "Importe (€)"].map(esc).join(";"),
-    ...lineas.map(l => [l.fecha, l.concepto, l.cliente, l.metodo, num(l.importe)].map(esc).join(";")),
-    ["", "", "", "TOTAL", num(total)].map(esc).join(";"),
+    ["Fecha", "Concepto", "Clase", "Cliente", "Método", "Importe (€)"].map(esc).join(";"),
+    ...lineas.map(l => [l.fecha, l.concepto, l.disciplina, l.cliente, l.metodo, num(l.importe)].map(esc).join(";")),
+    ["", "", "", "", "TOTAL", num(total)].map(esc).join(";"),
   ];
   return "﻿" + filas.join("\r\n");
 }
