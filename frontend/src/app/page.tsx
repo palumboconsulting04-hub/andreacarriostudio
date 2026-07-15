@@ -89,9 +89,13 @@ export default function Home() {
     const ref = (p.get("ref") || "").trim().toUpperCase().slice(0, 20);
     if (ref) {
       sessionStorage.setItem("acs_ref", ref);
+      // Dedup en localStorage: un mismo navegador cuenta la apertura de un link
+      // UNA sola vez (no una por sesión), para que el número sea lo más real posible.
       const key = `acs_ref_visit_${ref}`;
-      if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, "1");
+      let yaContado = false;
+      try { yaContado = !!localStorage.getItem(key); } catch {}
+      if (!yaContado) {
+        try { localStorage.setItem(key, "1"); } catch {}
         fetch("/api/referido/visita", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ codigo: ref, session_id: sessionIdRef.current || null, canal: p.get("c") || null }),

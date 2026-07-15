@@ -5127,7 +5127,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="rounded-xl p-3 mt-2.5 flex items-center justify-center gap-2 flex-wrap text-center" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
                       <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#89726c" }}>Funnel:</span>
-                      <span className="text-xs" style={{ color: "#56423d" }}><strong style={{ color: "#7d2b13" }}>{refResumen.visitas}</strong> tocaron el link</span>
+                      <span className="text-xs" style={{ color: "#56423d" }}><strong style={{ color: "#7d2b13" }}>{refResumen.visitas}</strong> abrieron el enlace</span>
                       <span style={{ color: "#bcb0ab" }}>→</span>
                       <span className="text-xs" style={{ color: "#56423d" }}><strong style={{ color: "#7d2b13" }}>{refResumen.amigasTraidas}</strong> compraron</span>
                       <span style={{ color: "#bcb0ab" }}>→</span>
@@ -5666,7 +5666,7 @@ export default function AdminDashboard() {
                               </div>
                               <div className="flex flex-col items-end gap-1 shrink-0">
                                 <span className="text-sm font-bold" style={{ color: "#7d2b13" }}>{m.total} {m.total === 1 ? "amiga" : "amigas"}</span>
-                                <span className="text-[10px]" style={{ color: "#89726c" }}>{m.visitas} {m.visitas === 1 ? "clic al link" : "clics al link"}</span>
+                                <span className="text-[10px]" style={{ color: "#89726c" }}>{m.visitas} {m.visitas === 1 ? "apertura" : "aperturas"} del enlace</span>
                                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: nv.bg, color: nv.fg }}>{nv.emoji} {nv.l}</span>
                               </div>
                             </div>
@@ -5705,7 +5705,7 @@ export default function AdminDashboard() {
                             })()}
                             <div style={{ borderTop: "1px solid #f0ddd5" }}>
                               {m.amigas.length === 0 && (
-                                <p className="px-4 py-2.5 text-[11px]" style={{ color: "#bcb0ab" }}>Aún no ha traído a ninguna amiga{m.visitas > 0 ? ` (su enlace se ha tocado ${m.visitas} ${m.visitas === 1 ? "vez" : "veces"})` : ""}.</p>
+                                <p className="px-4 py-2.5 text-[11px]" style={{ color: "#bcb0ab" }}>Aún no ha traído a ninguna amiga{m.visitas > 0 ? ` (su enlace se ha abierto ${m.visitas} ${m.visitas === 1 ? "vez" : "veces"})` : ""}.</p>
                               )}
                               {m.amigas.map((a, i) => (
                                 <div key={`${m.codigo}-${a.email}-${i}`} className="px-4 py-2 flex items-center justify-between gap-2" style={{ borderTop: i ? "1px solid #f7ece7" : "none", backgroundColor: i % 2 ? "#fffbf9" : "#fff" }}>
