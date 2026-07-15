@@ -6,7 +6,7 @@ const C = { burgundy: "#7d2b13", cream: "#fff8f5", brown: "#56423d", muted: "#89
 
 // El enlace lleva el código puesto: la amiga solo tiene que tocarlo (no teclea nada).
 // El parámetro c= marca el canal (wa/ig/copy) para medir por dónde convierte mejor.
-const linkDe = (codigo: string, canal = "") => `https://reservas.andreacarriostudio.es/comprar-bono?ref=${codigo}${canal ? `&c=${canal}` : ""}`;
+const linkDe = (codigo: string, canal = "") => `https://reservas.andreacarriostudio.es/?ref=${codigo}${canal ? `&c=${canal}` : ""}`;
 const textoDe = (codigo: string, canal = "") =>
   `Te invito a probar una clase conmigo en Andrea Carrió Studio 🤎 Danza & Pilates en Valencia (zona Alfahuir). Toca mi enlace y ven: ganamos las dos un regalo 👉 ${linkDe(codigo, canal)}`;
 

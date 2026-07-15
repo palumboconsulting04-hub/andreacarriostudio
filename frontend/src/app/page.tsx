@@ -288,7 +288,7 @@ export default function Home() {
                 </button>
 
                 {/* Bono flexible */}
-                <button onClick={() => { window.location.href = `/comprar-bono?disciplina=${fork}`; }} className="group relative text-left rounded-3xl p-7 border transition-all duration-300 hover:-translate-y-1 bg-white border-outline-light hover:border-siena-pale shadow-sm hover:shadow-md focus:outline-none">
+                <button onClick={() => { let r = ""; try { r = sessionStorage.getItem("acs_ref") || ""; } catch {} window.location.href = `/comprar-bono?disciplina=${fork}${r ? `&ref=${encodeURIComponent(r)}` : ""}`; }} className="group relative text-left rounded-3xl p-7 border transition-all duration-300 hover:-translate-y-1 bg-white border-outline-light hover:border-siena-pale shadow-sm hover:shadow-md focus:outline-none">
                   <p className="font-display text-2xl font-semibold text-siena mb-1">Bono flexible</p>
                   <p className="font-body text-sm text-texto-muted mb-5">Para quien improvisa</p>
                   <ul className="space-y-2.5 mb-7">

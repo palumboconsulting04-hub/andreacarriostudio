@@ -46,9 +46,13 @@ export default function ComprarBono() {
       // Guarda el código para que se traslade también al flujo de mensualidad
       // (si la amiga acaba apuntándose a una cuota en vez de un bono).
       sessionStorage.setItem("acs_ref", ref);
+      // Dedup en localStorage (igual que el home): una apertura por navegador, y no
+      // recuenta si el home ya la contó antes de que la amiga llegue aquí.
       const key = `acs_ref_visit_${ref}`;
-      if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, "1");
+      let yaContado = false;
+      try { yaContado = !!localStorage.getItem(key); } catch {}
+      if (!yaContado) {
+        try { localStorage.setItem(key, "1"); } catch {}
         fetch("/api/referido/visita", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ codigo: ref, session_id: sessionStorage.getItem("acs_fsid") || null, canal: params.get("c") || null }),
