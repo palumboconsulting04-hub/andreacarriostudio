@@ -105,6 +105,21 @@ export async function POST(req: NextRequest) {
             .update({ stato: "activa" })
             .eq("stripe_subscription_id", inv.subscription);
         }
+        // Registrar la cuota cobrada como ingreso (hoja del asesor). Idempotente por
+        // stripe_id (el webhook puede reintentar). No bloquea si falla.
+        if (inv.subscription && (inv.amount_paid ?? 0) > 0) {
+          try {
+            await supabaseAdmin.from("ingresos_stripe").upsert({
+              fecha: new Date((inv.created ?? Math.floor(Date.now() / 1000)) * 1000).toISOString().slice(0, 10),
+              importe: (inv.amount_paid ?? 0) / 100,
+              concepto: "Cuota mensualidad",
+              email: inv.customer_email ?? null,
+              nombre: inv.customer_name ?? null,
+              metodo: "tarjeta",
+              stripe_id: inv.id ?? null,
+            }, { onConflict: "stripe_id", ignoreDuplicates: true });
+          } catch (e) { console.error("registrar ingreso cuota Stripe:", e); }
+        }
         break;
       }
 
@@ -277,7 +292,7 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
   // ya guardada (off-session). No bloquea el alta si falla; queda el error en el log.
   if (cobrarParcialCent > 0) {
     try {
-      await stripe.paymentIntents.create({
+      const piParcial = await stripe.paymentIntents.create({
         amount: cobrarParcialCent,
         currency: "eur",
         customer: customerId,
@@ -287,6 +302,18 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
         description: parcialDesc,
         metadata: { tipo: "cuota-mes-en-curso", email: rows[0]?.email ?? "" },
       });
+      // Registrar el cobro del mes en curso como ingreso (hoja del asesor).
+      try {
+        await supabaseAdmin.from("ingresos_stripe").upsert({
+          fecha: new Date().toISOString().slice(0, 10),
+          importe: cobrarParcialCent / 100,
+          concepto: parcialDesc.startsWith("Media") ? "Media cuota (mes en curso)" : "Cuota (mes en curso)",
+          email: rows[0]?.email ?? null,
+          nombre: rows[0]?.nome ?? null,
+          metodo: "tarjeta",
+          stripe_id: piParcial.id,
+        }, { onConflict: "stripe_id", ignoreDuplicates: true });
+      } catch (e) { console.error("registrar ingreso parcial:", e); }
     } catch (e) {
       console.error("cobro mes en curso (parcial) falló:", e);
     }

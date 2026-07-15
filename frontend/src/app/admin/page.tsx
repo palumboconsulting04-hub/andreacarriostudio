@@ -62,6 +62,7 @@ type KpiStudentRow = {
 // Desglose de la facturación del mes por origen (matrícula / bono / mensualidad).
 type FactItem = { nombre: string; email: string; detalle: string; importe: number };
 type FactCat = { key: string; label: string; total: number; items: FactItem[]; nota?: string };
+type LineaIngreso = { fecha: string; concepto: string; cliente: string; metodo: string; importe: number };
 
 type OcupacionClase = { id: string; giorno: string; ora_inizio: string; ora_fine: string; ocupados: number; total: number };
 type OcupacionDisciplina = { disciplina_id: string; nombre: string; ocupados: number; total: number; clases: OcupacionClase[] };
@@ -447,6 +448,17 @@ export default function AdminDashboard() {
   });
   const [ventasGranularity, setVentasGranularity] = useState<"diario" | "semanal">("semanal");
   const [ventasLoading, setVentasLoading] = useState(false);
+
+  // ── Hoja del asesor (libro de ingresos) ──
+  const [asesorMes, setAsesorMes] = useState(() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [asesorData, setAsesorData] = useState<{ lineas: LineaIngreso[]; total: number } | null>(null);
+  const [asesorLoading, setAsesorLoading] = useState(false);
+  const [asesorEmail, setAsesorEmail] = useState("");
+  const [asesorEnviando, setAsesorEnviando] = useState(false);
+  const [asesorMsg, setAsesorMsg] = useState("");
 
   // KPI metrics
   const [facturacionMes, setFacturacionMes] = useState(0);
@@ -1130,6 +1142,51 @@ export default function AdminDashboard() {
     if (activeSection !== "Ventas") return;
     fetchVentas();
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Hoja del asesor: recuerda el email y carga el libro de ingresos del mes elegido.
+  useEffect(() => { try { setAsesorEmail(localStorage.getItem("acs_asesor_email") ?? ""); } catch {} }, []);
+  useEffect(() => {
+    if (activeSection !== "Hoja asesor") return;
+    setAsesorLoading(true);
+    setAsesorMsg("");
+    fetch(`/api/admin/ingresos?mes=${asesorMes}`)
+      .then(r => r.json())
+      .then(d => setAsesorData(d.error ? null : { lineas: d.lineas ?? [], total: d.total ?? 0 }))
+      .catch(() => setAsesorData(null))
+      .finally(() => setAsesorLoading(false));
+  }, [activeSection, asesorMes]);
+
+  const descargarHojaAsesor = () => {
+    if (!asesorData) return;
+    const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const num = (n: number) => n.toFixed(2).replace(".", ",");
+    const filas = [
+      ["Fecha", "Concepto", "Cliente", "Método", "Importe (€)"].map(esc).join(";"),
+      ...asesorData.lineas.map(l => [l.fecha, l.concepto, l.cliente, l.metodo, num(l.importe)].map(esc).join(";")),
+      ["", "", "", "TOTAL", num(asesorData.total)].map(esc).join(";"),
+    ];
+    const blob = new Blob(["﻿" + filas.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `ingresos-${asesorMes}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const enviarAlAsesor = async () => {
+    const email = asesorEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setAsesorMsg("Escribe un email de asesor válido."); return; }
+    setAsesorEnviando(true); setAsesorMsg("");
+    try {
+      try { localStorage.setItem("acs_asesor_email", email); } catch {}
+      const r = await fetch("/api/admin/ingresos/enviar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mes: asesorMes, email }),
+      });
+      const d = await r.json();
+      setAsesorMsg(r.ok ? `Enviado a ${email} ✓` : (d.error ?? "No se pudo enviar."));
+    } catch { setAsesorMsg("No se pudo enviar."); }
+    setAsesorEnviando(false);
+  };
 
   useEffect(() => {
     if (activeSection !== "Asistencia") return;
@@ -2158,6 +2215,7 @@ export default function AdminDashboard() {
     { icon: "receipt_long", label: "Costes" },
     { icon: "trending_up", label: "Ventas" },
     { icon: "account_balance", label: "Finanzas" },
+    { icon: "description", label: "Hoja asesor" },
     { icon: "diamond", label: "Sofía" },
   ];
 
@@ -2871,6 +2929,75 @@ export default function AdminDashboard() {
                 );
               })}
 
+            </section>
+          )}
+
+          {/* ── Hoja del asesor (libro de ingresos) ── */}
+          {activeSection === "Hoja asesor" && (
+            <section className="space-y-5 max-w-3xl">
+              <div>
+                <h2 className="text-lg font-bold" style={{ color: "#25190f" }}>Hoja de ingresos para el asesor</h2>
+                <p className="text-sm mt-1" style={{ color: "#89726c" }}>Todos los ingresos del mes: por Stripe (matrículas, bonos y cuotas) y lo que añades a mano (bizum, efectivo o tarjeta) en renovaciones y pagos.</p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <input type="month" value={asesorMes} onChange={e => setAsesorMes(e.target.value)}
+                  className="text-sm rounded-xl border px-3 py-2 bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />
+                <button onClick={descargarHojaAsesor} disabled={!asesorData || asesorData.lineas.length === 0}
+                  className="text-sm font-semibold rounded-xl px-4 py-2 disabled:opacity-40" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                  Descargar (CSV)
+                </button>
+                {asesorData && <span className="text-sm font-bold" style={{ color: "#7d2b13" }}>{asesorData.lineas.length} ingresos · {asesorData.total.toFixed(2).replace(".", ",")} €</span>}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <input type="email" placeholder="Email del asesor" value={asesorEmail} onChange={e => setAsesorEmail(e.target.value)}
+                  className="text-sm rounded-xl border px-3 py-2 bg-white flex-1 min-w-[200px]" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />
+                <button onClick={enviarAlAsesor} disabled={asesorEnviando || !asesorData}
+                  className="text-sm font-semibold rounded-xl px-4 py-2 disabled:opacity-40" style={{ backgroundColor: "#fff", border: "1.5px solid #7d2b13", color: "#7d2b13" }}>
+                  {asesorEnviando ? "Enviando…" : "Enviar al asesor"}
+                </button>
+                {asesorMsg && <span className="text-sm" style={{ color: asesorMsg.includes("✓") ? "#1f7a3d" : "#b71c1c" }}>{asesorMsg}</span>}
+              </div>
+
+              {asesorLoading ? (
+                <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Cargando…</p>
+              ) : !asesorData || asesorData.lineas.length === 0 ? (
+                <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>No hay ingresos registrados este mes.</p>
+              ) : (
+                <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff" }}>
+                  {(() => {
+                    const porDia: Record<string, LineaIngreso[]> = {};
+                    for (const l of asesorData.lineas) (porDia[l.fecha] ??= []).push(l);
+                    return Object.keys(porDia).sort().map(fecha => {
+                      const ls = porDia[fecha];
+                      const sub = ls.reduce((s, l) => s + l.importe, 0);
+                      const etiqueta = new Date(fecha + "T00:00").toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" });
+                      return (
+                        <div key={fecha}>
+                          <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "#fff1e9", borderTop: "1px solid #f0ddd5" }}>
+                            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#7d2b13" }}>{etiqueta}</span>
+                            <span className="text-xs font-bold" style={{ color: "#7d2b13" }}>{sub.toFixed(2).replace(".", ",")} €</span>
+                          </div>
+                          {ls.map((l, i) => (
+                            <div key={i} className="flex items-center justify-between gap-3 px-4 py-2" style={{ borderTop: "1px solid #f7ece7" }}>
+                              <div className="min-w-0">
+                                <p className="text-sm truncate" style={{ color: "#25190f" }}>{l.cliente}</p>
+                                <p className="text-xs" style={{ color: "#89726c" }}>{l.concepto} · {l.metodo}</p>
+                              </div>
+                              <span className="text-sm font-semibold shrink-0" style={{ color: "#25190f" }}>{l.importe.toFixed(2).replace(".", ",")} €</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    });
+                  })()}
+                  <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: "#7d2b13" }}>
+                    <span className="text-sm font-bold" style={{ color: "#fff8f5" }}>TOTAL {asesorMes}</span>
+                    <span className="text-base font-bold" style={{ color: "#fff8f5" }}>{asesorData.total.toFixed(2).replace(".", ",")} €</span>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
