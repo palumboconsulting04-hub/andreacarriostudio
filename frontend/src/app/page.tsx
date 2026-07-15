@@ -288,18 +288,18 @@ export default function Home() {
                 </button>
 
                 {/* Bono flexible */}
-                <button onClick={() => { let r = ""; try { r = sessionStorage.getItem("acs_ref") || ""; } catch {} window.location.href = `/comprar-bono?disciplina=${fork}${r ? `&ref=${encodeURIComponent(r)}` : ""}`; }} className="group relative text-left rounded-3xl p-7 border transition-all duration-300 hover:-translate-y-1 bg-white border-outline-light hover:border-siena-pale shadow-sm hover:shadow-md focus:outline-none">
-                  <p className="font-display text-2xl font-semibold text-siena mb-1">Bono flexible</p>
-                  <p className="font-body text-sm text-texto-muted mb-5">Para quien improvisa</p>
+                <button onClick={() => { let r = ""; try { r = sessionStorage.getItem("acs_ref") || ""; } catch {} window.location.href = `/comprar-bono?disciplina=${fork}${r ? `&ref=${encodeURIComponent(r)}` : ""}`; }} className="group relative text-left rounded-3xl p-7 border transition-all duration-300 hover:-translate-y-1 bg-siena border-siena text-white shadow-lg focus:outline-none">
+                  <p className="font-display text-2xl font-semibold text-white mb-1">Bono flexible</p>
+                  <p className="font-body text-sm text-siena-pale mb-5">Para quien improvisa</p>
                   <ul className="space-y-2.5 mb-7">
                     {["Compras créditos y vienes cuando puedas", "Reservas el día que quieras", "Sin compromiso mensual"].map((f) => (
                       <li key={f} className="flex items-start gap-2.5">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0 text-siena"><path d="M3 8l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        <span className="font-body text-sm leading-snug text-texto-muted">{f}</span>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0 text-siena-light"><path d="M3 8l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        <span className="font-body text-sm leading-snug text-siena-pale">{f}</span>
                       </li>
                     ))}
                   </ul>
-                  <span className="inline-flex items-center justify-center w-full gap-2 py-3 rounded-full font-body text-sm font-semibold tracking-wider uppercase bg-siena text-white group-hover:bg-siena-container transition-all">
+                  <span className="inline-flex items-center justify-center w-full gap-2 py-3 rounded-full font-body text-sm font-semibold tracking-wider uppercase bg-white text-siena group-hover:bg-siena-pale transition-all">
                     Ver bonos
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="transition-transform group-hover:translate-x-1"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </span>
