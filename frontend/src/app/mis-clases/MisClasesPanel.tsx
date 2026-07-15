@@ -38,9 +38,10 @@ const INI_DIA = ["L", "M", "X", "J", "V", "S", "D"];
 // Vista de mes: cuadrícula del mes con un puntito en los días que tienen clase.
 // La comparten los dos calendarios (bono y mensualidad); cada uno pinta debajo
 // las clases del día que se toque.
-function MesGrid({ mesCur, irMes, minMes, maxMes, hayClase, diaSel, onDia, onSemana, selColor }: {
+function MesGrid({ mesCur, irMes, minMes, maxMes, hayClase, diaSel, onDia, onSemana, selBg, selText, selBorder }: {
   mesCur: Date; irMes: (d: Date) => void; minMes: Date; maxMes: Date;
-  hayClase: (f: string) => boolean; diaSel: string; onDia: (f: string) => void; onSemana: () => void; selColor: string;
+  hayClase: (f: string) => boolean; diaSel: string; onDia: (f: string) => void; onSemana: () => void;
+  selBg: string; selText: string; selBorder: string;
 }) {
   const y = mesCur.getFullYear(), mo = mesCur.getMonth();
   const offset = (new Date(y, mo, 1).getDay() + 6) % 7; // lunes = 0
@@ -70,9 +71,9 @@ function MesGrid({ mesCur, irMes, minMes, maxMes, hayClase, diaSel, onDia, onSem
           const activo = f === diaSel;
           return (
             <button key={i} onClick={() => tiene && onDia(f)} disabled={!tiene} className="aspect-square rounded-lg flex flex-col items-center justify-center"
-              style={{ backgroundColor: activo ? selColor : (tiene ? "#fff" : "transparent"), border: `1.5px solid ${tiene ? (activo ? selColor : C.border) : "transparent"}`, cursor: tiene ? "pointer" : "default" }}>
-              <span className="text-xs font-bold leading-none" style={{ color: activo ? C.cream : C.dark, opacity: tiene ? 1 : 0.4 }}>{+f.slice(8)}</span>
-              <span className="mt-0.5 h-1 flex items-center justify-center">{tiene && !activo && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: selColor }} />}</span>
+              style={{ backgroundColor: activo ? selBg : (tiene ? "#fff" : "transparent"), border: `1.5px solid ${tiene ? (activo ? selBorder : C.border) : "transparent"}`, cursor: tiene ? "pointer" : "default" }}>
+              <span className="text-xs font-bold leading-none" style={{ color: activo ? selText : C.dark, opacity: tiene ? 1 : 0.4 }}>{+f.slice(8)}</span>
+              <span className="mt-0.5 h-1 flex items-center justify-center">{tiene && !activo && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: C.burgundy }} />}</span>
             </button>
           );
         })}
@@ -394,7 +395,7 @@ export default function MisClasesPanel() {
     <>
       {vistaMesM && mesCurM ? (
         <>
-          <MesGrid mesCur={mesCurM} irMes={irMesM} minMes={minMesM} maxMes={maxMesM} hayClase={f => !!porFechaM[f]} diaSel={diaMesM} onDia={setDiaMesM} onSemana={() => setVistaMesM(false)} selColor={C.brown} />
+          <MesGrid mesCur={mesCurM} irMes={irMesM} minMes={minMesM} maxMes={maxMesM} hayClase={f => !!porFechaM[f]} diaSel={diaMesM} onDia={setDiaMesM} onSemana={() => setVistaMesM(false)} selBg={C.blush} selText={C.burgundy} selBorder={C.burgundy} />
           {diaMesM && porFechaM[diaMesM]?.length ? (
             <div>
               <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.burgundy }}>{fechaLabel(diaMesM, porFechaM[diaMesM][0].dia)}</p>
@@ -418,10 +419,10 @@ export default function MisClasesPanel() {
               const activo = dd.fecha === diaSelMef;
               return (
                 <button key={dd.fecha} onClick={() => tiene && setDiaSelM(dd.fecha)} disabled={!tiene} className="rounded-xl py-2 text-center transition-all"
-                  style={{ backgroundColor: activo ? C.brown : "#fff", border: `1.5px solid ${activo ? C.brown : C.border}`, opacity: tiene ? 1 : 0.4, cursor: tiene ? "pointer" : "default" }}>
-                  <p className="text-[9px] font-bold uppercase" style={{ color: activo ? C.blush : C.muted }}>{dd.corto}</p>
-                  <p className="text-sm font-bold leading-tight" style={{ color: activo ? C.cream : C.dark }}>{dd.num}</p>
-                  <div className="h-1.5 flex justify-center items-center">{tiene && !activo && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: C.brown }} />}</div>
+                  style={{ backgroundColor: activo ? C.blush : "#fff", border: `1.5px solid ${activo ? C.burgundy : C.border}`, opacity: tiene ? 1 : 0.4, cursor: tiene ? "pointer" : "default" }}>
+                  <p className="text-[9px] font-bold uppercase" style={{ color: activo ? C.burgundy : C.muted }}>{dd.corto}</p>
+                  <p className="text-sm font-bold leading-tight" style={{ color: activo ? C.burgundy : C.dark }}>{dd.num}</p>
+                  <div className="h-1.5 flex justify-center items-center">{tiene && !activo && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: C.burgundy }} />}</div>
                 </button>
               );
             })}
@@ -445,7 +446,7 @@ export default function MisClasesPanel() {
     ) : (
       <>
         {vistaMes && mesCur ? (
-          <MesGrid mesCur={mesCur} irMes={irMesB} minMes={minMesB} maxMes={maxMesB} hayClase={f => !!porFecha[f]} diaSel={diaSel} onDia={selDiaMesB} onSemana={() => setVistaMes(false)} selColor={C.burgundy} />
+          <MesGrid mesCur={mesCur} irMes={irMesB} minMes={minMesB} maxMes={maxMesB} hayClase={f => !!porFecha[f]} diaSel={diaSel} onDia={selDiaMesB} onSemana={() => setVistaMes(false)} selBg={C.burgundy} selText={C.cream} selBorder={C.burgundy} />
         ) : (
           <>
             <div className="flex items-center gap-2 mb-3">
@@ -590,31 +591,50 @@ export default function MisClasesPanel() {
           )
         ))}
 
-        {!preview && codigo && (
-          <div className="rounded-2xl p-4 mt-2" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
-            <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Invita a una amiga y ganáis las dos</p>
-            <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando se apunte al estudio (bono o mensualidad), tú y ella os lleváis un regalo. Comparte tu código:</p>
-            <span className="block text-center text-sm font-bold tracking-widest py-2.5 rounded-xl mb-3" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
-            <CompartirCodigo codigo={codigo} />
-            {refAmigas > 0 && (
-              <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${C.border}` }}>
-                <p className="text-xs" style={{ color: C.brown }}>Ya has traído <strong style={{ color: C.burgundy }}>{refAmigas}</strong> {refAmigas === 1 ? "amiga" : "amigas"} 🤎</p>
-                {refPremios.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {refPremios.map((p, i) => (
-                      <span key={i} className="text-[11px] px-2.5 py-1 rounded-full" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>✓ {p.detalle}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
         {!preview && (
           <div className="mt-8 pt-5 flex flex-col gap-2" style={{ borderTop: `1px solid ${C.border}` }}>
             <button onClick={abrirComprar} className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.burgundy}`, color: C.burgundy }}>Comprar más créditos</button>
             <a href={waAndrea} target="_blank" rel="noopener noreferrer" className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2" style={{ backgroundColor: "#25D366", color: "#fff", textDecoration: "none" }}>¿Dudas? Escríbeme</a>
+          </div>
+        )}
+
+        {!preview && codigo && (
+          <div className="rounded-2xl p-4 mt-8" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
+            <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Invita a una amiga y ganáis las dos</p>
+            <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando se apunte al estudio (bono o mensualidad), tú y ella os lleváis un regalo. Comparte tu código:</p>
+            <span className="block text-center text-sm font-bold tracking-widest py-2.5 rounded-xl mb-3" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
+            <CompartirCodigo codigo={codigo} />
+
+            {/* Camino a Embajadora: objetivo (5 amigas = mes gratis) y progreso */}
+            <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.border}` }}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.burgundy }}>Tu camino a Embajadora 👑</p>
+                <span className="text-sm font-bold tabular-nums" style={{ color: C.burgundy }}>{Math.min(refAmigas, 5)}/5</span>
+              </div>
+              <div className="flex gap-1.5 mb-2">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <div key={n} className="flex-1 h-2.5 rounded-full transition-all" style={{ backgroundColor: refAmigas >= n ? C.burgundy : C.border }} />
+                ))}
+              </div>
+              <div className="flex justify-between mb-3">
+                <span className="text-[10px]" style={{ color: C.muted }}>Cada amiga, un regalo</span>
+                <span className="text-[10px] font-bold" style={{ color: refAmigas >= 5 ? C.burgundy : C.muted }}>5 = mes gratis 👑</span>
+              </div>
+              <p className="text-xs leading-relaxed" style={{ color: C.brown }}>
+                {refAmigas >= 5
+                  ? <>¡Ya eres <strong style={{ color: C.burgundy }}>Embajadora</strong>! Te has ganado un <strong style={{ color: C.burgundy }}>mes gratis</strong> 👑</>
+                  : refAmigas > 0
+                    ? <>Llevas <strong style={{ color: C.burgundy }}>{refAmigas}</strong> {refAmigas === 1 ? "amiga" : "amigas"}. Te {5 - refAmigas === 1 ? "falta" : "faltan"} <strong style={{ color: C.burgundy }}>{5 - refAmigas}</strong> para tu <strong>mes gratis</strong>.</>
+                    : <>Cuando una amiga se apunta, <strong style={{ color: C.burgundy }}>un regalo</strong> para las dos. Al llegar a <strong style={{ color: C.burgundy }}>5</strong>, un <strong>mes gratis</strong>.</>}
+              </p>
+              {refPremios.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {refPremios.map((p, i) => (
+                    <span key={i} className="text-[11px] px-2.5 py-1 rounded-full" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>✓ {p.detalle}</span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
