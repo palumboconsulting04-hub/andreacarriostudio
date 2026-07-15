@@ -59,6 +59,10 @@ type KpiStudentRow = {
   prezzo: number | null;
 };
 
+// Desglose de la facturación del mes por origen (matrícula / bono / mensualidad).
+type FactItem = { nombre: string; email: string; detalle: string; importe: number };
+type FactCat = { key: string; label: string; total: number; items: FactItem[]; nota?: string };
+
 type OcupacionClase = { id: string; giorno: string; ora_inizio: string; ora_fine: string; ocupados: number; total: number };
 type OcupacionDisciplina = { disciplina_id: string; nombre: string; ocupados: number; total: number; clases: OcupacionClase[] };
 
@@ -1013,7 +1017,10 @@ export default function AdminDashboard() {
   };
 
   // KPI drawer
-  const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | "facturacion" | null>(null);
+  const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | "facturacion" | "nuevas" | null>(null);
+  const [facturacionDetalle, setFacturacionDetalle] = useState<FactCat[]>([]);
+  const [nuevasDetalle, setNuevasDetalle] = useState<FactCat[]>([]);
+  const [factCat, setFactCat] = useState<string | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
   const [kpiStudents, setKpiStudents] = useState<KpiStudentRow[]>([]);
   const [kpiStudentProfile, setKpiStudentProfile] = useState<IscrizioneDetalle | null>(null);
@@ -1618,27 +1625,20 @@ export default function AdminDashboard() {
   };
 
   // Listado de alumnas que contribuyen a la facturación del mes (matrícula y/o bono).
-  const handleKpiFacturacion = async () => {
+  const handleKpiFacturacion = () => {
     setKpiDrawer("facturacion");
     setKpiStudentProfile(null);
     setKpiAlumnosDisciplina(null);
     setKpiOcupacionDisciplina(null);
-    setKpiStudents([]);
-    setKpiLoading(true);
-    const [{ data: isc }, { data: piani }] = await Promise.all([
-      fetch("/api/admin/iscrizioni?inscritas").then(r => r.json()).then(j => ({ data: j.data ?? [] })),
-      supabase.from("piani").select("id, disciplina_id, prezzo"),
-    ]);
-    const pm: Record<string, number> = {};
-    for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[]) pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
-    // Solo quienes aportan a la facturación de ESTE mes: suscripción activa (cuota
-    // recurrente) o matrícula cobrada este mes. Las de meses anteriores no cuentan.
-    const dNow = new Date();
-    const curM = `${dNow.getFullYear()}-${String(dNow.getMonth() + 1).padStart(2, "0")}`;
-    setKpiStudents(((isc ?? []) as unknown as KpiStudentRow[])
-      .map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null }))
-      .filter((i) => isPaid(i.stato) || i.created_at.substring(0, 7) === curM));
-    setKpiLoading(false);
+    setFactCat(null); // vuelve al desglose por origen; el detalle ya está calculado
+  };
+
+  const handleKpiNuevas = () => {
+    setKpiDrawer("nuevas");
+    setKpiStudentProfile(null);
+    setKpiAlumnosDisciplina(null);
+    setKpiOcupacionDisciplina(null);
+    setFactCat(null);
   };
 
   const handleKpiAlumnos = async () => {
@@ -1770,6 +1770,66 @@ export default function AdminDashboard() {
       setFacturacionMes(factMes);
       setFacturacionMesAnterior(factAnt);
       setPendingAmount(pendAmt);
+
+      // ── Desgloses del mes: facturación (matrícula/bono/mensualidad) y nuevas
+      // inscripciones (mensualidad/bono), cada uno con las clientas de cada origen. ──
+      const discNombre: Record<string, string> = {};
+      for (const o of orariData as unknown as { disciplina_id: string; discipline: { nome: string } | null }[]) {
+        if (o.disciplina_id && !discNombre[o.disciplina_id]) discNombre[o.disciplina_id] = o.discipline?.nome ?? o.disciplina_id;
+      }
+      const nombreDisc = (id: string) => discNombre[id] ?? id;
+      const nomIsc = (i: { [k: string]: unknown }) => `${(i.nome as string) ?? ""} ${(i.cognome as string) ?? ""}`.trim() || "—";
+
+      const factMatricula: FactItem[] = [];
+      const nuevasMensualidad: FactItem[] = [];
+      for (const isc of allIsc) {
+        if ((isc.created_at as string).substring(0, 7) !== curMonthStr) continue;
+        nuevasMensualidad.push({ nombre: nomIsc(isc), email: (isc.email as string) ?? "", detalle: nombreDisc(isc.disciplina_id) + (isc.stato === "attesa" ? " · sin pagar" : ""), importe: 0 });
+        const mat = (isc.matricula as number) ?? 0;
+        if ((isPaid(isc.stato) || isc.stato === "matricula_pagada") && mat > 0) {
+          factMatricula.push({ nombre: nomIsc(isc), email: (isc.email as string) ?? "", detalle: "Matrícula · " + nombreDisc(isc.disciplina_id), importe: mat });
+        }
+      }
+      for (const r of renovaciones) {
+        if (r.estado_pago !== "pagado" || r.metodo_pago === "web") continue;
+        if ((r.updated_at ?? "").substring(0, 7) !== curMonthStr) continue;
+        const amt = r.importe_matricula ?? 0;
+        if (amt > 0) factMatricula.push({ nombre: `${r.nombre ?? ""} ${r.apellidos ?? ""}`.trim() || (r.nombre_madre ?? "—"), email: r.email ?? "", detalle: "Matrícula · renovación", importe: amt });
+      }
+
+      const factBono: FactItem[] = [];
+      const nuevasBono: FactItem[] = [];
+      for (const b of bonosAll) {
+        if (b.estado === "cancelado" || b.estado === "reembolsado") continue;
+        if ((b.created_at ?? "").substring(0, 7) !== curMonthStr) continue;
+        const detalle = `${b.creditos_totales} clase${b.creditos_totales !== 1 ? "s" : ""} · ${nombreDisc(b.disciplina_id)}`;
+        nuevasBono.push({ nombre: b.nombre ?? "—", email: b.email ?? "", detalle, importe: 0 });
+        const precio = b.precio_pagado ?? 0;
+        if (precio > 0) factBono.push({ nombre: b.nombre ?? "—", email: b.email ?? "", detalle, importe: precio });
+      }
+
+      const factMensualidad: FactItem[] = [];
+      for (const isc of allIsc) {
+        if (!isPaid(isc.stato)) continue;
+        const prezzo = pm[`${isc.piano_id}:${isc.disciplina_id}`] ?? 0;
+        if (prezzo > 0) factMensualidad.push({ nombre: nomIsc(isc), email: (isc.email as string) ?? "", detalle: "Cuota · " + nombreDisc(isc.disciplina_id), importe: prezzo });
+      }
+      for (const p of pagosM) {
+        if ((p.fecha ?? "").substring(0, 7) !== curMonthStr) continue;
+        const imp = p.importe ?? 0;
+        if (imp > 0) factMensualidad.push({ nombre: p.alumna_nombre ?? "—", email: "", detalle: p.concepto ?? "Cuota", importe: imp });
+      }
+
+      const sumImp = (arr: FactItem[]) => arr.reduce((s, x) => s + x.importe, 0);
+      setFacturacionDetalle([
+        { key: "matricula", label: "Matrícula", total: sumImp(factMatricula), items: factMatricula },
+        { key: "bono", label: "Bonos", total: sumImp(factBono), items: factBono },
+        { key: "mensualidad", label: "Mensualidad (cuotas)", total: sumImp(factMensualidad), items: factMensualidad, nota: "Empiezan en septiembre" },
+      ]);
+      setNuevasDetalle([
+        { key: "mensualidad", label: "Mensualidad", total: nuevasMensualidad.length, items: nuevasMensualidad },
+        { key: "bono", label: "Bono", total: nuevasBono.length, items: nuevasBono },
+      ]);
       const nuevasEstesMes = allIsc.filter(i => {
         const d = new Date(i.created_at);
         return d.getMonth() === tm && d.getFullYear() === ty;
@@ -2345,7 +2405,7 @@ export default function AdminDashboard() {
                   className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Facturación Mes <InfoTip text="Dinero cobrado este mes: matrículas y bonos que ya se están cobrando. No incluye lo que está pendiente de pago." /></p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Facturación Mes <InfoTip text="Dinero cobrado este mes (matrículas, bonos y cuotas). Pulsa para ver el desglose por origen y quién es cada clienta. No incluye lo pendiente de pago." /></p>
                     <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
                       <Icon name="euro" className="text-base" />
                     </div>
@@ -2412,9 +2472,12 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Nuevas Inscripciones */}
-                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
+                <button
+                  onClick={handleKpiNuevas}
+                  className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
+                >
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Nuevas Inscripciones <InfoTip text="Altas nuevas registradas este mes (incluye pendientes y pagadas)." /></p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Nuevas Inscripciones <InfoTip text="Altas nuevas registradas este mes (incluye pendientes y pagadas). Pulsa para ver quién por bono y por mensualidad." /></p>
                     <div className="p-2 bg-primary-container rounded-full text-on-primary-container">
                       <Icon name="person_add" className="text-base" />
                     </div>
@@ -2423,7 +2486,7 @@ export default function AdminDashboard() {
                   <p className="text-xs mt-2" style={{ color: "#89726c" }}>
                     {new Date().toLocaleDateString("es-ES", { month: "long" })}
                   </p>
-                </div>
+                </button>
 
                 {/* Bonos vendidos */}
                 <button
@@ -6470,6 +6533,7 @@ export default function AdminDashboard() {
                     : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? kpiAlumnosDisciplina.nombre
                     : kpiDrawer === "pendientes" ? "Interesadas sin pagar"
                     : kpiDrawer === "facturacion" ? "Facturación del mes"
+                    : kpiDrawer === "nuevas" ? "Nuevas inscripciones"
                     : kpiDrawer === "alumnos" ? "Alumnas Activas"
                     : "Ocupación por Disciplina"}
                 </p>
@@ -6479,7 +6543,8 @@ export default function AdminDashboard() {
                     : kpiDrawer === "pendientes" ? `${pendingCount} contacto${pendingCount !== 1 ? "s" : ""} · ${pendingAmount}€ potencial`
                     : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? `${kpiStudents.length} alumna${kpiStudents.length !== 1 ? "s" : ""}`
                     : kpiDrawer === "alumnos" ? `${iscrittiCount} alumna${iscrittiCount !== 1 ? "s" : ""} activas`
-                    : kpiDrawer === "facturacion" ? `${facturacionMes}€ · ${kpiStudents.length} alumna${kpiStudents.length !== 1 ? "s" : ""}`
+                    : kpiDrawer === "facturacion" ? `${facturacionMes}€ este mes`
+                    : kpiDrawer === "nuevas" ? `${nuevasInscripcionesMes} este mes`
                     : `${ocupacionMedia}% media`}
                 </p>
               </div>
@@ -6622,6 +6687,58 @@ export default function AdminDashboard() {
                     })
                   )}
                 </div>
+
+              ) : (kpiDrawer === "facturacion" || kpiDrawer === "nuevas") ? (
+                /* ── Desglose por origen (matrícula/bono/mensualidad) → clientas ── */
+                (() => {
+                  const esEuros = kpiDrawer === "facturacion";
+                  const cats = esEuros ? facturacionDetalle : nuevasDetalle;
+                  if (factCat === null) {
+                    return (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>De dónde viene</p>
+                        {cats.map(cat => (
+                          <button key={cat.key} onClick={() => cat.items.length && setFactCat(cat.key)} disabled={!cat.items.length}
+                            className="w-full text-left p-4 rounded-xl border flex items-center justify-between" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9", opacity: cat.items.length ? 1 : 0.55, cursor: cat.items.length ? "pointer" : "default" }}>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium" style={{ color: "#25190f" }}>{cat.label}</p>
+                              <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{cat.items.length > 0 ? `${cat.items.length} ${cat.items.length === 1 ? "clienta" : "clientas"}` : (cat.nota ?? "—")}</p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <p className="text-base font-bold" style={{ color: "#7d2b13" }}>{esEuros ? `${cat.total}€` : cat.total}</p>
+                              {cat.items.length > 0 && <Icon name="chevron_right" className="text-base" style={{ color: "#89726c" }} />}
+                            </div>
+                          </button>
+                        ))}
+                        <div className="flex items-center justify-between p-4 rounded-xl mt-1" style={{ backgroundColor: "#7d2b13" }}>
+                          <p className="text-sm font-semibold" style={{ color: "#fff8f5" }}>Total</p>
+                          <p className="text-lg font-bold" style={{ color: "#fff8f5" }}>{esEuros ? `${facturacionMes}€` : nuevasInscripcionesMes}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  const cat = cats.find(c => c.key === factCat);
+                  if (!cat) return null;
+                  return (
+                    <div className="space-y-2">
+                      <button onClick={() => setFactCat(null)} className="text-xs font-semibold mb-1 flex items-center gap-1" style={{ color: "#7d2b13" }}>
+                        <Icon name="arrow_back" className="text-sm" /> Volver
+                      </button>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>{cat.label} · {esEuros ? `${cat.total}€` : cat.items.length}</p>
+                      {cat.items.length === 0 ? (
+                        <p className="text-center py-8 text-sm" style={{ color: "#89726c" }}>{cat.nota ?? "Sin clientas"}</p>
+                      ) : cat.items.map((it, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9" }}>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate" style={{ color: "#25190f" }}>{it.nombre}</p>
+                            <p className="text-xs mt-0.5 truncate" style={{ color: "#89726c" }}>{it.detalle}{it.email ? ` · ${it.email}` : ""}</p>
+                          </div>
+                          {esEuros && <p className="text-sm font-bold flex-shrink-0 ml-2" style={{ color: "#7d2b13" }}>{it.importe}€</p>}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()
 
               ) : (
                 /* ── Lista alumnos (pendientes / disciplina) ── */
