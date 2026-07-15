@@ -1734,12 +1734,14 @@ export default function AdminDashboard() {
           else if (mesIsc === prevMonthStr) factAnt += mat;
         }
       }
-      // Sumar matrículas manuales (efectivo / bizum) de renovaciones.
-      // Excluir metodo_pago="web": esas matrículas ya están contabilizadas via Stripe (iscrizioni).
+      // Sumar matrículas manuales (efectivo / bizum) de renovaciones, SOLO las del mes
+      // en que se cobraron (por updated_at). Excluir metodo_pago="web": esas matrículas
+      // ya están contabilizadas via Stripe (iscrizioni).
       for (const r of renovaciones.filter(x => x.estado_pago === "pagado" && x.metodo_pago !== "web")) {
         const amt = r.importe_matricula ?? 0;
-        factMes += amt;
-        if (r.updated_at && r.updated_at.substring(0, 7) < curMonthStr) factAnt += amt;
+        const mesR = (r.updated_at ?? "").substring(0, 7);
+        if (mesR === curMonthStr) factMes += amt;
+        else if (mesR === prevMonthStr) factAnt += amt;
       }
       // Sumar cuotas mensuales manuales (pagos_manuales), por su fecha real de cobro.
       for (const p of pagosM) {
