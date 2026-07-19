@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest) {
   const id = body?.id;
   if (!id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
 
-  const patch: { email?: string; telefono?: string | null } = {};
+  const patch: { email?: string; telefono?: string | null; stato?: string; piano_id?: string; matricula?: number; metodo_pagamento?: string } = {};
   if (typeof body.email === "string") {
     const email = body.email.trim().toLowerCase();
     if (!/\S+@\S+\.\S+/.test(email)) return NextResponse.json({ error: "Correo no válido" }, { status: 400 });
@@ -67,9 +67,18 @@ export async function PATCH(req: NextRequest) {
     const tel = typeof body.telefono === "string" ? body.telefono.trim() : "";
     patch.telefono = tel || null;
   }
+  // Edición directa desde el admin (estado, plan, matrícula, método de pago).
+  const ESTADOS = ["attesa", "pagato", "pagado", "activa", "matricula_pagada", "impago", "cancelada"];
+  if (typeof body.stato === "string") {
+    if (!ESTADOS.includes(body.stato)) return NextResponse.json({ error: "Estado no válido" }, { status: 400 });
+    patch.stato = body.stato;
+  }
+  if (typeof body.piano_id === "string" && body.piano_id) patch.piano_id = body.piano_id;
+  if (body.matricula !== undefined && body.matricula !== null && !Number.isNaN(Number(body.matricula))) patch.matricula = Number(body.matricula);
+  if (typeof body.metodo_pagamento === "string" && body.metodo_pagamento) patch.metodo_pagamento = body.metodo_pagamento;
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
 
-  const { data, error } = await supabaseAdmin.from("iscrizioni").update(patch).eq("id", id).select("id, email, telefono").single();
+  const { data, error } = await supabaseAdmin.from("iscrizioni").update(patch).eq("id", id).select("id, email, telefono, stato, piano_id, matricula, metodo_pagamento").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ data });
 }

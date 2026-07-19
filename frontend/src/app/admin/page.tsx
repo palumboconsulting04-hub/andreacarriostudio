@@ -502,6 +502,11 @@ export default function AdminDashboard() {
   const [asistenciaResumen, setAsistenciaResumen] = useState<{ presente: number; falta: number; justificada: number; total: number; porcentaje: number | null } | null>(null);
   const [usuariosProfile, setUsuariosProfile] = useState<IscrizioneDetalle | null>(null);
   const [usuariosProfileLoading, setUsuariosProfileLoading] = useState(false);
+  // Edición directa del perfil de la alumna (estado, plan, matrícula, método).
+  const [detallePiani, setDetallePiani] = useState<{ id: string; nome: string; prezzo: number }[]>([]);
+  const [editando, setEditando] = useState(false);
+  const [editForm, setEditForm] = useState<{ stato: string; piano_id: string; matricula: string; metodo: string }>({ stato: "", piano_id: "", matricula: "", metodo: "" });
+  const [editLoading, setEditLoading] = useState(false);
   // Edición del contacto (email / teléfono) en la ficha de Clientas.
   const [editContacto, setEditContacto] = useState(false);
   const [formContacto, setFormContacto] = useState({ email: "", telefono: "" });
@@ -1612,16 +1617,49 @@ export default function AdminDashboard() {
     setConfirmCancelSub(false);
     setAsistenciaResumen(null);
     setStripeStatus(null);
+    setEditando(false);
+    setDetallePiani([]);
     fetch(`/api/admin/asistencia?iscrizione_id=${id}`)
       .then(r => r.json())
       .then(j => setAsistenciaResumen(j.resumen ?? null))
       .catch(() => {});
     const { data } = await fetch(`/api/admin/iscrizioni?id=${id}`).then(r => r.json());
     if (data) {
-      const { data: pd } = await supabase.from("piani").select("prezzo").eq("id", (data as unknown as IscrizioneDetalle).piano_id).eq("disciplina_id", (data as unknown as IscrizioneDetalle).disciplina_id).single();
-      setUsuariosProfile({ ...(data as unknown as IscrizioneDetalle), prezzo: pd?.prezzo ?? null });
+      const d = data as unknown as IscrizioneDetalle;
+      const { data: planes } = await supabase.from("piani").select("id, nome, prezzo").eq("disciplina_id", d.disciplina_id);
+      const lista = (planes ?? []) as { id: string; nome: string; prezzo: number }[];
+      setDetallePiani(lista);
+      setUsuariosProfile({ ...d, prezzo: lista.find(p => p.id === d.piano_id)?.prezzo ?? null });
     }
     setUsuariosProfileLoading(false);
+  };
+
+  const abrirEdicion = () => {
+    if (!usuariosProfile) return;
+    setEditForm({
+      stato: usuariosProfile.stato,
+      piano_id: usuariosProfile.piano_id,
+      matricula: String(usuariosProfile.matricula ?? 0),
+      metodo: usuariosProfile.metodo_pagamento ?? "",
+    });
+    setEditando(true);
+  };
+
+  const guardarEdicionAlumna = async () => {
+    if (!usuariosProfile) return;
+    setEditLoading(true);
+    const mat = Number(editForm.matricula) || 0;
+    const res = await fetch("/api/admin/iscrizioni", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: usuariosProfile.id, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo || undefined }),
+    });
+    if (res.ok) {
+      const nuevoPrezzo = detallePiani.find(p => p.id === editForm.piano_id)?.prezzo ?? usuariosProfile.prezzo ?? null;
+      setUsuariosProfile(p => (p ? { ...p, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo, prezzo: nuevoPrezzo } : p));
+      setUsuariosData(prev => prev.map(u => (u.id === usuariosProfile.id ? { ...u, stato: editForm.stato, piano_id: editForm.piano_id, metodo_pagamento: editForm.metodo, prezzo: nuevoPrezzo } : u)));
+      setEditando(false);
+    }
+    setEditLoading(false);
   };
 
   // ── Estado real en Stripe (bajo demanda) ──
@@ -7715,6 +7753,52 @@ export default function AdminDashboard() {
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Editar datos: estado, plan, cuota (vía plan), matrícula, método */}
+                  <div>
+                    {!editando ? (
+                      <button onClick={abrirEdicion} className="w-full py-2.5 rounded-xl text-sm font-semibold border flex items-center justify-center gap-2" style={{ borderColor: "#7d2b13", color: "#7d2b13" }}>
+                        <Icon name="edit" className="text-sm" /> Editar datos
+                      </button>
+                    ) : (
+                      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "#7d2b13", backgroundColor: "#fff8f5" }}>
+                        <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Editar datos</p>
+                        <label className="block">
+                          <span className="text-xs" style={{ color: "#89726c" }}>Estado de pago</span>
+                          <select value={editForm.stato} onChange={e => setEditForm(f => ({ ...f, stato: e.target.value }))} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                            <option value="attesa">Pendiente (no ha pagado)</option>
+                            <option value="matricula_pagada">Solo matrícula pagada</option>
+                            <option value="pagato">Pagada (matrícula + cuota)</option>
+                            <option value="activa">Activa (cuota cobrándose)</option>
+                            <option value="impago">Impago</option>
+                            <option value="cancelada">Cancelada</option>
+                          </select>
+                        </label>
+                        <label className="block">
+                          <span className="text-xs" style={{ color: "#89726c" }}>Plan (define la cuota)</span>
+                          <select value={editForm.piano_id} onChange={e => setEditForm(f => ({ ...f, piano_id: e.target.value }))} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                            {detallePiani.length === 0 && <option value={editForm.piano_id}>{PLAN_LABEL[editForm.piano_id] ?? editForm.piano_id}</option>}
+                            {detallePiani.map(p => <option key={p.id} value={p.id}>{PLAN_LABEL[p.id] ?? p.nome} — {p.prezzo}€/mes</option>)}
+                          </select>
+                        </label>
+                        <label className="block">
+                          <span className="text-xs" style={{ color: "#89726c" }}>Matrícula cobrada (€)</span>
+                          <input type="number" min="0" value={editForm.matricula} onChange={e => setEditForm(f => ({ ...f, matricula: e.target.value }))} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />
+                        </label>
+                        <label className="block">
+                          <span className="text-xs" style={{ color: "#89726c" }}>Método de pago</span>
+                          <select value={editForm.metodo} onChange={e => setEditForm(f => ({ ...f, metodo: e.target.value }))} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                            <option value="">—</option>
+                            {Object.entries(METODO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                          </select>
+                        </label>
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={() => setEditando(false)} disabled={editLoading} className="flex-1 py-2 rounded-lg text-sm font-semibold border" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>Cancelar</button>
+                          <button onClick={guardarEdicionAlumna} disabled={editLoading} className="flex-1 py-2 rounded-lg text-sm font-semibold text-white" style={{ backgroundColor: "#7d2b13", opacity: editLoading ? 0.6 : 1 }}>{editLoading ? "Guardando…" : "Guardar"}</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Horarios */}
