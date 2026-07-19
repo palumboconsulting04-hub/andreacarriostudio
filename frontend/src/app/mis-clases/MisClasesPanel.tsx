@@ -524,6 +524,14 @@ export default function MisClasesPanel() {
           {!preview && <button onClick={salir} className="text-xs shrink-0" style={{ color: C.muted }}>Salir</button>}
         </div>
 
+        {!preview && (
+          <a href="https://chat.whatsapp.com/Gi2SUxvVc0xCqtw8egpkQu?mode=gi_t" target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full mb-5 py-3.5 rounded-2xl text-sm font-bold" style={{ backgroundColor: "#25D366", color: "#fff", textDecoration: "none" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
+            Entra en el grupo de WhatsApp
+          </a>
+        )}
+
         {!preview && mensualidad.length > 0 && (
           <div className="mb-5">
             <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Tus clases</p>
