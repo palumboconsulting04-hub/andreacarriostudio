@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Script from "next/script";
 import { SLOTS, EVENTO, slotById } from "@/lib/jornada";
+
+// Meta (Facebook) Pixel — para optimizar la publicidad de esta jornada por "Lead".
+const FB_PIXEL_ID = "2024231855152441";
+declare global {
+  interface Window {
+    fbq?: (...args: unknown[]) => void;
+  }
+}
 
 const C = {
   burgundy: "#7d2b13", blush: "#ffdbd1", cream: "#fff8f5", bg: "#f5ede8",
@@ -63,6 +72,8 @@ export default function ReservarJornada() {
       if (!res.ok) throw new Error();
       setEsEspera(selFull);
       setEnviado(true);
+      // Conversión para Meta Ads: reserva confirmada o apuntada a lista de espera.
+      window.fbq?.("track", "Lead", { content_name: selFull ? "Lista espera jornada" : "Reserva jornada" });
     } catch {
       setErrorMsg("Ha habido un problema. Inténtalo de nuevo.");
     } finally {
@@ -187,6 +198,23 @@ export default function ReservarJornada() {
 
   return (
     <div style={{ backgroundColor: C.bg, minHeight: "100vh" }} className="px-4 py-10">
+      {/* Meta Pixel (base) — dispara PageView al cargar la página */}
+      <Script id="fb-pixel" strategy="afterInteractive">
+        {`!function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '${FB_PIXEL_ID}');
+        fbq('track', 'PageView');`}
+      </Script>
+      <noscript>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img height="1" width="1" style={{ display: "none" }} alt="" src={`https://www.facebook.com/tr?id=${FB_PIXEL_ID}&ev=PageView&noscript=1`} />
+      </noscript>
       <div className="max-w-md mx-auto">
         <h1 className="text-3xl sm:text-4xl text-center mb-1" style={{ fontFamily: fSerif, color: C.burgundy }}>{EVENTO.titulo}</h1>
         <p className="text-center text-sm mb-1" style={{ color: C.dark, fontFamily: fSans, fontWeight: 600 }}>{EVENTO.fecha} · Valencia (Zona Alfahuir)</p>
