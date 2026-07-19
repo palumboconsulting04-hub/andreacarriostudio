@@ -505,7 +505,7 @@ export default function AdminDashboard() {
   // Edición directa del perfil de la alumna (estado, plan, matrícula, método).
   const [detallePiani, setDetallePiani] = useState<{ id: string; nome: string; prezzo: number }[]>([]);
   const [editando, setEditando] = useState(false);
-  const [editForm, setEditForm] = useState<{ stato: string; piano_id: string; matricula: string; metodo: string }>({ stato: "", piano_id: "", matricula: "", metodo: "" });
+  const [editForm, setEditForm] = useState<{ stato: string; piano_id: string; matricula: string; metodo: string; cuota: string }>({ stato: "", piano_id: "", matricula: "", metodo: "", cuota: "" });
   const [editLoading, setEditLoading] = useState(false);
   // Edición del contacto (email / teléfono) en la ficha de Clientas.
   const [editContacto, setEditContacto] = useState(false);
@@ -1119,9 +1119,9 @@ export default function AdminDashboard() {
         const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" });
         // Bono mensual recurrente: solo de quien ya lo está facturando (no la matrícula pagada).
-        const mrr = ((isc ?? []) as { created_at: string; disciplina_id: string; piano_id: string; matricula: number; stato: string }[])
+        const mrr = ((isc ?? []) as { created_at: string; disciplina_id: string; piano_id: string; matricula: number; stato: string; prezzo?: number | null }[])
           .filter(v => v.created_at.substring(0, 7) <= mes && PAID_STATI.has(v.stato))
-          .reduce((s, v) => s + (pm[`${v.piano_id}:${v.disciplina_id}`] ?? 0), 0);
+          .reduce((s, v) => s + ((v.prezzo ?? pm[`${v.piano_id}:${v.disciplina_id}`]) ?? 0), 0);
         // Matrícula Stripe: ingreso del mes en que se cobró.
         const matMes = ((isc ?? []) as { created_at: string; matricula: number }[])
           .filter(v => v.created_at.substring(0, 7) === mes)
@@ -1219,7 +1219,7 @@ export default function AdminDashboard() {
       const pm: Record<string, number> = {};
       for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[])
         pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
-      setUsuariosData(((isc ?? []) as unknown as KpiStudentRow[]).map(i => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+      setUsuariosData(((isc ?? []) as unknown as KpiStudentRow[]).map(i => ({ ...i, prezzo: i.prezzo ?? pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
       setUsuariosLoading(false);
     });
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1329,7 +1329,7 @@ export default function AdminDashboard() {
       pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
     const stripeRows: VentaRow[] = ((isc ?? []) as unknown as VentaRow[]).map(i => ({
       ...i,
-      prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null,
+      prezzo: i.prezzo ?? pm[`${i.piano_id}:${i.disciplina_id}`] ?? null,
       tipo: "stripe" as const,
     }));
     // Los grupos de renovación ("Pre-Ballet", "Ballet 1", "Ballet 2") corresponden a
@@ -1597,7 +1597,7 @@ export default function AdminDashboard() {
     ]);
     const pm: Record<string, number> = {};
     for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[]) pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
-    setKpiStudents(((isc ?? []) as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+    setKpiStudents(((isc ?? []) as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: i.prezzo ?? pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
     setKpiLoading(false);
   };
 
@@ -1629,7 +1629,7 @@ export default function AdminDashboard() {
       const { data: planes } = await supabase.from("piani").select("id, nome, prezzo").eq("disciplina_id", d.disciplina_id);
       const lista = (planes ?? []) as { id: string; nome: string; prezzo: number }[];
       setDetallePiani(lista);
-      setUsuariosProfile({ ...d, prezzo: lista.find(p => p.id === d.piano_id)?.prezzo ?? null });
+      setUsuariosProfile({ ...d, prezzo: (d.prezzo ?? lista.find(p => p.id === d.piano_id)?.prezzo) ?? null });
     }
     setUsuariosProfileLoading(false);
   };
@@ -1641,6 +1641,7 @@ export default function AdminDashboard() {
       piano_id: usuariosProfile.piano_id,
       matricula: String(usuariosProfile.matricula ?? 0),
       metodo: usuariosProfile.metodo_pagamento ?? "",
+      cuota: usuariosProfile.prezzo != null ? String(usuariosProfile.prezzo) : "",
     });
     setEditando(true);
   };
@@ -1649,12 +1650,16 @@ export default function AdminDashboard() {
     if (!usuariosProfile) return;
     setEditLoading(true);
     const mat = Number(editForm.matricula) || 0;
+    const planPrice = detallePiani.find(p => p.id === editForm.piano_id)?.prezzo ?? null;
+    const cuotaNum = editForm.cuota === "" ? null : Number(editForm.cuota);
+    // Solo guardamos override si la cuota difiere del precio del plan (si no, sigue el plan).
+    const prezzoOverride = (cuotaNum == null || Number.isNaN(cuotaNum) || cuotaNum === planPrice) ? null : cuotaNum;
     const res = await fetch("/api/admin/iscrizioni", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: usuariosProfile.id, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo || undefined }),
+      body: JSON.stringify({ id: usuariosProfile.id, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo || undefined, prezzo: prezzoOverride }),
     });
     if (res.ok) {
-      const nuevoPrezzo = detallePiani.find(p => p.id === editForm.piano_id)?.prezzo ?? usuariosProfile.prezzo ?? null;
+      const nuevoPrezzo = prezzoOverride ?? planPrice;
       setUsuariosProfile(p => (p ? { ...p, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo, prezzo: nuevoPrezzo } : p));
       setUsuariosData(prev => prev.map(u => (u.id === usuariosProfile.id ? { ...u, stato: editForm.stato, piano_id: editForm.piano_id, metodo_pagamento: editForm.metodo, prezzo: nuevoPrezzo } : u)));
       setEditando(false);
@@ -1798,7 +1803,7 @@ export default function AdminDashboard() {
     const isc = ((iscAll ?? []) as KpiStudentRow[]).filter(i => i.disciplina_id === disc.disciplina_id);
     const pm: Record<string, number> = {};
     for (const p of (piani ?? []) as { id: string; disciplina_id: string; prezzo: number }[]) pm[`${p.id}:${p.disciplina_id}`] = p.prezzo;
-    setKpiStudents((isc as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
+    setKpiStudents((isc as unknown as KpiStudentRow[]).map((i) => ({ ...i, prezzo: i.prezzo ?? pm[`${i.piano_id}:${i.disciplina_id}`] ?? null })));
     setKpiLoading(false);
   };
 
@@ -1841,7 +1846,7 @@ export default function AdminDashboard() {
       const prevMonthStr = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, "0")}`;
       let factMes = 0, factAnt = 0, pendAmt = 0;
       for (const isc of allIsc) {
-        const prezzo = pm[`${isc.piano_id}:${isc.disciplina_id}`] ?? 0;
+        const prezzo = ((isc.prezzo as number | null) ?? pm[`${isc.piano_id}:${isc.disciplina_id}`]) ?? 0;
         const mat = isc.matricula ?? 0;
         const mesIsc = isc.created_at.substring(0, 7);
         if (isc.stato === "attesa") {
@@ -1934,7 +1939,7 @@ export default function AdminDashboard() {
       const factMensualidad: FactItem[] = [];
       for (const isc of allIsc) {
         if (!isPaid(isc.stato)) continue;
-        const prezzo = pm[`${isc.piano_id}:${isc.disciplina_id}`] ?? 0;
+        const prezzo = ((isc.prezzo as number | null) ?? pm[`${isc.piano_id}:${isc.disciplina_id}`]) ?? 0;
         if (prezzo > 0) factMensualidad.push({ nombre: nomIsc(isc), email: (isc.email as string) ?? "", detalle: "Cuota · " + nombreDisc(isc.disciplina_id), importe: prezzo });
       }
       for (const p of pagosM) {
@@ -1972,7 +1977,7 @@ export default function AdminDashboard() {
       const conPlaza = allIsc.filter(i => isPaid(i.stato) || i.stato === "matricula_pagada");
       const preciosPlaza = conPlaza
         .map(i => {
-          const conPlan = pm[`${i.piano_id}:${i.disciplina_id}`] ?? 0;
+          const conPlan = ((i.prezzo as number | null) ?? pm[`${i.piano_id}:${i.disciplina_id}`]) ?? 0;
           // Las alumnas sin plan (espejos de renovación que pagan en efectivo)
           // cuentan con el precio típico de su disciplina, no como 0.
           return conPlan > 0 ? conPlan : (precioPorDisc[i.disciplina_id] ?? 0);
@@ -7776,11 +7781,15 @@ export default function AdminDashboard() {
                           </select>
                         </label>
                         <label className="block">
-                          <span className="text-xs" style={{ color: "#89726c" }}>Plan (define la cuota)</span>
-                          <select value={editForm.piano_id} onChange={e => setEditForm(f => ({ ...f, piano_id: e.target.value }))} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                          <span className="text-xs" style={{ color: "#89726c" }}>Plan</span>
+                          <select value={editForm.piano_id} onChange={e => { const pid = e.target.value; const pp = detallePiani.find(p => p.id === pid)?.prezzo; setEditForm(f => ({ ...f, piano_id: pid, cuota: pp != null ? String(pp) : f.cuota })); }} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
                             {detallePiani.length === 0 && <option value={editForm.piano_id}>{PLAN_LABEL[editForm.piano_id] ?? editForm.piano_id}</option>}
                             {detallePiani.map(p => <option key={p.id} value={p.id}>{PLAN_LABEL[p.id] ?? p.nome} — {p.prezzo}€/mes</option>)}
                           </select>
+                        </label>
+                        <label className="block">
+                          <span className="text-xs" style={{ color: "#89726c" }}>Cuota mensual (€) — cámbiala para una cuota personalizada</span>
+                          <input type="number" min="0" value={editForm.cuota} onChange={e => setEditForm(f => ({ ...f, cuota: e.target.value }))} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />
                         </label>
                         <label className="block">
                           <span className="text-xs" style={{ color: "#89726c" }}>Matrícula cobrada (€)</span>

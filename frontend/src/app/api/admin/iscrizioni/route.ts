@@ -10,7 +10,7 @@ async function isAdmin(): Promise<boolean> {
 
 // Columnas completas que necesita el admin (superset de todas las pantallas).
 const COLS =
-  "id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, stripe_subscription_id, stripe_customer_id, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))";
+  "id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, prezzo, stripe_subscription_id, stripe_customer_id, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))";
 
 // GET → lista de inscripciones con service-role (solo admin).
 //  · ?id=        → una inscripción concreta
@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest) {
   const id = body?.id;
   if (!id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
 
-  const patch: { email?: string; telefono?: string | null; stato?: string; piano_id?: string; matricula?: number; metodo_pagamento?: string } = {};
+  const patch: { email?: string; telefono?: string | null; stato?: string; piano_id?: string; matricula?: number; metodo_pagamento?: string; prezzo?: number | null } = {};
   if (typeof body.email === "string") {
     const email = body.email.trim().toLowerCase();
     if (!/\S+@\S+\.\S+/.test(email)) return NextResponse.json({ error: "Correo no válido" }, { status: 400 });
@@ -76,9 +76,11 @@ export async function PATCH(req: NextRequest) {
   if (typeof body.piano_id === "string" && body.piano_id) patch.piano_id = body.piano_id;
   if (body.matricula !== undefined && body.matricula !== null && !Number.isNaN(Number(body.matricula))) patch.matricula = Number(body.matricula);
   if (typeof body.metodo_pagamento === "string" && body.metodo_pagamento) patch.metodo_pagamento = body.metodo_pagamento;
+  // Cuota personalizada (prezzo). null/"" = usar el precio del plan.
+  if ("prezzo" in body) patch.prezzo = (body.prezzo === null || body.prezzo === "" || Number.isNaN(Number(body.prezzo))) ? null : Number(body.prezzo);
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
 
-  const { data, error } = await supabaseAdmin.from("iscrizioni").update(patch).eq("id", id).select("id, email, telefono, stato, piano_id, matricula, metodo_pagamento").single();
+  const { data, error } = await supabaseAdmin.from("iscrizioni").update(patch).eq("id", id).select("id, email, telefono, stato, piano_id, matricula, metodo_pagamento, prezzo").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ data });
 }
