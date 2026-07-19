@@ -203,12 +203,12 @@ function buildHtml(data: InscripcionEmailData): string {
             </td>
           </tr>
 
-          <!-- CTA -->
+          <!-- CTA principal: entrar en Mis clases -->
           <tr>
             <td style="padding:0 32px 24px;text-align:center;">
-              <p style="margin:0 0 16px;font-size:13px;color:#56423d;">Únete a nuestro grupo de WhatsApp para estar al tanto de todo:</p>
-              <a href="https://chat.whatsapp.com/Gi2SUxvVc0xCqtw8egpkQu?mode=gi_t" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:1px;padding:15px 36px;border-radius:9999px;">
-                Unirme al grupo &rarr;
+              <p style="margin:0 0 16px;font-size:13px;color:#56423d;">Entra en tu área <strong>Mis clases</strong> con tu nombre y tu correo (${data.email}): ahí verás tus clases y podrás avisar si un día no puedes venir.</p>
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://reservas.andreacarriostudio.es"}/mis-clases?entrar=1&email=${encodeURIComponent(data.email)}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:1px;padding:15px 40px;border-radius:9999px;">
+                Entrar en Mis clases &rarr;
               </a>
             </td>
           </tr>
