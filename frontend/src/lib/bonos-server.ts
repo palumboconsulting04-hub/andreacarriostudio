@@ -321,9 +321,9 @@ async function enviarAvisoAdmin(m: Record<string, string>, creditos: number, cad
   });
 }
 
-async function enviarEmailBono(m: Record<string, string>, creditos: number, caduca: Date, validoDesde: string, esReferida = false) {
-  if (!m.email) return;
-  const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
+// HTML del correo del bono, exportado para poder previsualizarlo en el admin
+// (es exactamente el mismo HTML que se envía). Lo usa enviarEmailBono más abajo.
+export function buildBonoEmailHtml(m: Record<string, string>, creditos: number, caduca: Date, validoDesde: string, esReferida = false): string {
   const disc = DISC_LABEL[m.disciplina_id] ?? m.disciplina_id;
   const caducaStr = caduca.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
   // Siempre al login (entrar=1) → cada persona entra en SU panel, no con una sesión previa.
@@ -332,7 +332,7 @@ async function enviarEmailBono(m: Record<string, string>, creditos: number, cadu
   const porEmpezar = !!validoDesde && validoDesde > new Date().toISOString().slice(0, 10);
   const inicioStr = validoDesde ? new Date(`${validoDesde}T00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "long" }) : "";
 
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/></head>
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/></head>
 <body style="margin:0;padding:0;background:#f5ede8;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5ede8;padding:40px 16px;"><tr><td align="center">
     <table width="100%" style="max-width:520px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 8px 40px rgba(37,25,15,0.10);">
@@ -374,11 +374,17 @@ async function enviarEmailBono(m: Record<string, string>, creditos: number, cadu
     </table>
   </td></tr></table>
 </body></html>`;
+}
 
+// Envía el correo del bono a la clienta (mismo HTML exacto que el preview del admin).
+async function enviarEmailBono(m: Record<string, string>, creditos: number, caduca: Date, validoDesde: string, esReferida = false) {
+  if (!m.email) return;
+  const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
+  const disc = DISC_LABEL[m.disciplina_id] ?? m.disciplina_id;
   await resend.emails.send({
     from,
     to: m.email,
     subject: `Tu ${m.nombre ?? "bono"} de ${disc} ya está activo 🤎`,
-    html,
+    html: buildBonoEmailHtml(m, creditos, caduca, validoDesde, esReferida),
   });
 }
