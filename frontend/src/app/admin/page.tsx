@@ -1465,6 +1465,24 @@ export default function AdminDashboard() {
     setBookings(prev => prev.filter(b => b.id !== drawerDetalle.id));
   };
 
+  // ── Cambiar estado de pago (altas manuales: pagó fuera de la web) ──
+  const [estadoLoading, setEstadoLoading] = useState(false);
+  const cambiarEstadoAlumna = async (nuevo: string) => {
+    if (!drawerDetalle || drawerDetalle.stato === nuevo) return;
+    setEstadoLoading(true);
+    const anterior = drawerDetalle.stato;
+    const res = await fetch("/api/admin/iscrizione-stato", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: drawerDetalle.id, stato: nuevo }),
+    });
+    if (res.ok) {
+      ajustarMetrics(drawerDetalle, anterior, nuevo); // pendiente/facturación/inscritas al vuelo
+      setDrawerDetalle(d => (d ? { ...d, stato: nuevo } : d));
+      setBookings(prev => prev.map(b => (b.id === drawerDetalle.id ? { ...b, stato: nuevo } : b)));
+    }
+    setEstadoLoading(false);
+  };
+
   // ── Nueva inscripción ──
   const handleNifDisciplinaChange = async (disciplina_id: string) => {
     setNif(p => ({ ...p, disciplina_id, piano_id: "", horarios: [] }));
@@ -7104,6 +7122,22 @@ export default function AdminDashboard() {
                   <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
                     <p className="text-sm font-medium px-4 pt-4" style={{ color: "#25190f" }}>Estado de pago</p>
                     <PagoResumen stato={drawerDetalle.stato} matricula={drawerDetalle.matricula} />
+                    {drawerDetalle.stato === "attesa" ? (
+                      <div className="px-4 pb-4 pt-1">
+                        <button onClick={() => cambiarEstadoAlumna("pagato")} disabled={estadoLoading}
+                          className="w-full py-2.5 rounded-lg text-sm font-semibold" style={{ backgroundColor: "#7d2b13", color: "#fff8f5", opacity: estadoLoading ? 0.6 : 1 }}>
+                          {estadoLoading ? "Guardando…" : "Marcar como pagada"}
+                        </button>
+                        <p className="text-[11px] text-center mt-1.5" style={{ color: "#89726c" }}>Pago manual (transferencia, efectivo o bizum). Contará como alumna pagada en todo el panel.</p>
+                      </div>
+                    ) : drawerDetalle.stato !== "cancelada" ? (
+                      <div className="px-4 pb-4 pt-1">
+                        <button onClick={() => cambiarEstadoAlumna("attesa")} disabled={estadoLoading}
+                          className="w-full py-2 rounded-lg text-xs font-semibold border" style={{ borderColor: "#dcc1b9", color: "#89726c", opacity: estadoLoading ? 0.6 : 1 }}>
+                          {estadoLoading ? "Guardando…" : "Volver a pendiente"}
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
 
                   {/* Eliminar inscripción */}
