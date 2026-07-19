@@ -57,6 +57,7 @@ type KpiStudentRow = {
   created_at: string;
   discipline: { nome: string } | null;
   prezzo: number | null;
+  metodo_pagamento?: string | null;
 };
 
 // Desglose de la facturación del mes por origen (matrícula / bono / mensualidad).
@@ -113,10 +114,16 @@ const NINAS_IDS = new Set(["pre-ballet", "ballet-i", "ballet-ii"]);
 const METODO_LABEL: Record<string, string> = {
   "en-escuela": "En la escuela",
   "tarjeta": "Tarjeta",
+  "efectivo": "Efectivo",
+  "transferencia": "Transferencia",
+  "bizum": "Bizum",
+  "web": "Tarjeta (web)",
   "google-pay": "Google Pay",
   "apple-pay": "Apple Pay",
   "paypal": "PayPal",
 };
+// Métodos que ofrecemos al marcar un pago manual desde el perfil de la alumna.
+const METODOS_MANUALES = ["efectivo", "tarjeta", "transferencia", "bizum"] as const;
 const PLAN_LABEL: Record<string, string> = {
   "basico": "Básico",
   "avanzado": "Avanzado",
@@ -483,6 +490,7 @@ export default function AdminDashboard() {
   const [usuariosSearch, setUsuariosSearch] = useState("");
   const [usuariosFiltroDisc, setUsuariosFiltroDisc] = useState("");
   const [usuariosFiltroStato, setUsuariosFiltroStato] = useState("");
+  const [usuariosFiltroMetodo, setUsuariosFiltroMetodo] = useState("");
   const [copiedEmail, setCopiedEmail] = useState(false);
   // Asistencia / pasar lista
   const [asistenciaFecha, setAsistenciaFecha] = useState(() => new Date().toLocaleDateString("en-CA"));
@@ -1467,18 +1475,20 @@ export default function AdminDashboard() {
 
   // ── Cambiar estado de pago (altas manuales: pagó fuera de la web) ──
   const [estadoLoading, setEstadoLoading] = useState(false);
-  const cambiarEstadoAlumna = async (nuevo: string) => {
-    if (!drawerDetalle || drawerDetalle.stato === nuevo) return;
+  const cambiarEstadoAlumna = async (nuevo: string, metodo?: string) => {
+    if (!drawerDetalle) return;
+    if (drawerDetalle.stato === nuevo && !metodo) return;
     setEstadoLoading(true);
     const anterior = drawerDetalle.stato;
     const res = await fetch("/api/admin/iscrizione-stato", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: drawerDetalle.id, stato: nuevo }),
+      body: JSON.stringify({ id: drawerDetalle.id, stato: nuevo, ...(metodo ? { metodo_pagamento: metodo } : {}) }),
     });
     if (res.ok) {
-      ajustarMetrics(drawerDetalle, anterior, nuevo); // pendiente/facturación/inscritas al vuelo
-      setDrawerDetalle(d => (d ? { ...d, stato: nuevo } : d));
+      if (anterior !== nuevo) ajustarMetrics(drawerDetalle, anterior, nuevo); // pendiente/facturación/inscritas al vuelo
+      setDrawerDetalle(d => (d ? { ...d, stato: nuevo, ...(metodo ? { metodo_pagamento: metodo } : {}) } : d));
       setBookings(prev => prev.map(b => (b.id === drawerDetalle.id ? { ...b, stato: nuevo } : b)));
+      setUsuariosData(prev => prev.map(u => (u.id === drawerDetalle.id ? { ...u, stato: nuevo, ...(metodo ? { metodo_pagamento: metodo } : {}) } : u)));
     }
     setEstadoLoading(false);
   };
@@ -3580,16 +3590,18 @@ export default function AdminDashboard() {
               .sort((a, b) => a[1].localeCompare(b[1]));
             // Estados realmente presentes en los datos, para no ofrecer filtros vacíos.
             const statoOptions = [...new Set(usuariosData.map(u => u.stato))].sort();
+            const metodoOptions = [...new Set(usuariosData.map(u => u.metodo_pagamento || "").filter(Boolean))].sort();
             const filtered = usuariosData.filter(u => {
               if (usuariosFiltroDisc && u.disciplina_id !== usuariosFiltroDisc) return false;
               if (usuariosFiltroStato && u.stato !== usuariosFiltroStato) return false;
+              if (usuariosFiltroMetodo && (u.metodo_pagamento || "") !== usuariosFiltroMetodo) return false;
               if (!q) return true;
               const name = NINAS_IDS.has(u.disciplina_id) && u.nome_alumna
                 ? `${u.nome_alumna} ${u.cognome_alumna ?? ""}`.toLowerCase()
                 : `${u.nome} ${u.cognome}`.toLowerCase();
               return name.includes(q) || (u.discipline?.nome ?? "").toLowerCase().includes(q);
             });
-            const filtrosActivos = usuariosFiltroDisc !== "" || usuariosFiltroStato !== "" || q !== "";
+            const filtrosActivos = usuariosFiltroDisc !== "" || usuariosFiltroStato !== "" || usuariosFiltroMetodo !== "" || q !== "";
             return (
               <section className="space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -3635,9 +3647,18 @@ export default function AdminDashboard() {
                     <option value="">Todos los estados</option>
                     {statoOptions.map(s => <option key={s} value={s}>{statoInfo(s).label}</option>)}
                   </select>
+                  <select
+                    value={usuariosFiltroMetodo}
+                    onChange={e => setUsuariosFiltroMetodo(e.target.value)}
+                    className="border rounded-full px-4 py-2 text-sm focus:outline-none cursor-pointer"
+                    style={{ borderColor: "#dcc1b9", color: usuariosFiltroMetodo ? "#25190f" : "#89726c", backgroundColor: usuariosFiltroMetodo ? "#fff3e0" : "#fff" }}
+                  >
+                    <option value="">Todos los métodos</option>
+                    {metodoOptions.map(m => <option key={m} value={m}>{METODO_LABEL[m] ?? m}</option>)}
+                  </select>
                   {filtrosActivos && (
                     <button
-                      onClick={() => { setUsuariosSearch(""); setUsuariosFiltroDisc(""); setUsuariosFiltroStato(""); }}
+                      onClick={() => { setUsuariosSearch(""); setUsuariosFiltroDisc(""); setUsuariosFiltroStato(""); setUsuariosFiltroMetodo(""); }}
                       className="inline-flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold"
                       style={{ color: "#7d2b13" }}
                     >
@@ -3656,14 +3677,14 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm min-w-[640px]">
                         <thead>
                           <tr className="border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
-                            {["Alumna", "Tutor", "Disciplina", "Plan", "Cuota", "Estado", "Inscrita", ""].map((h, hi) => (
+                            {["Alumna", "Tutor", "Disciplina", "Plan", "Cuota", "Estado", "Método", "Inscrita", ""].map((h, hi) => (
                               <th key={hi} className="text-left py-3 px-4 text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {filtered.length === 0 ? (
-                            <tr><td colSpan={8} className="py-12 text-center text-sm" style={{ color: "#89726c" }}>No hay resultados</td></tr>
+                            <tr><td colSpan={9} className="py-12 text-center text-sm" style={{ color: "#89726c" }}>No hay resultados</td></tr>
                           ) : filtered.map(u => {
                             const esNina = NINAS_IDS.has(u.disciplina_id);
                             const alumnaName = esNina && u.nome_alumna
@@ -3687,6 +3708,7 @@ export default function AdminDashboard() {
                                     {statoInfo(u.stato).label}
                                   </span>
                                 </td>
+                                <td className="py-3 px-4 text-xs whitespace-nowrap" style={{ color: "#89726c" }}>{u.metodo_pagamento ? (METODO_LABEL[u.metodo_pagamento] ?? u.metodo_pagamento) : "—"}</td>
                                 <td className="py-3 px-4 whitespace-nowrap text-xs" style={{ color: "#89726c" }}>
                                   {new Date(u.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
                                 </td>
@@ -7124,17 +7146,21 @@ export default function AdminDashboard() {
                     <PagoResumen stato={drawerDetalle.stato} matricula={drawerDetalle.matricula} />
                     {drawerDetalle.stato === "attesa" ? (
                       <div className="px-4 pb-4 pt-1">
-                        <button onClick={() => cambiarEstadoAlumna("pagato")} disabled={estadoLoading}
-                          className="w-full py-2.5 rounded-lg text-sm font-semibold" style={{ backgroundColor: "#7d2b13", color: "#fff8f5", opacity: estadoLoading ? 0.6 : 1 }}>
-                          {estadoLoading ? "Guardando…" : "Marcar como pagada"}
-                        </button>
-                        <p className="text-[11px] text-center mt-1.5" style={{ color: "#89726c" }}>Pago manual (transferencia, efectivo o bizum). Contará como alumna pagada en todo el panel.</p>
+                        <p className="text-xs mb-2" style={{ color: "#89726c" }}>Ha pagado, ¿cómo? Se guarda el método y cuenta como pagada en todo el panel.</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {METODOS_MANUALES.map(mt => (
+                            <button key={mt} onClick={() => cambiarEstadoAlumna("pagato", mt)} disabled={estadoLoading}
+                              className="py-2.5 rounded-lg text-sm font-semibold" style={{ backgroundColor: "#7d2b13", color: "#fff8f5", opacity: estadoLoading ? 0.6 : 1 }}>
+                              {METODO_LABEL[mt]}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     ) : drawerDetalle.stato !== "cancelada" ? (
                       <div className="px-4 pb-4 pt-1">
                         <button onClick={() => cambiarEstadoAlumna("attesa")} disabled={estadoLoading}
                           className="w-full py-2 rounded-lg text-xs font-semibold border" style={{ borderColor: "#dcc1b9", color: "#89726c", opacity: estadoLoading ? 0.6 : 1 }}>
-                          {estadoLoading ? "Guardando…" : "Volver a pendiente"}
+                          {estadoLoading ? "Guardando…" : "Marcar como pendiente"}
                         </button>
                       </div>
                     ) : null}
