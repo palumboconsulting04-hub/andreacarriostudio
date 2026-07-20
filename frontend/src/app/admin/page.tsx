@@ -404,7 +404,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("Resumen");
-  type Sugerencia = { id: string; texto: string; leida: boolean; created_at: string };
+  type Sugerencia = { id: string; texto: string; email: string | null; leida: boolean; created_at: string };
   const [sugerencias, setSugerencias] = useState<Sugerencia[]>([]);
   const [sugsLoading, setSugsLoading] = useState(false);
 
@@ -3109,7 +3109,7 @@ export default function AdminDashboard() {
             <section className="space-y-5 max-w-3xl">
               <div>
                 <h2 className="text-lg font-bold" style={{ color: "#25190f" }}>Buzón de ideas</h2>
-                <p className="text-sm mt-1" style={{ color: "#89726c" }}>Ideas y sugerencias que te mandan las alumnas desde su panel «Mis clases». Son <strong>anónimas</strong>: no sabemos quién las envía.</p>
+                <p className="text-sm mt-1" style={{ color: "#89726c" }}>Ideas y sugerencias que te mandan las alumnas desde su panel «Mis clases». Verás el correo de quien la envía por si quieres responder.</p>
               </div>
               {sugsLoading ? (
                 <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Cargando…</p>
@@ -3121,7 +3121,10 @@ export default function AdminDashboard() {
                     <div key={s.id} className="rounded-2xl border p-4" style={{ borderColor: s.leida ? "#dcc1b9" : "#7d2b13", backgroundColor: s.leida ? "#fff" : "#fff6f2" }}>
                       <p className="text-sm whitespace-pre-wrap" style={{ color: "#25190f" }}>{s.texto}</p>
                       <div className="flex items-center justify-between mt-3 gap-2">
-                        <span className="text-xs shrink-0" style={{ color: "#89726c" }}>{new Date(s.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}</span>
+                        <div className="min-w-0">
+                          <span className="text-xs block" style={{ color: "#89726c" }}>{new Date(s.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}</span>
+                          {s.email && <a href={`mailto:${s.email}`} className="text-xs font-semibold truncate block" style={{ color: "#7d2b13" }}>{s.email}</a>}
+                        </div>
                         <div className="flex items-center gap-2">
                           <button onClick={() => marcarIdeaLeida(s.id, !s.leida)} className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ backgroundColor: s.leida ? "#fff" : "#7d2b13", border: "1px solid #7d2b13", color: s.leida ? "#7d2b13" : "#fff8f5" }}>{s.leida ? "Marcar sin leer" : "Marcar leída"}</button>
                           <button onClick={() => borrarIdea(s.id)} className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Borrar</button>

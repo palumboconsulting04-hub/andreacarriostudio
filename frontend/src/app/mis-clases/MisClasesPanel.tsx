@@ -638,7 +638,7 @@ export default function MisClasesPanel() {
 
             <div className="mt-2 rounded-2xl p-4" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.border}` }}>
               <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Buzón de ideas 💡</p>
-              <p className="text-xs mb-3 leading-relaxed" style={{ color: C.brown }}>¿Se te ocurre algo para mejorar esta área (ver tus facturas, otro apartado…)? Cuéntamelo aquí. Es <strong>anónimo</strong>: no sé quién lo envía.</p>
+              <p className="text-xs mb-3 leading-relaxed" style={{ color: C.brown }}>¿Se te ocurre algo para mejorar esta área (ver tus facturas, otro apartado…)? Cuéntamelo aquí y te leo. 🤎</p>
               {ideaEnviada ? (
                 <div className="rounded-xl px-4 py-3 text-center" style={{ backgroundColor: C.blush }}>
                   <p className="text-sm font-semibold" style={{ color: C.burgundy }}>¡Gracias por tu idea! 🤎</p>
