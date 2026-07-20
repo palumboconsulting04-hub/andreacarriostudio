@@ -297,7 +297,7 @@ export default function MisClasesPanel() {
           <button onClick={entrar} disabled={accion} className="w-full mt-3 py-3.5 rounded-2xl text-sm font-semibold uppercase tracking-widest" style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em", opacity: accion ? 0.7 : 1 }}>
             {accion ? "Entrando..." : "Entrar"}
           </button>
-          <p className="text-xs mt-4 text-center" style={{ color: C.muted }}>¿Aún no tienes bono? <a href="/comprar-bono" style={{ color: C.burgundy, fontWeight: 600 }}>Comprar uno →</a></p>
+          <p className="text-xs mt-4 text-center" style={{ color: C.muted }}>¿Aún no te has apuntado? <a href="/" style={{ color: C.burgundy, fontWeight: 600 }}>Reserva tu plaza →</a></p>
         </div>
       </div>
     );
