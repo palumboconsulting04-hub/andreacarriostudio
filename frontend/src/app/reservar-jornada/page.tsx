@@ -38,6 +38,9 @@ export default function ReservarJornada() {
   const origenRef = useRef<"ads" | "directo">("directo");
   const sidRef = useRef<string>("");
   const loggedRef = useRef<Set<string>>(new Set());
+  const formRef = useRef<HTMLDivElement>(null);
+  const nombreLeadFired = useRef(false);
+  const scrollToForm = () => setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
   const logFunnel = (step: string) => {
     if (!sidRef.current || loggedRef.current.has(step)) return;
     loggedRef.current.add(step);
@@ -81,6 +84,17 @@ export default function ReservarJornada() {
   const formValido = !!(nombre.trim() && telefono.trim() && emailOk && slotId && (!esNina || nombreMadre.trim()));
   // Si el turno elegido está lleno → la acción es apuntarse a su lista de espera.
   const selFull = !!slotId && !!disp[slotId] && disp[slotId].libres <= 0;
+
+  // Lead "sencillo" para Meta: en cuanto rellenan el/los nombre(s) —niña + madre/padre,
+  // o el nombre en turnos de adultas— aunque no envíen el formulario. Se dispara una vez.
+  useEffect(() => {
+    if (nombreLeadFired.current || !slotId) return;
+    const completo = esNina ? (!!nombre.trim() && !!nombreMadre.trim()) : !!nombre.trim();
+    if (completo) {
+      nombreLeadFired.current = true;
+      window.fbq?.("track", "Lead", { content_name: "Nombre jornada" });
+    }
+  }, [nombre, nombreMadre, esNina, slotId]);
 
   const handleSubmit = async () => {
     if (!formValido || enviando) return;
@@ -203,7 +217,7 @@ export default function ReservarJornada() {
           return (
             <button
               key={id}
-              onClick={() => { setSlotId(id); logFunnel("jor_slot"); }}
+              onClick={() => { setSlotId(id); logFunnel("jor_slot"); scrollToForm(); }}
               className="w-full text-left rounded-2xl px-4 py-3 transition-all flex items-center justify-between"
               style={{
                 border: `2px solid ${sel ? C.burgundy : C.border}`,
@@ -257,7 +271,7 @@ export default function ReservarJornada() {
           {bloque("🌅 SÁBADO 25 · Adultas (mañana)", "Barre Fit — dos grupos.", ["adu-sab-barre-1", "adu-sab-barre-2"])}
         </div>
 
-        <div className="rounded-3xl p-6 shadow-sm space-y-3" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>
+        <div ref={formRef} className="rounded-3xl p-6 shadow-sm space-y-3 scroll-mt-4" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>
           {esNina ? (
             <>
               <input style={inputStyle} placeholder="Nombre de la niña *" value={nombre} onChange={e => setNombre(e.target.value)} />
