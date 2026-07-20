@@ -88,6 +88,7 @@ export default function MisClasesPanel() {
   const [estado, setEstado] = useState<"cargando" | "login" | "panel">("cargando");
   const [preview, setPreview] = useState(false);
   const [tab, setTab] = useState<"reservar" | "reservas">("reservar");
+  const [seccion, setSeccion] = useState<"clases" | "contacto" | "premios">("clases");
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
   const [bonos, setBonos] = useState<Bono[]>([]);
@@ -508,7 +509,7 @@ export default function MisClasesPanel() {
   );
 
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: "100vh" }} className="px-4 py-8">
+    <div style={{ backgroundColor: C.bg, minHeight: "100vh" }} className="px-4 py-8 pb-28">
       <div className="max-w-md mx-auto">
         {preview && (
           <div className="rounded-2xl px-4 py-2.5 mb-4 text-xs font-semibold text-center" style={{ backgroundColor: C.burgundy, color: C.cream }}>
@@ -516,23 +517,18 @@ export default function MisClasesPanel() {
           </div>
         )}
 
-        <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start justify-between mb-5">
           <div>
-            <h1 className="text-3xl" style={{ fontFamily: fSerif, color: C.burgundy }}>Mis clases</h1>
+            <h1 className="text-3xl" style={{ fontFamily: fSerif, color: C.burgundy }}>{preview || seccion === "clases" ? "Mis clases" : seccion === "contacto" ? "Contacto" : "Invita y gana"}</h1>
             {!preview && bonos[0]?.nombre && <p className="text-sm font-semibold" style={{ color: C.dark, fontFamily: fSans }}>{bonos[0].nombre}</p>}
           </div>
           {!preview && <button onClick={salir} className="text-xs shrink-0" style={{ color: C.muted }}>Salir</button>}
         </div>
 
-        {!preview && (
-          <a href="https://chat.whatsapp.com/Gi2SUxvVc0xCqtw8egpkQu?mode=gi_t" target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full mb-5 py-3.5 rounded-2xl text-sm font-bold" style={{ backgroundColor: "#25D366", color: "#fff", textDecoration: "none" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
-            Entra en el grupo de WhatsApp
-          </a>
-        )}
+        {preview && calendario}
 
-        {!preview && mensualidad.length > 0 && (
+        {!preview && seccion === "clases" && (<>
+        {mensualidad.length > 0 && (
           <div className="mb-5">
             <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Tus clases</p>
             <p className="text-xs mb-3" style={{ color: C.muted }}>No hace falta reservar; estas son tus clases. Si un día no puedes ir, avísanos.</p>
@@ -600,15 +596,29 @@ export default function MisClasesPanel() {
           )
         ))}
 
-        {!preview && (
-          <div className="mt-8 pt-5 flex flex-col gap-2" style={{ borderTop: `1px solid ${C.border}` }}>
-            <button onClick={abrirComprar} className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.burgundy}`, color: C.burgundy }}>{bonos.length > 0 ? "Comprar más créditos" : "Prueba otra clase con un bono"}</button>
-            <a href={waAndrea} target="_blank" rel="noopener noreferrer" className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2" style={{ backgroundColor: "#25D366", color: "#fff", textDecoration: "none" }}>¿Dudas? Escríbeme</a>
+        <div className="mt-8 pt-5 flex flex-col gap-2" style={{ borderTop: `1px solid ${C.border}` }}>
+          <button onClick={abrirComprar} className="w-full text-center py-3 rounded-2xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.burgundy}`, color: C.burgundy }}>{bonos.length > 0 ? "Comprar más créditos" : "Prueba otra clase con un bono"}</button>
+        </div>
+        </>)}
+
+        {!preview && seccion === "contacto" && (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm mb-1 leading-relaxed" style={{ color: C.brown }}>¿Tienes una duda o quieres estar al día de todo? Entra en el grupo de WhatsApp del estudio o escríbeme directamente a mí.</p>
+            <a href="https://chat.whatsapp.com/Gi2SUxvVc0xCqtw8egpkQu?mode=gi_t" target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl text-sm font-bold" style={{ backgroundColor: "#25D366", color: "#fff", textDecoration: "none" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
+              Entra en el grupo de WhatsApp
+            </a>
+            <a href={waAndrea} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl text-sm font-bold" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.burgundy}`, color: C.burgundy, textDecoration: "none" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
+              Escríbeme por WhatsApp
+            </a>
           </div>
         )}
 
-        {!preview && codigo && (
-          <div className="rounded-2xl p-4 mt-8" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
+        {!preview && seccion === "premios" && (codigo ? (
+          <div className="rounded-2xl p-4" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
             <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Invita a una amiga y ganáis las dos</p>
             <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando se apunte al estudio (bono o mensualidad), tú y ella os lleváis un regalo. Comparte tu código:</p>
             <span className="block text-center text-sm font-bold tracking-widest py-2.5 rounded-xl mb-3" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
@@ -646,7 +656,9 @@ export default function MisClasesPanel() {
               )}
             </div>
           </div>
-        )}
+        ) : (
+          <p className="text-sm text-center py-12 leading-relaxed" style={{ color: C.muted }}>Tu código para invitar estará listo en cuanto tengas tu primer bono o mensualidad. ¡Vuelve pronto! 🤎</p>
+        ))}
 
         {confirmar && (() => {
           const c = confirmar;
@@ -707,6 +719,25 @@ export default function MisClasesPanel() {
           </div>
         )}
       </div>
+
+      {!preview && (
+        <nav className="fixed bottom-0 left-0 right-0 z-40" style={{ backgroundColor: "#fff", borderTop: `1px solid ${C.border}`, paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="max-w-md mx-auto flex">
+            <button onClick={() => setSeccion("clases")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "clases" ? C.burgundy : C.muted }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+              <span className="text-[10px] font-semibold">Mis clases</span>
+            </button>
+            <button onClick={() => setSeccion("contacto")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "contacto" ? C.burgundy : C.muted }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+              <span className="text-[10px] font-semibold">Contacto</span>
+            </button>
+            <button onClick={() => setSeccion("premios")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "premios" ? C.burgundy : C.muted }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><path d="M12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></svg>
+              <span className="text-[10px] font-semibold">Premios</span>
+            </button>
+          </div>
+        </nav>
+      )}
     </div>
   );
 }
