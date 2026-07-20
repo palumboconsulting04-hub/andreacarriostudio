@@ -39,9 +39,9 @@ const INI_DIA = ["L", "M", "X", "J", "V", "S", "D"];
 // Vista de mes: cuadrícula del mes con un puntito en los días que tienen clase.
 // La comparten los dos calendarios (bono y mensualidad); cada uno pinta debajo
 // las clases del día que se toque.
-function MesGrid({ mesCur, irMes, minMes, maxMes, hayClase, diaSel, onDia, onSemana, selBg, selText, selBorder }: {
+function MesGrid({ mesCur, irMes, minMes, maxMes, hayClase, tieneReserva, diaSel, onDia, onSemana, selBg, selText, selBorder }: {
   mesCur: Date; irMes: (d: Date) => void; minMes: Date; maxMes: Date;
-  hayClase: (f: string) => boolean; diaSel: string; onDia: (f: string) => void; onSemana: () => void;
+  hayClase: (f: string) => boolean; tieneReserva?: (f: string) => boolean; diaSel: string; onDia: (f: string) => void; onSemana: () => void;
   selBg: string; selText: string; selBorder: string;
 }) {
   const y = mesCur.getFullYear(), mo = mesCur.getMonth();
@@ -70,15 +70,22 @@ function MesGrid({ mesCur, irMes, minMes, maxMes, hayClase, diaSel, onDia, onSem
           if (!f) return <div key={i} />;
           const tiene = hayClase(f);
           const activo = f === diaSel;
+          const reservado = !activo && tiene && !!tieneReserva?.(f);
           return (
             <button key={i} onClick={() => tiene && onDia(f)} disabled={!tiene} className="aspect-square rounded-lg flex flex-col items-center justify-center"
-              style={{ backgroundColor: activo ? selBg : (tiene ? "#fff" : "transparent"), border: `1.5px solid ${tiene ? (activo ? selBorder : C.border) : "transparent"}`, cursor: tiene ? "pointer" : "default" }}>
+              style={{ backgroundColor: activo ? selBg : reservado ? C.blush : (tiene ? "#fff" : "transparent"), border: `1.5px solid ${activo ? selBorder : reservado ? C.burgundy : (tiene ? C.border : "transparent")}`, cursor: tiene ? "pointer" : "default" }}>
               <span className="text-xs font-bold leading-none" style={{ color: activo ? selText : C.dark, opacity: tiene ? 1 : 0.4 }}>{+f.slice(8)}</span>
               <span className="mt-0.5 h-1 flex items-center justify-center">{tiene && !activo && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: C.burgundy }} />}</span>
             </button>
           );
         })}
       </div>
+      {tieneReserva && (
+        <div className="flex items-center justify-center gap-4 mb-3 text-[10px]" style={{ color: C.muted }}>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.border}` }} /> Con clases</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{ backgroundColor: C.blush, border: `1.5px solid ${C.burgundy}` }} /> Reservada</span>
+        </div>
+      )}
     </>
   );
 }
@@ -448,7 +455,7 @@ export default function MisClasesPanel() {
     ) : (
       <>
         {vistaMes && mesCur ? (
-          <MesGrid mesCur={mesCur} irMes={irMesB} minMes={minMesB} maxMes={maxMesB} hayClase={f => !!porFecha[f]} diaSel={diaSel} onDia={selDiaMesB} onSemana={() => setVistaMes(false)} selBg={C.burgundy} selText={C.cream} selBorder={C.burgundy} />
+          <MesGrid mesCur={mesCur} irMes={irMesB} minMes={minMesB} maxMes={maxMesB} hayClase={f => !!porFecha[f]} tieneReserva={f => (porFecha[f] ?? []).some(c => !!c.reserva_id)} diaSel={diaSel} onDia={selDiaMesB} onSemana={() => setVistaMes(false)} selBg={C.burgundy} selText={C.cream} selBorder={C.burgundy} />
         ) : (
           <>
             <div className="flex items-center gap-2 mb-3">
