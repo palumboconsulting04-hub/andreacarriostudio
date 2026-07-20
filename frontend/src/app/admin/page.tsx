@@ -404,6 +404,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("Resumen");
+  type Sugerencia = { id: string; texto: string; leida: boolean; created_at: string };
+  const [sugerencias, setSugerencias] = useState<Sugerencia[]>([]);
+  const [sugsLoading, setSugsLoading] = useState(false);
 
   // Recuerda la última sección abierta para no volver a "Resumen" al recargar.
   useEffect(() => {
@@ -1315,6 +1318,25 @@ export default function AdminDashboard() {
       .catch(() => setFunnelData([]))
       .finally(() => setFunnelLoading(false));
   }, [activeSection, funnelFiltro, funnelDia, funnelOrigen, funnelTipo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Buzón de ideas (sugerencias anónimas de las alumnas) ──
+  useEffect(() => {
+    if (activeSection !== "Ideas") return;
+    setSugsLoading(true);
+    fetch("/api/admin/sugerencias")
+      .then(r => r.json())
+      .then(({ data }) => setSugerencias((data ?? []) as Sugerencia[]))
+      .catch(() => setSugerencias([]))
+      .finally(() => setSugsLoading(false));
+  }, [activeSection]);
+  const marcarIdeaLeida = async (id: string, leida: boolean) => {
+    setSugerencias(s => s.map(x => x.id === id ? { ...x, leida } : x));
+    await fetch("/api/admin/sugerencias", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, leida }) }).catch(() => {});
+  };
+  const borrarIdea = async (id: string) => {
+    setSugerencias(s => s.filter(x => x.id !== id));
+    await fetch(`/api/admin/sugerencias?id=${id}`, { method: "DELETE" }).catch(() => {});
+  };
 
   async function fetchVentas() {
     setVentasLoading(true);
@@ -2287,6 +2309,7 @@ export default function AdminDashboard() {
     { icon: "trending_up", label: "Ventas" },
     { icon: "account_balance", label: "Finanzas" },
     { icon: "description", label: "Hoja asesor" },
+    { icon: "lightbulb", label: "Ideas" },
     { icon: "diamond", label: "Sofía" },
   ];
 
@@ -3077,6 +3100,35 @@ export default function AdminDashboard() {
                     <span className="text-sm font-bold" style={{ color: "#fff8f5" }}>TOTAL {asesorMes}</span>
                     <span className="text-base font-bold" style={{ color: "#fff8f5" }}>{asesorData.total.toFixed(2).replace(".", ",")} €</span>
                   </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeSection === "Ideas" && (
+            <section className="space-y-5 max-w-3xl">
+              <div>
+                <h2 className="text-lg font-bold" style={{ color: "#25190f" }}>Buzón de ideas</h2>
+                <p className="text-sm mt-1" style={{ color: "#89726c" }}>Ideas y sugerencias que te mandan las alumnas desde su panel «Mis clases». Son <strong>anónimas</strong>: no sabemos quién las envía.</p>
+              </div>
+              {sugsLoading ? (
+                <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Cargando…</p>
+              ) : sugerencias.length === 0 ? (
+                <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Aún no hay ideas. Cuando alguien te mande una, aparecerá aquí.</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {sugerencias.map(s => (
+                    <div key={s.id} className="rounded-2xl border p-4" style={{ borderColor: s.leida ? "#dcc1b9" : "#7d2b13", backgroundColor: s.leida ? "#fff" : "#fff6f2" }}>
+                      <p className="text-sm whitespace-pre-wrap" style={{ color: "#25190f" }}>{s.texto}</p>
+                      <div className="flex items-center justify-between mt-3 gap-2">
+                        <span className="text-xs shrink-0" style={{ color: "#89726c" }}>{new Date(s.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}</span>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => marcarIdeaLeida(s.id, !s.leida)} className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ backgroundColor: s.leida ? "#fff" : "#7d2b13", border: "1px solid #7d2b13", color: s.leida ? "#7d2b13" : "#fff8f5" }}>{s.leida ? "Marcar sin leer" : "Marcar leída"}</button>
+                          <button onClick={() => borrarIdea(s.id)} className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Borrar</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </section>

@@ -96,6 +96,9 @@ export default function MisClasesPanel() {
   const [preview, setPreview] = useState(false);
   const [tab, setTab] = useState<"reservar" | "reservas">("reservar");
   const [seccion, setSeccion] = useState<"clases" | "contacto" | "premios">("clases");
+  const [ideaTexto, setIdeaTexto] = useState("");
+  const [ideaEnviada, setIdeaEnviada] = useState(false);
+  const [ideaEnviando, setIdeaEnviando] = useState(false);
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
   const [bonos, setBonos] = useState<Bono[]>([]);
@@ -255,6 +258,17 @@ export default function MisClasesPanel() {
   };
 
   const salir = async () => { await fetch("/api/panel/salir", { method: "POST" }); window.location.reload(); };
+
+  // Buzón de ideas anónimo: manda solo el texto (el backend no guarda quién).
+  const enviarIdea = async () => {
+    const texto = ideaTexto.trim();
+    if (!texto || ideaEnviando) return;
+    setIdeaEnviando(true);
+    try {
+      const res = await fetch("/api/panel/sugerencia", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto }) });
+      if (res.ok) { setIdeaEnviada(true); setIdeaTexto(""); }
+    } finally { setIdeaEnviando(false); }
+  };
 
   // Comprar más créditos sin salir de la página (Embedded Checkout en modal).
   const [comprarOpen, setComprarOpen] = useState(false);
@@ -621,6 +635,25 @@ export default function MisClasesPanel() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24z"/></svg>
               Escríbeme por WhatsApp
             </a>
+
+            <div className="mt-2 rounded-2xl p-4" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.border}` }}>
+              <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Buzón de ideas 💡</p>
+              <p className="text-xs mb-3 leading-relaxed" style={{ color: C.brown }}>¿Se te ocurre algo para mejorar esta área (ver tus facturas, otro apartado…)? Cuéntamelo aquí. Es <strong>anónimo</strong>: no sé quién lo envía.</p>
+              {ideaEnviada ? (
+                <div className="rounded-xl px-4 py-3 text-center" style={{ backgroundColor: C.blush }}>
+                  <p className="text-sm font-semibold" style={{ color: C.burgundy }}>¡Gracias por tu idea! 🤎</p>
+                  <button onClick={() => setIdeaEnviada(false)} className="text-xs mt-1 underline" style={{ color: C.muted }}>Enviar otra</button>
+                </div>
+              ) : (
+                <>
+                  <textarea value={ideaTexto} onChange={e => setIdeaTexto(e.target.value)} rows={3} maxLength={2000} placeholder="Escribe tu idea o sugerencia…"
+                    className="w-full rounded-xl p-3 text-sm" style={{ border: `1.5px solid ${C.border}`, backgroundColor: "#fff", color: C.dark, outline: "none", resize: "none", fontFamily: fSans }} />
+                  <button onClick={enviarIdea} disabled={!ideaTexto.trim() || ideaEnviando} className="w-full mt-2 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: ideaTexto.trim() ? C.burgundy : C.border, color: C.cream, opacity: ideaEnviando ? 0.7 : 1 }}>
+                    {ideaEnviando ? "Enviando…" : "Enviar mi idea"}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
 
