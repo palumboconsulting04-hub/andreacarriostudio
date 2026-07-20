@@ -27,6 +27,11 @@ const PASOS: Record<string, { step: string; label: string }[]> = {
     { step: "pa_click", label: "2. Pulsó reservar" },
     { step: "pa_reserva", label: "3. Reserva completada" },
   ],
+  jornada: [
+    { step: "jor_visita", label: "1. Visita" },
+    { step: "jor_slot", label: "2. Eligió hora" },
+    { step: "jor_reserva", label: "3. Reserva completada" },
+  ],
 };
 
 // Devuelve el embudo: sesiones únicas que han llegado a cada paso.
@@ -42,6 +47,7 @@ export async function GET(req: NextRequest) {
   const funnelParam = sp.get("funnel");
   const funnelTipo = funnelParam === "puertas" ? "puertas"
     : funnelParam === "adultas" ? "adultas"
+    : funnelParam === "jornada" ? "jornada"
     : "inscripcion";
 
   let q = supabaseAdmin.from("funnel_eventos").select("session_id, step").eq("funnel", funnelTipo);

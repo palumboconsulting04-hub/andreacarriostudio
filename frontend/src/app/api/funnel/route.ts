@@ -16,6 +16,10 @@ const STEPS = new Set([
   "pa_visita",
   "pa_click",
   "pa_reserva",
+  // Funnel de la landing "Reservar jornada"
+  "jor_visita",
+  "jor_slot",
+  "jor_reserva",
 ]);
 
 export async function POST(req: NextRequest) {
@@ -25,6 +29,7 @@ export async function POST(req: NextRequest) {
   const origen = body?.origen === "ads" ? "ads" : "directo";
   const funnel = body?.funnel === "puertas" ? "puertas"
     : body?.funnel === "adultas" ? "adultas"
+    : body?.funnel === "jornada" ? "jornada"
     : "inscripcion";
   if (!session_id || !STEPS.has(step)) {
     return NextResponse.json({ ok: false }, { status: 400 });

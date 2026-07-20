@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Script from "next/script";
 import { SLOTS, EVENTO, slotById } from "@/lib/jornada";
 
@@ -32,6 +32,36 @@ export default function ReservarJornada() {
   const [enviado, setEnviado] = useState(false);
   const [esEspera, setEsEspera] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // ── Embudo anónimo para el admin: Visita → Eligió hora → Reserva ──
+  // Solo cuenta cuántos, no quiénes. Origen (ads/directo) para el filtro del admin.
+  const origenRef = useRef<"ads" | "directo">("directo");
+  const sidRef = useRef<string>("");
+  const loggedRef = useRef<Set<string>>(new Set());
+  const logFunnel = (step: string) => {
+    if (!sidRef.current || loggedRef.current.has(step)) return;
+    loggedRef.current.add(step);
+    fetch("/api/funnel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sidRef.current, step, origen: origenRef.current, funnel: "jornada" }),
+    }).catch(() => {});
+  };
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const src = (p.get("utm_source") || "").toLowerCase();
+    const med = (p.get("utm_medium") || "").toLowerCase();
+    if (p.get("fbclid") || ["facebook", "fb", "ig", "instagram", "meta"].includes(src) || ["paid", "cpc", "ppc", "paid_social"].includes(med)) {
+      origenRef.current = "ads";
+    }
+    let sid = sessionStorage.getItem("acs_jornada_fsid");
+    if (!sid) {
+      sid = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      sessionStorage.setItem("acs_jornada_fsid", sid);
+    }
+    sidRef.current = sid;
+    logFunnel("jor_visita");
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cargar = () => {
     fetch("/api/reservar-jornada")
@@ -72,6 +102,7 @@ export default function ReservarJornada() {
       if (!res.ok) throw new Error();
       setEsEspera(selFull);
       setEnviado(true);
+      logFunnel("jor_reserva");
       // Conversión para Meta Ads: reserva confirmada o apuntada a lista de espera.
       window.fbq?.("track", "Lead", { content_name: selFull ? "Lista espera jornada" : "Reserva jornada" });
     } catch {
@@ -172,7 +203,7 @@ export default function ReservarJornada() {
           return (
             <button
               key={id}
-              onClick={() => setSlotId(id)}
+              onClick={() => { setSlotId(id); logFunnel("jor_slot"); }}
               className="w-full text-left rounded-2xl px-4 py-3 transition-all flex items-center justify-between"
               style={{
                 border: `2px solid ${sel ? C.burgundy : C.border}`,

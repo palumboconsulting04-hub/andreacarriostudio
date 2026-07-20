@@ -1006,7 +1006,7 @@ export default function AdminDashboard() {
   const [funnelFiltro, setFunnelFiltro] = useState<"hoy" | "7" | "30" | "todo" | "dia">("30");
   const [funnelDia, setFunnelDia] = useState(""); // yyyy-mm-dd para un día concreto
   const [funnelOrigen, setFunnelOrigen] = useState<"todo" | "ads" | "directo">("todo");
-  const [funnelTipo, setFunnelTipo] = useState<"inscripcion" | "puertas" | "adultas">("inscripcion");
+  const [funnelTipo, setFunnelTipo] = useState<"inscripcion" | "puertas" | "adultas" | "jornada">("inscripcion");
 
   type RenovCampo = "nombre" | "apellidos" | "fecha_nacimiento" | "grupo" | "telefono" | "email" | "nota" | "estado_contacto" | "estado_pago" | "metodo_pago" | "notas" | "importe_matricula" | "nombre_madre";
   const updateRenov = async (id: string, campo: RenovCampo, value: string | number) => {
@@ -6347,10 +6347,11 @@ export default function AdminDashboard() {
                     { v: "inscripcion", label: "Inscripción" },
                     { v: "puertas", label: "P.A. Niñas" },
                     { v: "adultas", label: "P.A. Adultas" },
+                    { v: "jornada", label: "Jornada" },
                   ].map(t => (
                     <button
                       key={t.v}
-                      onClick={() => setFunnelTipo(t.v as "inscripcion" | "puertas" | "adultas")}
+                      onClick={() => setFunnelTipo(t.v as "inscripcion" | "puertas" | "adultas" | "jornada")}
                       className="text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors"
                       style={funnelTipo === t.v
                         ? { backgroundColor: "#7d2b13", color: "#fff8f5" }
@@ -6366,6 +6367,7 @@ export default function AdminDashboard() {
                     <h3 className="font-headline-md text-headline-md text-primary">
                       {funnelTipo === "puertas" ? "Embudo de Puertas Abiertas (Niñas)"
                         : funnelTipo === "adultas" ? "Embudo de Puertas Abiertas (Adultas)"
+                        : funnelTipo === "jornada" ? "Embudo de Reservar Jornada"
                         : "Embudo de inscripción"}
                     </h3>
                     <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>
