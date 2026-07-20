@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { enlaceInvita } from "@/lib/referidos";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -210,17 +209,6 @@ function buildHtml(data: InscripcionEmailData): string {
               <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://reservas.andreacarriostudio.es"}/mis-clases?entrar=1&email=${encodeURIComponent(data.email)}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:1px;padding:15px 40px;border-radius:9999px;">
                 Entrar en Mis clases &rarr;
               </a>
-            </td>
-          </tr>
-
-          <!-- Invita a una amiga -->
-          <tr>
-            <td style="padding:0 32px 40px;">
-              <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff6f2;border:1px solid #7d2b13;border-radius:16px;"><tr><td style="padding:20px 24px;text-align:center;">
-                <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#7d2b13;">Invita a una amiga y ganáis las dos 🤎</p>
-                <p style="margin:0 0 14px;font-size:13px;color:#56423d;line-height:1.6;">Cuando entre con tu código, tú y ella os lleváis un regalo: 1 clase o 10€ en tu cuota.</p>
-                <a href="${enlaceInvita(data.email)}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:1px;padding:14px 34px;border-radius:9999px;">Ver mi código &rarr;</a>
-              </td></tr></table>
             </td>
           </tr>
 

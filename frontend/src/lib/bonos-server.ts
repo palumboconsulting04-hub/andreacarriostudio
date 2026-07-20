@@ -360,13 +360,6 @@ export function buildBonoEmailHtml(m: Record<string, string>, creditos: number, 
       <tr><td style="padding:16px 32px 24px;text-align:center;">
         <a href="${panel}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:.5px;padding:15px 40px;border-radius:9999px;">Reservar mis clases →</a>
       </td></tr>
-      <tr><td style="padding:0 32px 32px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff6f2;border:1px solid #7d2b13;border-radius:16px;"><tr><td style="padding:18px 22px;text-align:center;">
-          <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#7d2b13;">Invita a una amiga y ganáis las dos 🤎</p>
-          <p style="margin:0 0 14px;font-size:13px;color:#56423d;line-height:1.6;">Cuando saque su bono o mensualidad con tu código, tú y ella os lleváis un regalo.</p>
-          <a href="${enlaceInvita(m.email)}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:13px;font-weight:700;padding:13px 32px;border-radius:9999px;">Ver y compartir mi código →</a>
-        </td></tr></table>
-      </td></tr>
       <tr><td style="background:#fff8f5;border-top:1px solid #f0ddd5;padding:24px 32px;text-align:center;">
         <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#25190f;">Andrea Carrió Studio</p>
         <p style="margin:5px 0 0;font-size:11px;color:#89726c;">C/ Motilla del Palancar 34, Alfahuir (Valencia)</p>
