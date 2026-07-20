@@ -95,12 +95,15 @@ export default function MisClasesPanel() {
   const [estado, setEstado] = useState<"cargando" | "login" | "panel">("cargando");
   const [preview, setPreview] = useState(false);
   const [tab, setTab] = useState<"reservar" | "reservas">("reservar");
-  const [seccion, setSeccion] = useState<"clases" | "contacto" | "premios">("clases");
+  const [seccion, setSeccion] = useState<"clases" | "recibos" | "contacto" | "premios">("clases");
   const [ideaTexto, setIdeaTexto] = useState("");
   const [ideaEnviada, setIdeaEnviada] = useState(false);
   const [ideaEnviando, setIdeaEnviando] = useState(false);
   type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
   const [installPrompt, setInstallPrompt] = useState<BIPEvent | null>(null);
+  type Recibo = { id: string; fecha: string; concepto: string; importe: number; metodo: string };
+  const [recibos, setRecibos] = useState<Recibo[]>([]);
+  const [recibosLoading, setRecibosLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
   const [bonos, setBonos] = useState<Bono[]>([]);
@@ -206,6 +209,17 @@ export default function MisClasesPanel() {
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
+
+  // Carga los recibos al abrir la sección Recibos.
+  useEffect(() => {
+    if (preview || seccion !== "recibos") return;
+    setRecibosLoading(true);
+    fetch("/api/panel/recibos", { cache: "no-store" })
+      .then(r => r.json())
+      .then(({ data }) => setRecibos((data ?? []) as Recibo[]))
+      .catch(() => setRecibos([]))
+      .finally(() => setRecibosLoading(false));
+  }, [seccion, preview]);
 
   const entrar = async () => {
     if (!/\S+@\S+\.\S+/.test(email.trim())) { setMsg("Escribe un email válido."); return; }
@@ -576,7 +590,7 @@ export default function MisClasesPanel() {
 
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h1 className="text-3xl" style={{ fontFamily: fSerif, color: C.burgundy }}>{preview || seccion === "clases" ? "Mis clases" : seccion === "contacto" ? "Contacto" : "Invita y gana"}</h1>
+            <h1 className="text-3xl" style={{ fontFamily: fSerif, color: C.burgundy }}>{preview || seccion === "clases" ? "Mis clases" : seccion === "recibos" ? "Mis recibos" : seccion === "contacto" ? "Contacto" : "Invita y gana"}</h1>
             {!preview && bonos[0]?.nombre && <p className="text-sm font-semibold" style={{ color: C.dark, fontFamily: fSans }}>{bonos[0].nombre}</p>}
           </div>
           {!preview && <button onClick={salir} className="text-xs shrink-0" style={{ color: C.muted }}>Salir</button>}
@@ -749,6 +763,29 @@ export default function MisClasesPanel() {
           <p className="text-sm text-center py-12 leading-relaxed" style={{ color: C.muted }}>Tu código para invitar estará listo en cuanto tengas tu primer bono o mensualidad. ¡Vuelve pronto! 🤎</p>
         ))}
 
+        {!preview && seccion === "recibos" && (
+          <div>
+            <p className="text-sm mb-4 leading-relaxed" style={{ color: C.brown }}>Aquí tienes el justificante de cada pago que has hecho. Ábrelo y podrás guardarlo o imprimirlo en PDF.</p>
+            {recibosLoading ? (
+              <p className="text-sm text-center py-8" style={{ color: C.muted }}>Cargando…</p>
+            ) : recibos.length === 0 ? (
+              <p className="text-sm text-center py-8" style={{ color: C.muted }}>Todavía no hay pagos registrados a tu nombre.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {recibos.map(r => (
+                  <div key={r.id} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: C.dark, fontFamily: fSans }}>{r.concepto}</p>
+                      <p className="text-xs" style={{ color: C.muted }}>{new Date(r.fecha + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })} · {r.importe.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € · {r.metodo}</p>
+                    </div>
+                    <a href={`/api/panel/recibo?id=${encodeURIComponent(r.id)}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: C.burgundy, color: C.cream, textDecoration: "none" }}>Recibo</a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {confirmar && (() => {
           const c = confirmar;
           const menos4 = new Date(`${c.fecha}T${c.hora}`).getTime() - Date.now() < 4 * 3600 * 1000;
@@ -815,6 +852,10 @@ export default function MisClasesPanel() {
             <button onClick={() => setSeccion("clases")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "clases" ? C.burgundy : C.muted }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
               <span className="text-[10px] font-semibold">Mis clases</span>
+            </button>
+            <button onClick={() => setSeccion("recibos")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "recibos" ? C.burgundy : C.muted }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></svg>
+              <span className="text-[10px] font-semibold">Recibos</span>
             </button>
             <button onClick={() => setSeccion("contacto")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "contacto" ? C.burgundy : C.muted }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
