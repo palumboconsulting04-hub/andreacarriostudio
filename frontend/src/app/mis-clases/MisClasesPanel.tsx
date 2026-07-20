@@ -99,6 +99,8 @@ export default function MisClasesPanel() {
   const [ideaTexto, setIdeaTexto] = useState("");
   const [ideaEnviada, setIdeaEnviada] = useState(false);
   const [ideaEnviando, setIdeaEnviando] = useState(false);
+  type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+  const [installPrompt, setInstallPrompt] = useState<BIPEvent | null>(null);
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
   const [bonos, setBonos] = useState<Bono[]>([]);
@@ -198,6 +200,13 @@ export default function MisClasesPanel() {
     return () => clearInterval(t);
   }, [estado, preview, cargarCalendario]);
 
+  // PWA: captura el evento para poder ofrecer "Instalar la app" (Android/Chrome).
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e as BIPEvent); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
   const entrar = async () => {
     if (!/\S+@\S+\.\S+/.test(email.trim())) { setMsg("Escribe un email válido."); return; }
     if (!nombre.trim()) { setMsg("Escribe tu nombre."); return; }
@@ -258,6 +267,33 @@ export default function MisClasesPanel() {
   };
 
   const salir = async () => { await fetch("/api/panel/salir", { method: "POST" }); window.location.reload(); };
+
+  // Descarga un .ics para añadir la clase al calendario del móvil (iOS/Android),
+  // con un recordatorio 2 h antes.
+  const addCalendar = (titulo: string, fecha: string, hora: string, horaFin: string) => {
+    const local = (h: string) => `${fecha.replace(/-/g, "")}T${h.replace(":", "")}00`;
+    const dtstamp = new Date().toISOString().replace(/[-:.]/g, "").slice(0, 15) + "Z";
+    const ics = [
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Andrea Carrio Studio//ES", "CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT", `UID:${fecha}-${hora}-${Math.random().toString(16).slice(2)}@andreacarriostudio`,
+      `DTSTAMP:${dtstamp}`, `DTSTART:${local(hora)}`, `DTEND:${local(horaFin)}`,
+      `SUMMARY:${titulo}`, "LOCATION:C/ Motilla del Palancar 34, Alfahuir, Valencia",
+      "BEGIN:VALARM", "TRIGGER:-PT2H", "ACTION:DISPLAY", "DESCRIPTION:Recordatorio de clase", "END:VALARM",
+      "END:VEVENT", "END:VCALENDAR",
+    ].join("\r\n");
+    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "clase.ics";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const instalarApp = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
 
   // Buzón de ideas anónimo: manda solo el texto (el backend no guarda quién).
   const enviarIdea = async () => {
@@ -610,7 +646,10 @@ export default function MisClasesPanel() {
                     <p className="text-sm font-semibold" style={{ color: C.dark, fontFamily: fSans }}>{fechaLabel(c.fecha, c.dia)}</p>
                     <p className="text-xs" style={{ color: C.muted }}>{c.hora}–{c.horaFin} · {DISC[c.disciplina_id] ?? c.disciplina_id}</p>
                   </div>
-                  <button onClick={() => cancelar(c)} disabled={accion} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Eliminar</button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => addCalendar(`${DISC[c.disciplina_id] ?? c.disciplina_id} · Andrea Carrió Studio`, c.fecha, c.hora, c.horaFin)} title="Añadir a mi calendario" className="w-9 h-9 rounded-full flex items-center justify-center text-base" style={{ backgroundColor: "#fff", border: `1px solid ${C.burgundy}` }}>📅</button>
+                    <button onClick={() => cancelar(c)} disabled={accion} className="px-3 py-1.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Eliminar</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -652,6 +691,16 @@ export default function MisClasesPanel() {
                     {ideaEnviando ? "Enviando…" : "Enviar mi idea"}
                   </button>
                 </>
+              )}
+            </div>
+
+            <div className="rounded-2xl p-4" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
+              <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Ten Mis clases a mano 📲</p>
+              <p className="text-xs mb-2 leading-relaxed" style={{ color: C.brown }}>Instálalo como app en tu móvil para entrar de un toque, sin buscar el enlace.</p>
+              {installPrompt ? (
+                <button onClick={instalarApp} className="w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>Instalar la app</button>
+              ) : (
+                <p className="text-xs" style={{ color: C.muted }}>En el menú del navegador (⋮ o Compartir), elige <strong style={{ color: C.burgundy }}>«Añadir a pantalla de inicio»</strong>.</p>
               )}
             </div>
           </div>
