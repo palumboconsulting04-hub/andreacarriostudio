@@ -205,6 +205,7 @@ export default function MisClasesPanel() {
 
   // PWA: captura el evento para poder ofrecer "Instalar la app" (Android/Chrome).
   useEffect(() => {
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
     const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e as BIPEvent); };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
