@@ -464,6 +464,7 @@ export default function AdminDashboard() {
   const [ingLoading, setIngLoading] = useState(false);
   const [ventasConcepto, setVentasConcepto] = useState<"todos" | "Matrículas" | "Bonos" | "Cuotas mensuales">("todos");
   const [ventasBuscar, setVentasBuscar] = useState("");
+  const [ventasMeses, setVentasMeses] = useState(1); // 1 = solo el mes; 3/6/12 = rango
 
   // ── Hoja del asesor (libro de ingresos) ──
   const [asesorMes, setAsesorMes] = useState(() => {
@@ -1344,20 +1345,26 @@ export default function AdminDashboard() {
     await fetch(`/api/admin/sugerencias?id=${id}`, { method: "DELETE" }).catch(() => {});
   };
 
-  // Libro de ingresos unificado (mes actual + anterior) para Ventas y Finanzas.
+  // Libro de ingresos unificado para Ventas y Finanzas. Carga el período elegido
+  // (1, 3, 6 o 12 meses terminando en el mes seleccionado) y el período anterior de
+  // igual longitud, para poder comparar.
   useEffect(() => {
     if (activeSection !== "Ventas" && activeSection !== "Finanzas") return;
-    const [yy, mm] = ventasMes.split("-").map(Number);
-    const prev = mm === 1 ? `${yy - 1}-12` : `${yy}-${String(mm - 1).padStart(2, "0")}`;
+    const [vy, vm] = ventasMes.split("-").map(Number);
+    const finalIdx = vm - 1; // índice 0-based del mes final
+    const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const desde = isoDay(new Date(vy, finalIdx - (ventasMeses - 1), 1));
+    const hasta = isoDay(new Date(vy, finalIdx + 1, 1));
+    const pdesde = isoDay(new Date(vy, finalIdx - (2 * ventasMeses - 1), 1));
     setIngLoading(true);
     Promise.all([
-      fetch(`/api/admin/ingresos?mes=${ventasMes}`).then(r => r.json()),
-      fetch(`/api/admin/ingresos?mes=${prev}`).then(r => r.json()),
+      fetch(`/api/admin/ingresos?desde=${desde}&hasta=${hasta}`).then(r => r.json()),
+      fetch(`/api/admin/ingresos?desde=${pdesde}&hasta=${desde}`).then(r => r.json()),
     ])
       .then(([a, b]) => { setIngLineas((a.lineas ?? []) as IngresoLinea[]); setIngLineasAnt((b.lineas ?? []) as IngresoLinea[]); })
       .catch(() => { setIngLineas([]); setIngLineasAnt([]); })
       .finally(() => setIngLoading(false));
-  }, [activeSection, ventasMes]);
+  }, [activeSection, ventasMes, ventasMeses]);
 
   async function fetchVentas() {
     setVentasLoading(true);
@@ -2178,17 +2185,23 @@ export default function AdminDashboard() {
   const ingFiltTotal = ingFiltradas.reduce((s, l) => s + l.importe, 0);
 
   const diasMesV = new Date(vYear, vMonth, 0).getDate();
-  const ventasChartData = ventasGranularity === "diario"
-    ? Array.from({ length: diasMesV }, (_, i) => {
-        const dstr = `${ventasMes}-${String(i + 1).padStart(2, "0")}`;
-        return { label: String(i + 1), ingresos: Math.round(ingLineas.filter(l => l.fecha === dstr).reduce((s, l) => s + l.importe, 0)) };
+  const ventasChartData = ventasMeses > 1
+    ? Array.from({ length: ventasMeses }, (_, i) => {
+        const d = new Date(vYear, (vMonth - 1) - (ventasMeses - 1) + i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        return { label: d.toLocaleDateString("es-ES", { month: "short" }), ingresos: Math.round(ingLineas.filter(l => l.fecha.startsWith(key)).reduce((s, l) => s + l.importe, 0)) };
       })
-    : [1, 2, 3, 4].map(w => {
-        const start = (w - 1) * 7 + 1;
-        const end = w === 4 ? diasMesV : w * 7;
-        const rows = ingLineas.filter(l => { const d = Number(l.fecha.slice(8, 10)); return d >= start && d <= end; });
-        return { label: `Sem ${w}`, ingresos: Math.round(rows.reduce((s, l) => s + l.importe, 0)) };
-      });
+    : ventasGranularity === "diario"
+      ? Array.from({ length: diasMesV }, (_, i) => {
+          const dstr = `${ventasMes}-${String(i + 1).padStart(2, "0")}`;
+          return { label: String(i + 1), ingresos: Math.round(ingLineas.filter(l => l.fecha === dstr).reduce((s, l) => s + l.importe, 0)) };
+        })
+      : [1, 2, 3, 4].map(w => {
+          const start = (w - 1) * 7 + 1;
+          const end = w === 4 ? diasMesV : w * 7;
+          const rows = ingLineas.filter(l => { const d = Number(l.fecha.slice(8, 10)); return d >= start && d <= end; });
+          return { label: `Sem ${w}`, ingresos: Math.round(rows.reduce((s, l) => s + l.importe, 0)) };
+        });
 
   const descargarVentasCSV = () => {
     const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
@@ -3116,8 +3129,8 @@ export default function AdminDashboard() {
           {activeSection === "Ventas" && (
             <section className="space-y-6">
 
-              {/* Selector de mes */}
-              <div className="flex items-center gap-3">
+              {/* Selector de mes final + rango (1 / 3 / 6 / 12 meses) */}
+              <div className="flex flex-wrap items-center gap-3">
                 <select
                   value={ventasMes}
                   onChange={e => setVentasMes(e.target.value)}
@@ -3126,13 +3139,23 @@ export default function AdminDashboard() {
                 >
                   {mesesOptions.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
                 </select>
+                <div className="flex gap-2">
+                  {[{ v: 1, l: "Este mes" }, { v: 3, l: "3 meses" }, { v: 6, l: "6 meses" }, { v: 12, l: "12 meses" }].map(r => (
+                    <button key={r.v} onClick={() => setVentasMeses(r.v)}
+                      className="text-xs font-semibold px-3 py-2 rounded-xl border transition-colors"
+                      style={ventasMeses === r.v ? { backgroundColor: "#7d2b13", borderColor: "#7d2b13", color: "#fff8f5" } : { backgroundColor: "#fff", borderColor: "#dcc1b9", color: "#7d2b13" }}>
+                      {r.l}
+                    </button>
+                  ))}
+                </div>
+                {ventasMeses > 1 && <span className="text-xs" style={{ color: "#89726c" }}>Últimos {ventasMeses} meses hasta {mesesOptions.find(m => m.val === ventasMes)?.label}</span>}
               </div>
 
               {/* KPI Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
                   <div className="flex justify-between items-start">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Ingresos Mes</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{ventasMeses > 1 ? "Ingresos período" : "Ingresos Mes"}</p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="euro" className="text-base" /></div>
                   </div>
                   <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{(ingLoading || ventasLoading) ? "—" : `${Math.round(ingTotalMes)}€`}</p>
@@ -3146,7 +3169,7 @@ export default function AdminDashboard() {
 
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
                   <div className="flex justify-between items-start">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Mes Anterior</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{ventasMeses > 1 ? "Período anterior" : "Mes Anterior"}</p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="history" className="text-base" /></div>
                   </div>
                   <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{(ingLoading || ventasLoading) ? "—" : `${Math.round(ingTotalAnt)}€`}</p>
@@ -3195,15 +3218,17 @@ export default function AdminDashboard() {
               <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
                 <div className="flex items-center justify-between mb-6">
                   <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Evolución de Ingresos</p>
-                  <div className="flex rounded-full overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
-                    {(["diario", "semanal"] as const).map(g => (
-                      <button key={g} onClick={() => setVentasGranularity(g)}
-                        className="px-4 py-1.5 text-xs font-semibold transition-colors"
-                        style={{ backgroundColor: ventasGranularity === g ? "#7d2b13" : "transparent", color: ventasGranularity === g ? "#fff" : "#89726c" }}>
-                        {g === "diario" ? "Diario" : "Semanal"}
-                      </button>
-                    ))}
-                  </div>
+                  {ventasMeses === 1 && (
+                    <div className="flex rounded-full overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                      {(["diario", "semanal"] as const).map(g => (
+                        <button key={g} onClick={() => setVentasGranularity(g)}
+                          className="px-4 py-1.5 text-xs font-semibold transition-colors"
+                          style={{ backgroundColor: ventasGranularity === g ? "#7d2b13" : "transparent", color: ventasGranularity === g ? "#fff" : "#89726c" }}>
+                          {g === "diario" ? "Diario" : "Semanal"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={ventasChartData} barCategoryGap="35%">

@@ -30,6 +30,13 @@ export async function ingresosDelMes(mes: string): Promise<{ lineas: LineaIngres
   const ini = `${mes}-01`;
   const [y, m] = mes.split("-").map(Number);
   const sig = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  return ingresosEntre(ini, sig);
+}
+
+// Libro de ingresos entre dos fechas [ini, fin) en formato YYYY-MM-DD. Une todas
+// las fuentes (matrículas web, bonos, renovaciones/pagos manuales, cuotas Stripe).
+export async function ingresosEntre(ini: string, fin: string): Promise<{ lineas: LineaIngreso[]; total: number }> {
+  const sig = fin;
 
   const [iscr, bonos, renov, pagos, stripeCuotas] = await Promise.all([
     supabaseAdmin.from("iscrizioni").select("nome, cognome, disciplina_id, matricula, stato, created_at").in("stato", INSCRITA).gte("created_at", ini).lt("created_at", sig),
