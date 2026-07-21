@@ -1386,6 +1386,14 @@ export default function AdminDashboard() {
       .catch(() => { setCuotasAlumnas([]); setCuotasPagos([]); })
       .finally(() => setCuotasLoading(false));
   }, [activeSection]);
+  // Al abrir la ficha de una alumna, carga sus cuotas (para el mini-historial).
+  useEffect(() => {
+    const id = usuariosProfile?.id;
+    if (!id) return;
+    fetch(`/api/admin/cuotas?iscrizione_id=${id}`).then(r => r.json())
+      .then(({ pagos }) => setCuotasPagos(prev => [...prev.filter(p => p.iscrizione_id !== id), ...((pagos ?? []) as CuotaPago[])]))
+      .catch(() => {});
+  }, [usuariosProfile?.id]);
   const cuotaPagoDe = (id: string, mes: string) => cuotasPagos.find(p => p.iscrizione_id === id && p.mes === mes);
   const marcarCuota = async (id: string, mes: string, metodo: string) => {
     setCuotasPagos(prev => [...prev.filter(p => !(p.iscrizione_id === id && p.mes === mes)), { iscrizione_id: id, mes, metodo, origen: "manual" }]);
@@ -5838,42 +5846,6 @@ export default function AdminDashboard() {
                 );
               })()}
 
-              {cuotaModal && (() => {
-                const pago = cuotaPagoDe(cuotaModal.id, cuotaModal.mes);
-                const auto = pago?.origen === "auto";
-                return (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }} onClick={() => setCuotaModal(null)}>
-                    <div className="w-full max-w-sm rounded-3xl p-6" style={{ backgroundColor: "#fff" }} onClick={e => e.stopPropagation()}>
-                      <p className="text-sm" style={{ color: "#89726c" }}>{mesCursoLabel(cuotaModal.mes)}</p>
-                      <p className="text-lg font-bold mb-4" style={{ color: "#25190f" }}>{cuotaModal.nombre}</p>
-                      {pago ? (
-                        auto ? (
-                          <>
-                            <p className="text-sm mb-4" style={{ color: "#2e7d32" }}>✓ Pagada automáticamente por Stripe.</p>
-                            <button onClick={() => setCuotaModal(null)} className="w-full py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: "#f3e6e0", color: "#7d2b13" }}>Cerrar</button>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-sm mb-4" style={{ color: "#1b4f9c" }}>✓ Pagada a mano ({METODO_LABEL[pago.metodo] ?? pago.metodo}).</p>
-                            <button onClick={() => desmarcarCuota(cuotaModal.id, cuotaModal.mes)} className="w-full py-3 rounded-xl text-sm font-semibold mb-2" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Quitar el pago</button>
-                            <button onClick={() => setCuotaModal(null)} className="w-full py-2.5 rounded-xl text-sm" style={{ color: "#89726c" }}>Cancelar</button>
-                          </>
-                        )
-                      ) : (
-                        <>
-                          <p className="text-sm mb-3" style={{ color: "#56423d" }}>¿Con qué método pagó?</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {["efectivo", "transferencia", "bizum", "tarjeta"].map(mt => (
-                              <button key={mt} onClick={() => marcarCuota(cuotaModal.id, cuotaModal.mes, mt)} className="py-3 rounded-xl text-sm font-semibold border" style={{ borderColor: "#dcc1b9", color: "#7d2b13", backgroundColor: "#fff" }}>{METODO_LABEL[mt] ?? mt}</button>
-                            ))}
-                          </div>
-                          <button onClick={() => setCuotaModal(null)} className="w-full py-2.5 mt-3 rounded-xl text-sm" style={{ color: "#89726c" }}>Cancelar</button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
             </section>
           )}
 
@@ -7804,6 +7776,44 @@ export default function AdminDashboard() {
         </>
       )}
 
+      {/* ── Modal de cuota (marcar / quitar un mes) — global ── */}
+      {cuotaModal && (() => {
+        const pago = cuotaPagoDe(cuotaModal.id, cuotaModal.mes);
+        const auto = pago?.origen === "auto";
+        return (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }} onClick={() => setCuotaModal(null)}>
+            <div className="w-full max-w-sm rounded-3xl p-6" style={{ backgroundColor: "#fff" }} onClick={e => e.stopPropagation()}>
+              <p className="text-sm" style={{ color: "#89726c" }}>{mesCursoLabel(cuotaModal.mes)}</p>
+              <p className="text-lg font-bold mb-4" style={{ color: "#25190f" }}>{cuotaModal.nombre}</p>
+              {pago ? (
+                auto ? (
+                  <>
+                    <p className="text-sm mb-4" style={{ color: "#2e7d32" }}>✓ Pagada automáticamente por Stripe.</p>
+                    <button onClick={() => setCuotaModal(null)} className="w-full py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: "#f3e6e0", color: "#7d2b13" }}>Cerrar</button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm mb-4" style={{ color: "#1b4f9c" }}>✓ Pagada a mano ({METODO_LABEL[pago.metodo] ?? pago.metodo}).</p>
+                    <button onClick={() => desmarcarCuota(cuotaModal.id, cuotaModal.mes)} className="w-full py-3 rounded-xl text-sm font-semibold mb-2" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Quitar el pago</button>
+                    <button onClick={() => setCuotaModal(null)} className="w-full py-2.5 rounded-xl text-sm" style={{ color: "#89726c" }}>Cancelar</button>
+                  </>
+                )
+              ) : (
+                <>
+                  <p className="text-sm mb-3" style={{ color: "#56423d" }}>¿Con qué método pagó?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["efectivo", "transferencia", "bizum", "tarjeta"].map(mt => (
+                      <button key={mt} onClick={() => marcarCuota(cuotaModal.id, cuotaModal.mes, mt)} className="py-3 rounded-xl text-sm font-semibold border" style={{ borderColor: "#dcc1b9", color: "#7d2b13", backgroundColor: "#fff" }}>{METODO_LABEL[mt] ?? mt}</button>
+                    ))}
+                  </div>
+                  <button onClick={() => setCuotaModal(null)} className="w-full py-2.5 mt-3 rounded-xl text-sm" style={{ color: "#89726c" }}>Cancelar</button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Drawer: perfil usuario ── */}
       {(usuariosProfile || usuariosProfileLoading) && (
         <>
@@ -7857,6 +7867,26 @@ export default function AdminDashboard() {
                         <p className="text-lg font-semibold" style={{ color: "#7d2b13" }}>{usuariosProfile.nome} {usuariosProfile.cognome}</p>
                       </>
                     )}
+                  </div>
+
+                  {/* Cuotas del curso */}
+                  <div>
+                    <p className="text-xs uppercase tracking-widest font-semibold mb-2" style={{ color: "#89726c" }}>Cuotas del curso</p>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {CUOTA_MESES.map(m => {
+                        const pago = cuotaPagoDe(usuariosProfile.id, m);
+                        const auto = pago?.origen === "auto";
+                        const bg = pago ? (auto ? "#e8f5e9" : "#e6efff") : "#f7f2ef";
+                        const fg = pago ? (auto ? "#2e7d32" : "#1b4f9c") : "#89726c";
+                        return (
+                          <button key={m} onClick={() => setCuotaModal({ id: usuariosProfile.id, nombre: `${usuariosProfile.nome} ${usuariosProfile.cognome}`.trim(), mes: m })} className="rounded-lg py-1.5 text-center" style={{ backgroundColor: bg }}>
+                            <span className="block text-[10px] font-semibold" style={{ color: fg }}>{mesCursoLabel(m).split(" ")[0]}</span>
+                            <span className="block text-xs font-bold leading-tight" style={{ color: fg }}>{pago ? "✓" : "·"}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] mt-1.5" style={{ color: "#89726c" }}>Toca un mes para marcar o quitar el pago.</p>
                   </div>
 
                   {/* Contacto */}

@@ -11,8 +11,16 @@ const INSCRITA = ["pagato", "pagado", "activa", "matricula_pagada"];
 const NINAS = new Set(["pre-ballet", "ballet-i", "ballet-ii"]);
 
 // GET → alumnas de mensualidad (con su cuota) + los meses ya pagados. Solo admin.
-export async function GET() {
+//   ?iscrizione_id=  → solo los pagos de esa alumna (para su ficha).
+export async function GET(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const soloId = req.nextUrl.searchParams.get("iscrizione_id");
+  if (soloId) {
+    const { data } = await supabaseAdmin.from("cuotas").select("iscrizione_id, mes, metodo, origen").eq("iscrizione_id", soloId);
+    const pagos = (data ?? []).map(c => ({ iscrizione_id: c.iscrizione_id as string, mes: (c.mes as string).slice(0, 7), metodo: (c.metodo as string) || "", origen: (c.origen as string) || "manual" }));
+    return NextResponse.json({ pagos });
+  }
 
   const [{ data: iscr }, { data: piani }, { data: cuotas }] = await Promise.all([
     supabaseAdmin.from("iscrizioni")
