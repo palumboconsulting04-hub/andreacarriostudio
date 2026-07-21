@@ -388,7 +388,7 @@ export default function PuertasAbiertas() {
           </button>
 
           <p className="text-sm mt-4 font-semibold" style={{ color: C.burgundy }}>
-            ⚠ Solo 10 plazas por grupo · Las plazas suelen completarse rápido.
+            ⚠ Plazas limitadas · Suelen completarse rápido.
           </p>
         </div>
       </div>
@@ -646,7 +646,7 @@ export default function PuertasAbiertas() {
             Plazas limitadas
           </h2>
           <p className="text-sm sm:text-base mb-7 max-w-md mx-auto" style={{ color: C.blush }}>
-            Solo 10 plazas por grupo para que cada niña reciba atención personalizada. Reserva antes de que se complete su grupo.
+            Las plazas son limitadas para que cada niña reciba una atención personalizada. Reserva antes de que se complete su grupo.
           </p>
           <button
             onClick={() => handleReservaClick("cta_final")}
