@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
   const [{ data: iscr }, { data: piani }, { data: cuotas }] = await Promise.all([
     supabaseAdmin.from("iscrizioni")
-      .select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, prezzo, discipline(nome)")
+      .select("id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, piano_id, prezzo, metodo_pagamento, stripe_subscription_id, discipline(nome)")
       .in("stato", INSCRITA),
     supabaseAdmin.from("piani").select("id, disciplina_id, prezzo"),
     supabaseAdmin.from("cuotas").select("iscrizione_id, mes, metodo, origen"),
@@ -33,13 +33,17 @@ export async function GET(req: NextRequest) {
   const pm: Record<string, number> = {};
   for (const p of piani ?? []) pm[`${p.id}:${p.disciplina_id}`] = Number(p.prezzo) || 0;
 
+  // Automático = paga por la web (tarjeta / suscripción Stripe). Manual = efectivo,
+  // bizum, transferencia… (paga en la escuela y lo sigue Andrea).
+  const CARD = ["tarjeta", "web", "google-pay", "apple-pay", "paypal"];
   const alumnas = (iscr ?? []).map(i => {
     const nombre = NINAS.has(i.disciplina_id as string) && i.nome_alumna
       ? `${i.nome_alumna} ${i.cognome_alumna ?? ""}`.trim()
       : `${i.nome ?? ""} ${i.cognome ?? ""}`.trim();
     const cuota = (i.prezzo as number | null) ?? pm[`${i.piano_id}:${i.disciplina_id}`] ?? 0;
     const disc = (i.discipline as { nome?: string } | null)?.nome ?? (i.disciplina_id as string);
-    return { id: i.id as string, nombre: nombre || "—", disciplina: disc, disciplina_id: i.disciplina_id as string, cuota };
+    const auto = !!i.stripe_subscription_id || CARD.includes((i.metodo_pagamento as string || "").toLowerCase());
+    return { id: i.id as string, nombre: nombre || "—", disciplina: disc, disciplina_id: i.disciplina_id as string, cuota, tipoPago: auto ? "auto" : "manual", metodo: (i.metodo_pagamento as string) || "" };
   }).sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   const pagos = (cuotas ?? []).map(c => ({

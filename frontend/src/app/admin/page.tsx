@@ -469,12 +469,14 @@ export default function AdminDashboard() {
   // ── Cuotas (seguimiento mensual de las mensualidades) ──
   const CUOTA_MESES = ["2026-09", "2026-10", "2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04", "2027-05", "2027-06"];
   const mesCursoLabel = (m: string) => { const [y, mm] = m.split("-"); return `${["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"][Number(mm) - 1]} ${y.slice(2)}`; };
-  type CuotaAlumna = { id: string; nombre: string; disciplina: string; disciplina_id: string; cuota: number };
+  type CuotaAlumna = { id: string; nombre: string; disciplina: string; disciplina_id: string; cuota: number; tipoPago: "auto" | "manual"; metodo: string };
   type CuotaPago = { iscrizione_id: string; mes: string; metodo: string; origen: string };
   const [cuotasAlumnas, setCuotasAlumnas] = useState<CuotaAlumna[]>([]);
   const [cuotasPagos, setCuotasPagos] = useState<CuotaPago[]>([]);
   const [cuotasLoading, setCuotasLoading] = useState(false);
   const [cuotasBuscar, setCuotasBuscar] = useState("");
+  const [cuotasTipo, setCuotasTipo] = useState<"todos" | "auto" | "manual">("todos");
+  const [cuotasDisc, setCuotasDisc] = useState("");
   const [cuotaModal, setCuotaModal] = useState<{ id: string; nombre: string; mes: string } | null>(null);
 
   // ── Hoja del asesor (libro de ingresos) ──
@@ -5792,7 +5794,26 @@ export default function AdminDashboard() {
                 <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Seguimiento de las mensualidades del curso. 🟢 pagada por Stripe (automático) · 🔵 pagada a mano · gris = pendiente. Toca una celda para marcar o quitar un pago.</p>
               </div>
 
-              <input value={cuotasBuscar} onChange={e => setCuotasBuscar(e.target.value)} placeholder="Buscar alumna…" className="text-sm rounded-xl border px-3 py-2 bg-white w-full max-w-xs" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={cuotasBuscar} onChange={e => setCuotasBuscar(e.target.value)} placeholder="Buscar alumna…" className="text-sm rounded-xl border px-3 py-2 bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />
+                <div className="flex gap-1.5">
+                  {([["todos", "Todas"], ["auto", "🟢 Automático"], ["manual", "🔵 A mano"]] as const).map(([v, l]) => (
+                    <button key={v} onClick={() => setCuotasTipo(v)} className="text-xs font-semibold px-3 py-2 rounded-xl border transition-colors"
+                      style={cuotasTipo === v ? { backgroundColor: "#7d2b13", borderColor: "#7d2b13", color: "#fff8f5" } : { backgroundColor: "#fff", borderColor: "#dcc1b9", color: "#7d2b13" }}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                <select value={cuotasDisc} onChange={e => setCuotasDisc(e.target.value)} className="text-sm rounded-xl border px-3 py-2 bg-white" style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}>
+                  <option value="">Todas las clases</option>
+                  {[...new Map(cuotasAlumnas.map(a => [a.disciplina_id, a.disciplina])).entries()].sort((x, y) => x[1].localeCompare(y[1])).map(([id, nom]) => <option key={id} value={id}>{nom}</option>)}
+                </select>
+              </div>
+              {!cuotasLoading && cuotasAlumnas.length > 0 && (
+                <p className="text-xs" style={{ color: "#89726c" }}>
+                  <strong style={{ color: "#2e7d32" }}>{cuotasAlumnas.filter(a => a.tipoPago === "auto").length}</strong> automáticas (web) · <strong style={{ color: "#e65100" }}>{cuotasAlumnas.filter(a => a.tipoPago === "manual").length}</strong> a mano (las que sigues tú)
+                </p>
+              )}
 
               {cuotasLoading ? (
                 <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Cargando…</p>
@@ -5800,7 +5821,10 @@ export default function AdminDashboard() {
                 <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>No hay alumnas de mensualidad todavía.</p>
               ) : (() => {
                 const q = cuotasBuscar.trim().toLowerCase();
-                const filas = cuotasAlumnas.filter(a => !q || a.nombre.toLowerCase().includes(q));
+                const filas = cuotasAlumnas.filter(a =>
+                  (!q || a.nombre.toLowerCase().includes(q)) &&
+                  (cuotasTipo === "todos" || a.tipoPago === cuotasTipo) &&
+                  (!cuotasDisc || a.disciplina_id === cuotasDisc));
                 return (
                   <div className="rounded-2xl border overflow-x-auto" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff" }}>
                     <table className="text-sm border-collapse">
@@ -5823,7 +5847,10 @@ export default function AdminDashboard() {
                           <tr key={a.id} className="border-t" style={{ borderColor: "#f0e0d8" }}>
                             <td className="py-2 px-3 sticky left-0 z-10" style={{ backgroundColor: "#fff" }}>
                               <button onClick={() => { setUsuariosSearch(a.nombre); setActiveSection("Clientas"); }} className="font-medium text-left hover:underline block" style={{ color: "#25190f" }}>{a.nombre}</button>
-                              <span className="text-[11px]" style={{ color: "#89726c" }}>{a.disciplina} · {a.cuota}€</span>
+                              <span className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[11px]" style={{ color: "#89726c" }}>{a.disciplina} · {a.cuota}€</span>
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap" style={a.tipoPago === "auto" ? { backgroundColor: "#e8f5e9", color: "#2e7d32" } : { backgroundColor: "#fff3e0", color: "#e65100" }}>{a.tipoPago === "auto" ? "AUTO" : "A MANO"}</span>
+                              </span>
                             </td>
                             {CUOTA_MESES.map(m => {
                               const pago = cuotaPagoDe(a.id, m);
