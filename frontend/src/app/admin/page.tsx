@@ -466,6 +466,17 @@ export default function AdminDashboard() {
   const [ventasBuscar, setVentasBuscar] = useState("");
   const [ventasMeses, setVentasMeses] = useState(1); // 1 = solo el mes; 3/6/12 = rango
 
+  // ── Cuotas (seguimiento mensual de las mensualidades) ──
+  const CUOTA_MESES = ["2026-09", "2026-10", "2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04", "2027-05", "2027-06"];
+  const mesCursoLabel = (m: string) => { const [y, mm] = m.split("-"); return `${["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"][Number(mm) - 1]} ${y.slice(2)}`; };
+  type CuotaAlumna = { id: string; nombre: string; disciplina: string; disciplina_id: string; cuota: number };
+  type CuotaPago = { iscrizione_id: string; mes: string; metodo: string; origen: string };
+  const [cuotasAlumnas, setCuotasAlumnas] = useState<CuotaAlumna[]>([]);
+  const [cuotasPagos, setCuotasPagos] = useState<CuotaPago[]>([]);
+  const [cuotasLoading, setCuotasLoading] = useState(false);
+  const [cuotasBuscar, setCuotasBuscar] = useState("");
+  const [cuotaModal, setCuotaModal] = useState<{ id: string; nombre: string; mes: string } | null>(null);
+
   // ── Hoja del asesor (libro de ingresos) ──
   const [asesorMes, setAsesorMes] = useState(() => {
     const n = new Date();
@@ -1365,6 +1376,27 @@ export default function AdminDashboard() {
       .catch(() => { setIngLineas([]); setIngLineasAnt([]); })
       .finally(() => setIngLoading(false));
   }, [activeSection, ventasMes, ventasMeses]);
+
+  // Hoja de cuotas: alumnas de mensualidad + meses pagados.
+  useEffect(() => {
+    if (activeSection !== "Cuotas") return;
+    setCuotasLoading(true);
+    fetch("/api/admin/cuotas").then(r => r.json())
+      .then(({ alumnas, pagos }) => { setCuotasAlumnas((alumnas ?? []) as CuotaAlumna[]); setCuotasPagos((pagos ?? []) as CuotaPago[]); })
+      .catch(() => { setCuotasAlumnas([]); setCuotasPagos([]); })
+      .finally(() => setCuotasLoading(false));
+  }, [activeSection]);
+  const cuotaPagoDe = (id: string, mes: string) => cuotasPagos.find(p => p.iscrizione_id === id && p.mes === mes);
+  const marcarCuota = async (id: string, mes: string, metodo: string) => {
+    setCuotasPagos(prev => [...prev.filter(p => !(p.iscrizione_id === id && p.mes === mes)), { iscrizione_id: id, mes, metodo, origen: "manual" }]);
+    setCuotaModal(null);
+    await fetch("/api/admin/cuotas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ iscrizione_id: id, mes, metodo }) }).catch(() => {});
+  };
+  const desmarcarCuota = async (id: string, mes: string) => {
+    setCuotasPagos(prev => prev.filter(p => !(p.iscrizione_id === id && p.mes === mes)));
+    setCuotaModal(null);
+    await fetch(`/api/admin/cuotas?iscrizione_id=${id}&mes=${mes}`, { method: "DELETE" }).catch(() => {});
+  };
 
   async function fetchVentas() {
     setVentasLoading(true);
@@ -2321,6 +2353,7 @@ export default function AdminDashboard() {
     { icon: "self_improvement", label: "P.A. Adultas" },
     { icon: "event_available", label: "Jornada 24J" },
     { icon: "autorenew", label: "Renovaciones" },
+    { icon: "event_repeat", label: "Cuotas" },
     { icon: "confirmation_number", label: "Bonos" },
     { icon: "diversity_3", label: "Referidos" },
     { icon: "insights", label: "Marketing" },
@@ -5741,6 +5774,106 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+            </section>
+          )}
+
+          {activeSection === "Cuotas" && (
+            <section className="space-y-5">
+              <div>
+                <h3 className="font-headline-md text-headline-md text-primary">Cuotas</h3>
+                <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Seguimiento de las mensualidades del curso. 🟢 pagada por Stripe (automático) · 🔵 pagada a mano · gris = pendiente. Toca una celda para marcar o quitar un pago.</p>
+              </div>
+
+              <input value={cuotasBuscar} onChange={e => setCuotasBuscar(e.target.value)} placeholder="Buscar alumna…" className="text-sm rounded-xl border px-3 py-2 bg-white w-full max-w-xs" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />
+
+              {cuotasLoading ? (
+                <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Cargando…</p>
+              ) : cuotasAlumnas.length === 0 ? (
+                <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>No hay alumnas de mensualidad todavía.</p>
+              ) : (() => {
+                const q = cuotasBuscar.trim().toLowerCase();
+                const filas = cuotasAlumnas.filter(a => !q || a.nombre.toLowerCase().includes(q));
+                return (
+                  <div className="rounded-2xl border overflow-x-auto" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff" }}>
+                    <table className="text-sm border-collapse">
+                      <thead>
+                        <tr style={{ backgroundColor: "#fff8f5" }}>
+                          <th className="text-left py-2.5 px-3 text-xs uppercase tracking-wider font-semibold sticky left-0 z-10" style={{ color: "#89726c", backgroundColor: "#fff8f5", minWidth: 150 }}>Alumna</th>
+                          {CUOTA_MESES.map(m => {
+                            const pagadas = filas.filter(a => cuotaPagoDe(a.id, m)).length;
+                            return (
+                              <th key={m} className="py-2.5 px-2 text-center text-[11px] font-semibold" style={{ color: "#7d2b13", minWidth: 54 }}>
+                                <div>{mesCursoLabel(m)}</div>
+                                <div className="text-[10px] font-normal" style={{ color: "#89726c" }}>{pagadas}/{filas.length}</div>
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filas.map(a => (
+                          <tr key={a.id} className="border-t" style={{ borderColor: "#f0e0d8" }}>
+                            <td className="py-2 px-3 sticky left-0 z-10" style={{ backgroundColor: "#fff" }}>
+                              <button onClick={() => { setUsuariosSearch(a.nombre); setActiveSection("Clientas"); }} className="font-medium text-left hover:underline block" style={{ color: "#25190f" }}>{a.nombre}</button>
+                              <span className="text-[11px]" style={{ color: "#89726c" }}>{a.disciplina} · {a.cuota}€</span>
+                            </td>
+                            {CUOTA_MESES.map(m => {
+                              const pago = cuotaPagoDe(a.id, m);
+                              const auto = pago?.origen === "auto";
+                              const bg = pago ? (auto ? "#e8f5e9" : "#e6efff") : "#f7f2ef";
+                              const fg = pago ? (auto ? "#2e7d32" : "#1b4f9c") : "#c9b3ab";
+                              return (
+                                <td key={m} className="py-1.5 px-1 text-center">
+                                  <button onClick={() => setCuotaModal({ id: a.id, nombre: a.nombre, mes: m })} className="w-9 h-9 rounded-lg flex items-center justify-center mx-auto text-sm font-bold" style={{ backgroundColor: bg, color: fg }} title={pago ? (auto ? "Pagada (Stripe)" : `Pagada a mano (${pago.metodo})`) : "Pendiente"}>
+                                    {pago ? "✓" : ""}
+                                  </button>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+
+              {cuotaModal && (() => {
+                const pago = cuotaPagoDe(cuotaModal.id, cuotaModal.mes);
+                const auto = pago?.origen === "auto";
+                return (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }} onClick={() => setCuotaModal(null)}>
+                    <div className="w-full max-w-sm rounded-3xl p-6" style={{ backgroundColor: "#fff" }} onClick={e => e.stopPropagation()}>
+                      <p className="text-sm" style={{ color: "#89726c" }}>{mesCursoLabel(cuotaModal.mes)}</p>
+                      <p className="text-lg font-bold mb-4" style={{ color: "#25190f" }}>{cuotaModal.nombre}</p>
+                      {pago ? (
+                        auto ? (
+                          <>
+                            <p className="text-sm mb-4" style={{ color: "#2e7d32" }}>✓ Pagada automáticamente por Stripe.</p>
+                            <button onClick={() => setCuotaModal(null)} className="w-full py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: "#f3e6e0", color: "#7d2b13" }}>Cerrar</button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm mb-4" style={{ color: "#1b4f9c" }}>✓ Pagada a mano ({METODO_LABEL[pago.metodo] ?? pago.metodo}).</p>
+                            <button onClick={() => desmarcarCuota(cuotaModal.id, cuotaModal.mes)} className="w-full py-3 rounded-xl text-sm font-semibold mb-2" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Quitar el pago</button>
+                            <button onClick={() => setCuotaModal(null)} className="w-full py-2.5 rounded-xl text-sm" style={{ color: "#89726c" }}>Cancelar</button>
+                          </>
+                        )
+                      ) : (
+                        <>
+                          <p className="text-sm mb-3" style={{ color: "#56423d" }}>¿Con qué método pagó?</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {["efectivo", "transferencia", "bizum", "tarjeta"].map(mt => (
+                              <button key={mt} onClick={() => marcarCuota(cuotaModal.id, cuotaModal.mes, mt)} className="py-3 rounded-xl text-sm font-semibold border" style={{ borderColor: "#dcc1b9", color: "#7d2b13", backgroundColor: "#fff" }}>{METODO_LABEL[mt] ?? mt}</button>
+                            ))}
+                          </div>
+                          <button onClick={() => setCuotaModal(null)} className="w-full py-2.5 mt-3 rounded-xl text-sm" style={{ color: "#89726c" }}>Cancelar</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </section>
           )}
 

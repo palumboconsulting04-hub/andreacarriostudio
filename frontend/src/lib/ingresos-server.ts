@@ -38,12 +38,13 @@ export async function ingresosDelMes(mes: string): Promise<{ lineas: LineaIngres
 export async function ingresosEntre(ini: string, fin: string): Promise<{ lineas: LineaIngreso[]; total: number }> {
   const sig = fin;
 
-  const [iscr, bonos, renov, pagos, stripeCuotas] = await Promise.all([
+  const [iscr, bonos, renov, pagos, stripeCuotas, cuotasM] = await Promise.all([
     supabaseAdmin.from("iscrizioni").select("nome, cognome, disciplina_id, matricula, stato, created_at").in("stato", INSCRITA).gte("created_at", ini).lt("created_at", sig),
     supabaseAdmin.from("bonos").select("nombre, disciplina_id, precio_pagado, estado, created_at").gte("created_at", ini).lt("created_at", sig),
     supabaseAdmin.from("renovaciones").select("nombre, apellidos, nombre_madre, grupo, importe_matricula, estado_pago, metodo_pago, updated_at").eq("estado_pago", "pagado").neq("metodo_pago", "web").gte("updated_at", ini).lt("updated_at", sig),
     supabaseAdmin.from("pagos_manuales").select("alumna_nombre, concepto, importe, metodo, fecha").gte("fecha", ini).lt("fecha", sig),
     supabaseAdmin.from("ingresos_stripe").select("nombre, email, concepto, importe, metodo, fecha").gte("fecha", ini).lt("fecha", sig),
+    supabaseAdmin.from("cuotas").select("mes, importe, metodo, iscrizioni(nome, cognome, disciplina_id)").gte("mes", ini).lt("mes", sig),
   ]);
 
   const lineas: LineaIngreso[] = [];
@@ -67,6 +68,16 @@ export async function ingresosEntre(ini: string, fin: string): Promise<{ lineas:
   for (const s of stripeCuotas.data ?? []) {
     const imp = Number(s.importe) || 0;
     if (imp > 0) lineas.push({ fecha: dstr(s.fecha as string), concepto: (s.concepto as string) || "Cuota", disciplina: "—", cliente: (s.nombre as string) || (s.email as string) || "—", metodo: cap((s.metodo as string) || "tarjeta"), importe: imp });
+  }
+  // Cuotas mensuales marcadas a mano (tabla cuotas). El mes de la cuota es la fecha.
+  const MES_NOM = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  for (const c of cuotasM.data ?? []) {
+    const imp = Number(c.importe) || 0;
+    if (imp <= 0) continue;
+    const isc = c.iscrizioni as { nome?: string; cognome?: string; disciplina_id?: string } | null;
+    const fecha = dstr(c.mes as string);
+    const mm = Number(fecha.split("-")[1]);
+    lineas.push({ fecha, concepto: `Cuota ${MES_NOM[mm - 1] ?? ""}`.trim(), disciplina: disc(isc?.disciplina_id ?? ""), cliente: `${isc?.nome ?? ""} ${isc?.cognome ?? ""}`.trim() || "—", metodo: cap((c.metodo as string) || "efectivo"), importe: imp });
   }
 
   lineas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.concepto.localeCompare(b.concepto));
