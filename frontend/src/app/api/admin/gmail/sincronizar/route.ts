@@ -59,6 +59,13 @@ export async function POST() {
       try { datos = await leerFactura(buffer.toString("base64"), mime); } catch { datos = null; }
       if (!datos || datos.noFactura) continue;
 
+      // Anti-duplicado por contenido: si ya existe una factura con la misma fecha e
+      // importe (subida por foto o llegada en otro correo), no la repite.
+      if (datos.fecha != null && datos.total != null) {
+        const { count: dup } = await supabaseAdmin.from("facturas").select("id", { count: "exact", head: true }).eq("fecha", datos.fecha).eq("total", datos.total);
+        if ((dup ?? 0) > 0) continue;
+      }
+
       const ext = mime === "application/pdf" ? "pdf" : (mime.split("/")[1] || "jpg");
       const path = `${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabaseAdmin.storage.from("facturas").upload(path, buffer, { contentType: mime, upsert: false });
