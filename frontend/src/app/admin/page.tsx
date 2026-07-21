@@ -485,6 +485,7 @@ export default function AdminDashboard() {
   const [impCfg, setImpCfg] = useState(IMP_DEFAULT);
   const [impData, setImpData] = useState<{ anio: number; trimestres: { q: number; total: number; exento: number; noExento: number }[]; costeMensualDeducible: number; costeMensualAndrea: number } | null>(null);
   const [impPanel, setImpPanel] = useState(false);
+  const [impTab, setImpTab] = useState<"iva" | "irpf" | "reta">("iva");
 
   // ── Hoja del asesor (libro de ingresos) ──
   const [asesorMes, setAsesorMes] = useState(() => {
@@ -3567,12 +3568,20 @@ export default function AdminDashboard() {
                 const setArr = (key: "ivaSoportado" | "pagos130", i: number, v: number) => setImpCfg(c => ({ ...c, [key]: (c[key] as number[]).map((x, j) => j === i ? v : x) }));
                 const card = "bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high";
                 const num = "w-full text-sm rounded-lg border px-2 py-1.5 bg-white";
+                const NOMBRE_T = ["1º · ene–mar", "2º · abr–jun", "3º · jul–sep", "4º · oct–dic"];
+                const ivaTrim = trims.map((t, q) => { const rep = t.noExento * (impCfg.ivaTipo / (100 + impCfg.ivaTipo)); const sop = impCfg.ivaSoportado[q] || 0; return { rep, sop, pagar: Math.max(0, rep - sop) }; });
                 return (
                   <section className="space-y-5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm" style={{ color: "#89726c" }}>Trimestre en curso: <strong style={{ color: "#7d2b13" }}>{tActual + 1}º · {impData.anio}</strong></p>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="inline-flex rounded-xl border p-1" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                        {([["iva", "IVA"], ["irpf", "IRPF"], ["reta", "Cuota autónomos"]] as const).map(([v, l]) => (
+                          <button key={v} onClick={() => setImpTab(v)} className="text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors" style={impTab === v ? { backgroundColor: "#7d2b13", color: "#fff8f5" } : { backgroundColor: "transparent", color: "#7d2b13" }}>{l}</button>
+                        ))}
+                      </div>
                       <button onClick={() => setImpPanel(p => !p)} className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ backgroundColor: "#fff", border: "1px solid #7d2b13", color: "#7d2b13" }}>⚙ Ajustes</button>
                     </div>
+
+                    <p className="text-xs" style={{ color: "#89726c" }}>Trimestre en curso: <strong style={{ color: "#7d2b13" }}>{NOMBRE_T[tActual]} · {impData.anio}</strong> · ingresos del año {eur(ingAnio)}</p>
 
                     {impPanel && (
                       <div className={card + " space-y-3"}>
@@ -3601,28 +3610,80 @@ export default function AdminDashboard() {
                       </div>
                     )}
 
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div className={card + " flex flex-col gap-2"}>
-                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>IVA · Modelo 303</p>
-                        <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{eur(ivaPagar)}</p>
-                        <p className="text-xs" style={{ color: "#89726c" }}>Repercutido (no exento) {eur(ivaRep)} − soportado {eur(ivaSop)}. Ballet niñas: <strong style={{ color: "#2e7d32" }}>exento</strong>.</p>
-                        {ivaSop === 0 && ivaRep > 0 && <p className="text-[11px]" style={{ color: "#e65100" }}>⚠ Falta el IVA soportado del trimestre (mételo en Ajustes). Cifra conservadora.</p>}
-                        <p className="text-[11px]" style={{ color: "#89726c" }}>Fecha límite: {FECHAS[tActual]}</p>
+                    {impTab === "iva" && (
+                      <div className="space-y-4">
+                        <div className={card + " flex flex-col gap-2"}>
+                          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>IVA a pagar · trimestre en curso · Modelo 303</p>
+                          <p className="text-4xl font-bold" style={{ color: "#7d2b13" }}>{eur(ivaPagar)}</p>
+                          <p className="text-xs" style={{ color: "#89726c" }}>Repercutido (parte no exenta) {eur(ivaRep)} − soportado {eur(ivaSop)}. <strong style={{ color: "#2e7d32" }}>Ballet niñas: exento.</strong></p>
+                          {ivaSop === 0 && ivaRep > 0 && <p className="text-[11px]" style={{ color: "#e65100" }}>⚠ Falta el IVA soportado (facturas de gastos). Cifra conservadora.</p>}
+                          <p className="text-[11px]" style={{ color: "#89726c" }}>Fecha límite: {FECHAS[tActual]}</p>
+                        </div>
+                        <div className="rounded-2xl border overflow-x-auto" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff" }}>
+                          <table className="w-full text-sm">
+                            <thead><tr style={{ backgroundColor: "#fff8f5" }}>{["Trimestre", "Ventas con IVA", "Repercutido", "Soportado", "A pagar"].map(h => <th key={h} className="text-left py-2.5 px-3 text-xs uppercase tracking-wider font-semibold" style={{ color: "#89726c" }}>{h}</th>)}</tr></thead>
+                            <tbody>{trims.map((t, q) => (
+                              <tr key={q} className="border-t" style={{ borderColor: "#f0e0d8", opacity: q > tActual ? 0.45 : 1 }}>
+                                <td className="py-2 px-3" style={{ color: "#25190f" }}>{NOMBRE_T[q]}</td>
+                                <td className="py-2 px-3" style={{ color: "#25190f" }}>{eur(t.noExento)}</td>
+                                <td className="py-2 px-3" style={{ color: "#25190f" }}>{eur(ivaTrim[q].rep)}</td>
+                                <td className="py-2 px-3" style={{ color: "#25190f" }}>{eur(ivaTrim[q].sop)}</td>
+                                <td className="py-2 px-3 font-semibold" style={{ color: "#7d2b13" }}>{eur(ivaTrim[q].pagar)}</td>
+                              </tr>
+                            ))}</tbody>
+                          </table>
+                        </div>
+                        <p className="text-[11px]" style={{ color: "#89726c" }}>Exento el ballet de niñas (enseñanza de danza). El resto tributa al {impCfg.ivaTipo}%.</p>
                       </div>
-                      <div className={card + " flex flex-col gap-2"}>
-                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>IRPF · Modelo 130</p>
-                        <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{eur(irpfTrim)}</p>
-                        <p className="text-xs" style={{ color: "#89726c" }}>Beneficio acumulado del año: <strong>{eur(benefActual)}</strong> (× {impCfg.irpf130}%).</p>
-                        <p className="text-[11px]" style={{ color: "#89726c" }}>Gastos: Costes deducibles + RETA. No incluye a Andrea (titular).</p>
-                        <p className="text-[11px]" style={{ color: "#89726c" }}>Fecha límite: {FECHAS[tActual]}</p>
+                    )}
+
+                    {impTab === "irpf" && (
+                      <div className="space-y-4">
+                        <div className={card + " flex flex-col gap-2"}>
+                          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>IRPF a pagar · trimestre en curso · Modelo 130</p>
+                          <p className="text-4xl font-bold" style={{ color: "#7d2b13" }}>{eur(irpfTrim)}</p>
+                          <p className="text-xs" style={{ color: "#89726c" }}>Beneficio acumulado del año <strong>{eur(benefActual)}</strong> × {impCfg.irpf130}%, menos lo ya pagado.</p>
+                          <p className="text-[11px]" style={{ color: "#89726c" }}>Gastos deducibles = Costes (sin Andrea, titular) + RETA. Fecha límite: {FECHAS[tActual]}</p>
+                        </div>
+                        <div className="rounded-2xl border overflow-x-auto" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff" }}>
+                          <table className="w-full text-sm">
+                            <thead><tr style={{ backgroundColor: "#fff8f5" }}>{["Trimestre", "Ingresos acum.", "Gastos acum.", "Beneficio", "130 a pagar"].map(h => <th key={h} className="text-left py-2.5 px-3 text-xs uppercase tracking-wider font-semibold" style={{ color: "#89726c" }}>{h}</th>)}</tr></thead>
+                            <tbody>{[0, 1, 2, 3].map(q => {
+                              const activo = q <= tActual;
+                              const ia = ingAcum(q), ga = gastoDedAcum(q);
+                              return (
+                                <tr key={q} className="border-t" style={{ borderColor: "#f0e0d8", opacity: activo ? 1 : 0.45 }}>
+                                  <td className="py-2 px-3" style={{ color: "#25190f" }}>{NOMBRE_T[q]}</td>
+                                  <td className="py-2 px-3" style={{ color: "#25190f" }}>{activo ? eur(ia) : "—"}</td>
+                                  <td className="py-2 px-3" style={{ color: "#25190f" }}>{activo ? eur(ga) : "—"}</td>
+                                  <td className="py-2 px-3" style={{ color: (ia - ga) >= 0 ? "#2e7d32" : "#b71c1c" }}>{activo ? eur(ia - ga) : "—"}</td>
+                                  <td className="py-2 px-3 font-semibold" style={{ color: "#7d2b13" }}>{activo ? eur(irpf130[q] ?? 0) : "—"}</td>
+                                </tr>
+                              );
+                            })}</tbody>
+                          </table>
+                        </div>
+                        <div className={card}>
+                          <p className="text-sm font-semibold mb-1" style={{ color: "#7d2b13" }}>Estimación Renta (Modelo 100) — orientativa</p>
+                          <p className="text-xs mb-3" style={{ color: "#89726c" }}>Beneficio del año {eur(benefAnio)} − mínimo personal {eur(impCfg.minimoPersonal)} = base {eur(baseRenta)}.</p>
+                          <div className="flex flex-wrap gap-6">
+                            <div><p className="text-xs" style={{ color: "#89726c" }}>IRPF anual estimado</p><p className="text-xl font-bold" style={{ color: "#7d2b13" }}>{eur(irpfAnual)}</p></div>
+                            <div><p className="text-xs" style={{ color: "#89726c" }}>Ya pagado con el 130</p><p className="text-xl font-bold" style={{ color: "#7d2b13" }}>{eur(pagado130)}</p></div>
+                            <div><p className="text-xs" style={{ color: "#89726c" }}>{rentaDif >= 0 ? "A pagar en Renta" : "A devolver"}</p><p className="text-xl font-bold" style={{ color: rentaDif >= 0 ? "#b71c1c" : "#2e7d32" }}>{eur(Math.abs(rentaDif))}</p></div>
+                          </div>
+                          <p className="text-[11px] mt-3" style={{ color: "#e65100" }}>⚠ Muy orientativa: no es tu IRPF definitivo.</p>
+                        </div>
                       </div>
+                    )}
+
+                    {impTab === "reta" && (
                       <div className={card + " flex flex-col gap-2"}>
-                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>RETA · autónomos</p>
-                        <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{eur(impCfg.reta)}</p>
-                        <p className="text-xs" style={{ color: "#89726c" }}>Cuota del mes. Pagado en el año: <strong>{eur(retaAnio)}</strong>.</p>
-                        <p className="text-[11px]" style={{ color: "#89726c" }}>Es gasto deducible (ya contado arriba).</p>
+                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Cuota de autónomos (RETA) · mensual</p>
+                        <p className="text-4xl font-bold" style={{ color: "#7d2b13" }}>{eur(impCfg.reta)}</p>
+                        <p className="text-xs" style={{ color: "#89726c" }}>Al mes. Pagado en el año: <strong>{eur(retaAnio)}</strong> ({mesActual} {mesActual === 1 ? "mes" : "meses"}).</p>
+                        <p className="text-[11px]" style={{ color: "#89726c" }}>Es gasto deducible (ya se resta en el IRPF). No la dupliques en Costes.</p>
                       </div>
-                    </div>
+                    )}
 
                     <div className="rounded-[24px] p-6" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
                       <p className="text-sm font-semibold mb-2">Dinero a apartar</p>
@@ -3631,17 +3692,6 @@ export default function AdminDashboard() {
                         <div><p className="text-xs" style={{ color: "#ffdbd1" }}>Impuestos del trimestre (IVA + IRPF + RETA×3)</p><p className="text-2xl font-bold">{eur(totalImpTrim)}</p></div>
                       </div>
                       <p className="text-[11px] mt-3" style={{ color: "#ffdbd1" }}>Guárdalo en una cuenta aparte. Fechas: 20 abr · 20 jul · 20 oct · 30 ene.</p>
-                    </div>
-
-                    <div className={card}>
-                      <p className="text-sm font-semibold mb-1" style={{ color: "#7d2b13" }}>Estimación Renta (Modelo 100) — orientativa</p>
-                      <p className="text-xs mb-3" style={{ color: "#89726c" }}>Beneficio del año {eur(benefAnio)} − mínimo personal {eur(impCfg.minimoPersonal)} = base {eur(baseRenta)}, con los tramos.</p>
-                      <div className="flex flex-wrap gap-6">
-                        <div><p className="text-xs" style={{ color: "#89726c" }}>IRPF anual estimado</p><p className="text-xl font-bold" style={{ color: "#7d2b13" }}>{eur(irpfAnual)}</p></div>
-                        <div><p className="text-xs" style={{ color: "#89726c" }}>Ya pagado con el 130</p><p className="text-xl font-bold" style={{ color: "#7d2b13" }}>{eur(pagado130)}</p></div>
-                        <div><p className="text-xs" style={{ color: "#89726c" }}>{rentaDif >= 0 ? "A pagar en la Renta" : "A devolver"}</p><p className="text-xl font-bold" style={{ color: rentaDif >= 0 ? "#b71c1c" : "#2e7d32" }}>{eur(Math.abs(rentaDif))}</p></div>
-                      </div>
-                      <p className="text-[11px] mt-3" style={{ color: "#e65100" }}>⚠ Muy orientativa: no incluye toda la Renta real (otras rentas, deducciones, tu situación personal). No es tu IRPF definitivo.</p>
                     </div>
 
                     <p className="text-[11px]" style={{ color: "#89726c" }}>Herramienta de control; no sustituye a tu gestor. Excluido de gastos deducibles: Andrea (titular) {eur(impData.costeMensualAndrea)}/mes.</p>
