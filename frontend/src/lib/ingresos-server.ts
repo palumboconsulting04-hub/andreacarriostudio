@@ -13,6 +13,7 @@ export type LineaIngreso = {
   cliente: string;
   metodo: string;     // Tarjeta (web) / Bizum / Efectivo / Tarjeta
   importe: number;    // €
+  exento: boolean;    // enseñanza de danza a niñas → exenta de IVA
 };
 
 const INSCRITA = ["pagato", "pagado", "activa", "matricula_pagada"];
@@ -25,6 +26,9 @@ const DISC_LABEL: Record<string, string> = {
 };
 const disc = (id: string) => DISC_LABEL[id] ?? (id ? cap(id) : "—");
 const discGrupo = (g: string) => (/ballet/i.test(g || "") ? "Ballet" : (g || "—"));
+// Enseñanza de danza a niñas: exenta de IVA (art. 20 LIVA). El resto tributa al 21%.
+const NINAS_BALLET = new Set(["pre-ballet", "ballet-i", "ballet-ii"]);
+const esExento = (id: string) => NINAS_BALLET.has(id || "");
 
 export async function ingresosDelMes(mes: string): Promise<{ lineas: LineaIngreso[]; total: number }> {
   const ini = `${mes}-01`;
@@ -50,24 +54,24 @@ export async function ingresosEntre(ini: string, fin: string): Promise<{ lineas:
   const lineas: LineaIngreso[] = [];
   for (const i of iscr.data ?? []) {
     const mat = Number(i.matricula) || 0;
-    if (mat > 0) lineas.push({ fecha: dstr(i.created_at as string), concepto: "Matrícula", disciplina: disc(i.disciplina_id as string), cliente: `${i.nome ?? ""} ${i.cognome ?? ""}`.trim() || "—", metodo: "Tarjeta (web)", importe: mat });
+    if (mat > 0) lineas.push({ fecha: dstr(i.created_at as string), concepto: "Matrícula", disciplina: disc(i.disciplina_id as string), cliente: `${i.nome ?? ""} ${i.cognome ?? ""}`.trim() || "—", metodo: "Tarjeta (web)", importe: mat, exento: esExento(i.disciplina_id as string) });
   }
   for (const b of bonos.data ?? []) {
     if (b.estado === "cancelado" || b.estado === "reembolsado") continue;
     const imp = Number(b.precio_pagado) || 0;
-    if (imp > 0) lineas.push({ fecha: dstr(b.created_at as string), concepto: "Bono", disciplina: disc(b.disciplina_id as string), cliente: (b.nombre as string) || "—", metodo: "Tarjeta (web)", importe: imp });
+    if (imp > 0) lineas.push({ fecha: dstr(b.created_at as string), concepto: "Bono", disciplina: disc(b.disciplina_id as string), cliente: (b.nombre as string) || "—", metodo: "Tarjeta (web)", importe: imp, exento: false });
   }
   for (const r of renov.data ?? []) {
     const imp = Number(r.importe_matricula) || 0;
-    if (imp > 0) lineas.push({ fecha: dstr(r.updated_at as string), concepto: "Matrícula", disciplina: discGrupo(r.grupo as string), cliente: `${r.nombre ?? ""} ${r.apellidos ?? ""}`.trim() || (r.nombre_madre as string) || "—", metodo: cap((r.metodo_pago as string) || "efectivo"), importe: imp });
+    if (imp > 0) lineas.push({ fecha: dstr(r.updated_at as string), concepto: "Matrícula", disciplina: discGrupo(r.grupo as string), cliente: `${r.nombre ?? ""} ${r.apellidos ?? ""}`.trim() || (r.nombre_madre as string) || "—", metodo: cap((r.metodo_pago as string) || "efectivo"), importe: imp, exento: /ballet/i.test((r.grupo as string) || "") });
   }
   for (const p of pagos.data ?? []) {
     const imp = Number(p.importe) || 0;
-    if (imp > 0) lineas.push({ fecha: dstr(p.fecha as string), concepto: (p.concepto as string) || "Cuota", disciplina: "—", cliente: (p.alumna_nombre as string) || "—", metodo: cap((p.metodo as string) || "efectivo"), importe: imp });
+    if (imp > 0) lineas.push({ fecha: dstr(p.fecha as string), concepto: (p.concepto as string) || "Cuota", disciplina: "—", cliente: (p.alumna_nombre as string) || "—", metodo: cap((p.metodo as string) || "efectivo"), importe: imp, exento: false });
   }
   for (const s of stripeCuotas.data ?? []) {
     const imp = Number(s.importe) || 0;
-    if (imp > 0) lineas.push({ fecha: dstr(s.fecha as string), concepto: (s.concepto as string) || "Cuota", disciplina: "—", cliente: (s.nombre as string) || (s.email as string) || "—", metodo: cap((s.metodo as string) || "tarjeta"), importe: imp });
+    if (imp > 0) lineas.push({ fecha: dstr(s.fecha as string), concepto: (s.concepto as string) || "Cuota", disciplina: "—", cliente: (s.nombre as string) || (s.email as string) || "—", metodo: cap((s.metodo as string) || "tarjeta"), importe: imp, exento: false });
   }
   // Cuotas mensuales marcadas a mano (tabla cuotas). El mes de la cuota es la fecha.
   const MES_NOM = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
@@ -77,7 +81,7 @@ export async function ingresosEntre(ini: string, fin: string): Promise<{ lineas:
     const isc = c.iscrizioni as { nome?: string; cognome?: string; disciplina_id?: string } | null;
     const fecha = dstr(c.mes as string);
     const mm = Number(fecha.split("-")[1]);
-    lineas.push({ fecha, concepto: `Cuota ${MES_NOM[mm - 1] ?? ""}`.trim(), disciplina: disc(isc?.disciplina_id ?? ""), cliente: `${isc?.nome ?? ""} ${isc?.cognome ?? ""}`.trim() || "—", metodo: cap((c.metodo as string) || "efectivo"), importe: imp });
+    lineas.push({ fecha, concepto: `Cuota ${MES_NOM[mm - 1] ?? ""}`.trim(), disciplina: disc(isc?.disciplina_id ?? ""), cliente: `${isc?.nome ?? ""} ${isc?.cognome ?? ""}`.trim() || "—", metodo: cap((c.metodo as string) || "efectivo"), importe: imp, exento: esExento(isc?.disciplina_id ?? "") });
   }
 
   lineas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.concepto.localeCompare(b.concepto));

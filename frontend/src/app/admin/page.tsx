@@ -479,6 +479,13 @@ export default function AdminDashboard() {
   const [cuotasDisc, setCuotasDisc] = useState("");
   const [cuotaModal, setCuotaModal] = useState<{ id: string; nombre: string; mes: string } | null>(null);
 
+  // ── Impuestos (dentro de Finanzas) ── config editable, se guarda en el navegador.
+  const IMP_DEFAULT = { ivaTipo: 21, irpf130: 20, reta: 79.70, minimoPersonal: 5550, ivaSoportado: [0, 0, 0, 0] as number[], pagos130: [0, 0, 0, 0] as number[], tramos: [{ hasta: 12450, tipo: 19 }, { hasta: 20200, tipo: 24 }, { hasta: 35200, tipo: 30 }, { hasta: 60000, tipo: 37 }, { hasta: 300000, tipo: 45 }, { hasta: 0, tipo: 47 }] };
+  const [finTab, setFinTab] = useState<"resumen" | "impuestos">("resumen");
+  const [impCfg, setImpCfg] = useState(IMP_DEFAULT);
+  const [impData, setImpData] = useState<{ anio: number; trimestres: { q: number; total: number; exento: number; noExento: number }[]; costeMensualDeducible: number; costeMensualAndrea: number } | null>(null);
+  const [impPanel, setImpPanel] = useState(false);
+
   // ── Hoja del asesor (libro de ingresos) ──
   const [asesorMes, setAsesorMes] = useState(() => {
     const n = new Date();
@@ -1407,6 +1414,14 @@ export default function AdminDashboard() {
     setCuotaModal(null);
     await fetch(`/api/admin/cuotas?iscrizione_id=${id}&mes=${mes}`, { method: "DELETE" }).catch(() => {});
   };
+
+  // Impuestos: recuerda la config y carga los datos del año al abrir el sub-apartado.
+  useEffect(() => { try { const s = localStorage.getItem("acs_imp_cfg"); if (s) setImpCfg(c => ({ ...c, ...JSON.parse(s) })); } catch {} }, []);
+  useEffect(() => { try { localStorage.setItem("acs_imp_cfg", JSON.stringify(impCfg)); } catch {} }, [impCfg]);
+  useEffect(() => {
+    if (activeSection !== "Finanzas" || finTab !== "impuestos") return;
+    fetch(`/api/admin/impuestos?anio=${new Date().getFullYear()}`).then(r => r.json()).then(setImpData).catch(() => setImpData(null));
+  }, [activeSection, finTab]);
 
   async function fetchVentas() {
     setVentasLoading(true);
@@ -3380,6 +3395,14 @@ export default function AdminDashboard() {
           {activeSection === "Finanzas" && (
             <section className="space-y-6">
 
+              <div className="inline-flex rounded-xl border p-1" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
+                {(["resumen", "impuestos"] as const).map(t => (
+                  <button key={t} onClick={() => setFinTab(t)} className="text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors" style={finTab === t ? { backgroundColor: "#7d2b13", color: "#fff8f5" } : { backgroundColor: "transparent", color: "#7d2b13" }}>{t === "resumen" ? "Resumen" : "Impuestos"}</button>
+                ))}
+              </div>
+
+              {finTab === "resumen" && (<>
+
               {/* KPI Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* Resultado neto mes */}
@@ -3500,6 +3523,131 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
+
+              </>)}
+
+              {finTab === "impuestos" && (() => {
+                if (!impData) return <p className="text-sm text-center py-10" style={{ color: "#89726c" }}>Cargando…</p>;
+                const mesActual = new Date().getMonth() + 1;
+                const tActual = Math.min(3, Math.floor((mesActual - 1) / 3));
+                const trims = impData.trimestres;
+                const ingAcum = (T: number) => trims.slice(0, T + 1).reduce((s, x) => s + x.total, 0);
+                const mesesHasta = (T: number) => T < tActual ? (T + 1) * 3 : mesActual;
+                const gastoDedAcum = (T: number) => (impData.costeMensualDeducible + impCfg.reta) * mesesHasta(T);
+                const irpf130: number[] = [];
+                for (let T = 0; T <= tActual; T++) {
+                  const benef = ingAcum(T) - gastoDedAcum(T);
+                  const antes = irpf130.slice(0, T).reduce((s, x) => s + x, 0);
+                  irpf130[T] = Math.max(0, benef * impCfg.irpf130 / 100 - antes);
+                }
+                const irpfTrim = irpf130[tActual] ?? 0;
+                const benefActual = ingAcum(tActual) - gastoDedAcum(tActual);
+                const ivaRep = trims[tActual].noExento * (impCfg.ivaTipo / (100 + impCfg.ivaTipo));
+                const ivaSop = impCfg.ivaSoportado[tActual] || 0;
+                const ivaPagar = Math.max(0, ivaRep - ivaSop);
+                const retaAnio = impCfg.reta * mesActual;
+                const apartar = trims[tActual].total * 0.30;
+                const totalImpTrim = ivaPagar + irpfTrim + impCfg.reta * 3;
+                const ingAnio = trims.reduce((s, x) => s + x.total, 0);
+                const benefAnio = ingAnio - (impData.costeMensualDeducible + impCfg.reta) * mesActual;
+                const baseRenta = Math.max(0, benefAnio - impCfg.minimoPersonal);
+                let restante = baseRenta, irpfAnual = 0, prev = 0;
+                for (const tr of impCfg.tramos) {
+                  const techo = tr.hasta && tr.hasta > 0 ? tr.hasta : Infinity;
+                  const base = Math.max(0, Math.min(restante, techo - prev));
+                  irpfAnual += base * tr.tipo / 100;
+                  restante -= base; prev = techo;
+                  if (restante <= 0) break;
+                }
+                const pagado130 = irpf130.reduce((s, x) => s + x, 0);
+                const rentaDif = irpfAnual - pagado130;
+                const FECHAS = ["20 de abril", "20 de julio", "20 de octubre", "30 de enero"];
+                const eur = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+                const setCfg = (patch: Partial<typeof impCfg>) => setImpCfg(c => ({ ...c, ...patch }));
+                const setArr = (key: "ivaSoportado" | "pagos130", i: number, v: number) => setImpCfg(c => ({ ...c, [key]: (c[key] as number[]).map((x, j) => j === i ? v : x) }));
+                const card = "bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high";
+                const num = "w-full text-sm rounded-lg border px-2 py-1.5 bg-white";
+                return (
+                  <section className="space-y-5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm" style={{ color: "#89726c" }}>Trimestre en curso: <strong style={{ color: "#7d2b13" }}>{tActual + 1}º · {impData.anio}</strong></p>
+                      <button onClick={() => setImpPanel(p => !p)} className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ backgroundColor: "#fff", border: "1px solid #7d2b13", color: "#7d2b13" }}>⚙ Ajustes</button>
+                    </div>
+
+                    {impPanel && (
+                      <div className={card + " space-y-3"}>
+                        <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Ajustes (editables)</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          <label className="text-xs" style={{ color: "#89726c" }}>Cuota RETA (€/mes)<input type="number" step="0.01" className={num} style={{ borderColor: "#dcc1b9" }} value={impCfg.reta} onChange={e => setCfg({ reta: Number(e.target.value) })} /></label>
+                          <label className="text-xs" style={{ color: "#89726c" }}>Tipo IVA (%)<input type="number" className={num} style={{ borderColor: "#dcc1b9" }} value={impCfg.ivaTipo} onChange={e => setCfg({ ivaTipo: Number(e.target.value) })} /></label>
+                          <label className="text-xs" style={{ color: "#89726c" }}>Pago IRPF 130 (%)<input type="number" className={num} style={{ borderColor: "#dcc1b9" }} value={impCfg.irpf130} onChange={e => setCfg({ irpf130: Number(e.target.value) })} /></label>
+                          <label className="text-xs" style={{ color: "#89726c" }}>Mínimo personal (€/año)<input type="number" className={num} style={{ borderColor: "#dcc1b9" }} value={impCfg.minimoPersonal} onChange={e => setCfg({ minimoPersonal: Number(e.target.value) })} /></label>
+                          <label className="text-xs" style={{ color: "#89726c" }}>IVA soportado {tActual + 1}ºT (€)<input type="number" step="0.01" className={num} style={{ borderColor: "#dcc1b9" }} value={impCfg.ivaSoportado[tActual]} onChange={e => setArr("ivaSoportado", tActual, Number(e.target.value))} /></label>
+                          <label className="text-xs" style={{ color: "#89726c" }}>130 ya pagado ant. (€)<input type="number" step="0.01" className={num} style={{ borderColor: "#dcc1b9" }} value={impCfg.pagos130[tActual]} onChange={e => setArr("pagos130", tActual, Number(e.target.value))} /></label>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold mb-1.5" style={{ color: "#89726c" }}>Tramos IRPF (tipo % por tramo)</p>
+                          <div className="flex flex-wrap gap-2">
+                            {impCfg.tramos.map((tr, i) => (
+                              <div key={i} className="flex items-center gap-1 text-xs">
+                                <span style={{ color: "#89726c" }}>{tr.hasta && tr.hasta > 0 ? `≤${tr.hasta / 1000}k` : "resto"}</span>
+                                <input type="number" className="w-14 text-sm rounded-lg border px-1.5 py-1 bg-white" style={{ borderColor: "#dcc1b9" }} value={tr.tipo} onChange={e => setImpCfg(c => ({ ...c, tramos: c.tramos.map((x, j) => j === i ? { ...x, tipo: Number(e.target.value) } : x) }))} />
+                                <span style={{ color: "#89726c" }}>%</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-[11px]" style={{ color: "#89726c" }}>Se guardan en este navegador. Confirma exención, tramos y cuota con tu gestor.</p>
+                      </div>
+                    )}
+
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className={card + " flex flex-col gap-2"}>
+                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>IVA · Modelo 303</p>
+                        <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{eur(ivaPagar)}</p>
+                        <p className="text-xs" style={{ color: "#89726c" }}>Repercutido (no exento) {eur(ivaRep)} − soportado {eur(ivaSop)}. Ballet niñas: <strong style={{ color: "#2e7d32" }}>exento</strong>.</p>
+                        {ivaSop === 0 && ivaRep > 0 && <p className="text-[11px]" style={{ color: "#e65100" }}>⚠ Falta el IVA soportado del trimestre (mételo en Ajustes). Cifra conservadora.</p>}
+                        <p className="text-[11px]" style={{ color: "#89726c" }}>Fecha límite: {FECHAS[tActual]}</p>
+                      </div>
+                      <div className={card + " flex flex-col gap-2"}>
+                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>IRPF · Modelo 130</p>
+                        <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{eur(irpfTrim)}</p>
+                        <p className="text-xs" style={{ color: "#89726c" }}>Beneficio acumulado del año: <strong>{eur(benefActual)}</strong> (× {impCfg.irpf130}%).</p>
+                        <p className="text-[11px]" style={{ color: "#89726c" }}>Gastos: Costes deducibles + RETA. No incluye a Andrea (titular).</p>
+                        <p className="text-[11px]" style={{ color: "#89726c" }}>Fecha límite: {FECHAS[tActual]}</p>
+                      </div>
+                      <div className={card + " flex flex-col gap-2"}>
+                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>RETA · autónomos</p>
+                        <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{eur(impCfg.reta)}</p>
+                        <p className="text-xs" style={{ color: "#89726c" }}>Cuota del mes. Pagado en el año: <strong>{eur(retaAnio)}</strong>.</p>
+                        <p className="text-[11px]" style={{ color: "#89726c" }}>Es gasto deducible (ya contado arriba).</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[24px] p-6" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                      <p className="text-sm font-semibold mb-2">Dinero a apartar</p>
+                      <div className="flex flex-wrap gap-6">
+                        <div><p className="text-xs" style={{ color: "#ffdbd1" }}>30% de los ingresos del trimestre</p><p className="text-2xl font-bold">{eur(apartar)}</p></div>
+                        <div><p className="text-xs" style={{ color: "#ffdbd1" }}>Impuestos del trimestre (IVA + IRPF + RETA×3)</p><p className="text-2xl font-bold">{eur(totalImpTrim)}</p></div>
+                      </div>
+                      <p className="text-[11px] mt-3" style={{ color: "#ffdbd1" }}>Guárdalo en una cuenta aparte. Fechas: 20 abr · 20 jul · 20 oct · 30 ene.</p>
+                    </div>
+
+                    <div className={card}>
+                      <p className="text-sm font-semibold mb-1" style={{ color: "#7d2b13" }}>Estimación Renta (Modelo 100) — orientativa</p>
+                      <p className="text-xs mb-3" style={{ color: "#89726c" }}>Beneficio del año {eur(benefAnio)} − mínimo personal {eur(impCfg.minimoPersonal)} = base {eur(baseRenta)}, con los tramos.</p>
+                      <div className="flex flex-wrap gap-6">
+                        <div><p className="text-xs" style={{ color: "#89726c" }}>IRPF anual estimado</p><p className="text-xl font-bold" style={{ color: "#7d2b13" }}>{eur(irpfAnual)}</p></div>
+                        <div><p className="text-xs" style={{ color: "#89726c" }}>Ya pagado con el 130</p><p className="text-xl font-bold" style={{ color: "#7d2b13" }}>{eur(pagado130)}</p></div>
+                        <div><p className="text-xs" style={{ color: "#89726c" }}>{rentaDif >= 0 ? "A pagar en la Renta" : "A devolver"}</p><p className="text-xl font-bold" style={{ color: rentaDif >= 0 ? "#b71c1c" : "#2e7d32" }}>{eur(Math.abs(rentaDif))}</p></div>
+                      </div>
+                      <p className="text-[11px] mt-3" style={{ color: "#e65100" }}>⚠ Muy orientativa: no incluye toda la Renta real (otras rentas, deducciones, tu situación personal). No es tu IRPF definitivo.</p>
+                    </div>
+
+                    <p className="text-[11px]" style={{ color: "#89726c" }}>Herramienta de control; no sustituye a tu gestor. Excluido de gastos deducibles: Andrea (titular) {eur(impData.costeMensualAndrea)}/mes.</p>
+                  </section>
+                );
+              })()}
 
             </section>
           )}
