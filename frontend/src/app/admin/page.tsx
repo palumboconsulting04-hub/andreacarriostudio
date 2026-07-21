@@ -3314,7 +3314,9 @@ export default function AdminDashboard() {
                               return (
                                 <tr key={i} className="border-b hover:bg-[#fff8f5] transition-colors" style={{ borderColor: "#f0e0d8" }}>
                                   <td className="py-3 px-4 whitespace-nowrap" style={{ color: "#89726c" }}>{new Date(l.fecha + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</td>
-                                  <td className="py-3 px-4 font-medium" style={{ color: "#25190f" }}>{l.cliente}</td>
+                                  <td className="py-3 px-4">
+                                    <button onClick={() => { setUsuariosSearch(l.cliente); setActiveSection("Clientas"); }} className="font-medium text-left hover:underline" style={{ color: "#7d2b13" }} title="Ver ficha de la alumna">{l.cliente}</button>
+                                  </td>
                                   <td className="py-3 px-4"><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fff0eb", color: cc }}>{l.concepto}</span></td>
                                   <td className="py-3 px-4" style={{ color: "#25190f" }}>{l.disciplina}</td>
                                   <td className="py-3 px-4" style={{ color: "#25190f" }}>{l.metodo}</td>
@@ -3680,10 +3682,9 @@ export default function AdminDashboard() {
               if (usuariosFiltroStato && u.stato !== usuariosFiltroStato) return false;
               if (usuariosFiltroMetodo && (u.metodo_pagamento || "") !== usuariosFiltroMetodo) return false;
               if (!q) return true;
-              const name = NINAS_IDS.has(u.disciplina_id) && u.nome_alumna
-                ? `${u.nome_alumna} ${u.cognome_alumna ?? ""}`.toLowerCase()
-                : `${u.nome} ${u.cognome}`.toLowerCase();
-              return name.includes(q) || (u.discipline?.nome ?? "").toLowerCase().includes(q);
+              const nina = NINAS_IDS.has(u.disciplina_id) && u.nome_alumna ? `${u.nome_alumna} ${u.cognome_alumna ?? ""}`.toLowerCase() : "";
+              const adulto = `${u.nome} ${u.cognome}`.toLowerCase();
+              return nina.includes(q) || adulto.includes(q) || (u.discipline?.nome ?? "").toLowerCase().includes(q);
             });
             const filtrosActivos = usuariosFiltroDisc !== "" || usuariosFiltroStato !== "" || usuariosFiltroMetodo !== "" || q !== "";
             return (
