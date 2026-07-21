@@ -30,5 +30,16 @@ export async function GET(req: NextRequest) {
   const costeMensualDeducible = suma(cat => cat !== "Andrea"); // "Andrea" (titular) no desgrava
   const costeMensualAndrea = suma(cat => cat === "Andrea");
 
-  return NextResponse.json({ anio, trimestres, costeMensualDeducible, costeMensualAndrea });
+  // Facturas de gastos deducibles por trimestre: IVA soportado (303) y base (130).
+  const { data: facturas } = await supabaseAdmin.from("facturas").select("fecha, base, iva, deducible").gte("fecha", `${anio}-01-01`).lt("fecha", `${anio + 1}-01-01`);
+  const facturasTrim = [0, 1, 2, 3].map(() => ({ iva: 0, base: 0 }));
+  for (const f of facturas ?? []) {
+    if (f.deducible === false || !f.fecha) continue;
+    const mes = Number((f.fecha as string).split("-")[1]);
+    const qi = Math.min(3, Math.max(0, Math.floor((mes - 1) / 3)));
+    facturasTrim[qi].iva += Number(f.iva) || 0;
+    facturasTrim[qi].base += Number(f.base) || 0;
+  }
+
+  return NextResponse.json({ anio, trimestres, costeMensualDeducible, costeMensualAndrea, facturasTrim });
 }

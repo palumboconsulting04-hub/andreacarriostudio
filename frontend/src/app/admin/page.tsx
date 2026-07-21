@@ -483,9 +483,18 @@ export default function AdminDashboard() {
   const IMP_DEFAULT = { ivaTipo: 21, irpf130: 20, reta: 79.70, minimoPersonal: 5550, ivaSoportado: [0, 0, 0, 0] as number[], pagos130: [0, 0, 0, 0] as number[], tramos: [{ hasta: 12450, tipo: 19 }, { hasta: 20200, tipo: 24 }, { hasta: 35200, tipo: 30 }, { hasta: 60000, tipo: 37 }, { hasta: 300000, tipo: 45 }, { hasta: 0, tipo: 47 }] };
   const [finTab, setFinTab] = useState<"resumen" | "impuestos">("resumen");
   const [impCfg, setImpCfg] = useState(IMP_DEFAULT);
-  const [impData, setImpData] = useState<{ anio: number; trimestres: { q: number; total: number; exento: number; noExento: number }[]; costeMensualDeducible: number; costeMensualAndrea: number } | null>(null);
+  const [impData, setImpData] = useState<{ anio: number; trimestres: { q: number; total: number; exento: number; noExento: number }[]; costeMensualDeducible: number; costeMensualAndrea: number; facturasTrim: { iva: number; base: number }[] } | null>(null);
   const [impPanel, setImpPanel] = useState(false);
   const [impTab, setImpTab] = useState<"iva" | "irpf" | "reta">("iva");
+
+  // ── Facturas de gastos (foto/PDF + IA que las lee) ──
+  type Factura = { id: string; fecha: string | null; proveedor: string | null; base: number | null; iva: number | null; total: number | null; categoria: string | null; deducible: boolean; origen: string; url: string | null };
+  const [facturas, setFacturas] = useState<Factura[]>([]);
+  const [facturasLoading, setFacturasLoading] = useState(false);
+  const [factForm, setFactForm] = useState<{ fecha: string; proveedor: string; base: string; iva: string; total: string; categoria: string; deducible: boolean } | null>(null);
+  const [factArchivo, setFactArchivo] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [factOcr, setFactOcr] = useState(false);
+  const [factSaving, setFactSaving] = useState(false);
 
   // ── Hoja del asesor (libro de ingresos) ──
   const [asesorMes, setAsesorMes] = useState(() => {
@@ -1423,6 +1432,51 @@ export default function AdminDashboard() {
     if (activeSection !== "Finanzas" || finTab !== "impuestos") return;
     fetch(`/api/admin/impuestos?anio=${new Date().getFullYear()}`).then(r => r.json()).then(setImpData).catch(() => setImpData(null));
   }, [activeSection, finTab]);
+
+  // ── Facturas ──
+  const cargarFacturas = () => fetch("/api/admin/facturas").then(r => r.json()).then(({ facturas }) => setFacturas((facturas ?? []) as Factura[])).catch(() => {});
+  useEffect(() => { if (activeSection !== "Facturas") return; setFacturasLoading(true); cargarFacturas().finally(() => setFacturasLoading(false)); }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+  const comprimirImagen = (file: File): Promise<{ b64: string; dataUrl: string }> => new Promise(async resolve => {
+    const img = await createImageBitmap(file);
+    const max = 1600, scale = Math.min(1, max / Math.max(img.width, img.height));
+    const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+    const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+    canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    resolve({ b64: dataUrl.split(",")[1], dataUrl });
+  });
+  const pdfToBase64 = async (file: File): Promise<string> => {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let bin = ""; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  };
+  const onFacturaFile = async (file: File) => {
+    let base64: string, mediaType = file.type, preview = "";
+    if (file.type === "application/pdf") { base64 = await pdfToBase64(file); }
+    else { const { b64, dataUrl } = await comprimirImagen(file); base64 = b64; mediaType = "image/jpeg"; preview = dataUrl; }
+    setFactArchivo({ base64, mediaType, preview });
+    setFactForm({ fecha: "", proveedor: "", base: "", iva: "", total: "", categoria: "", deducible: true });
+    setFactOcr(true);
+    try {
+      const res = await fetch("/api/admin/facturas/ocr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: base64, mediaType }) });
+      const { datos } = await res.json();
+      if (datos) setFactForm(f => f ? { ...f, fecha: datos.fecha || "", proveedor: datos.proveedor || "", base: datos.base != null ? String(datos.base) : "", iva: datos.iva != null ? String(datos.iva) : "", total: datos.total != null ? String(datos.total) : "" } : f);
+    } catch { /* deja los campos vacíos para rellenar a mano */ }
+    setFactOcr(false);
+  };
+  const guardarFactura = async () => {
+    if (!factForm || factSaving) return;
+    setFactSaving(true);
+    try {
+      await fetch("/api/admin/facturas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...factForm, archivoBase64: factArchivo?.base64, mediaType: factArchivo?.mediaType }) });
+      setFactForm(null); setFactArchivo(null);
+      await cargarFacturas();
+    } finally { setFactSaving(false); }
+  };
+  const borrarFactura = async (id: string) => {
+    setFacturas(prev => prev.filter(f => f.id !== id));
+    await fetch(`/api/admin/facturas?id=${id}`, { method: "DELETE" }).catch(() => {});
+  };
 
   async function fetchVentas() {
     setVentasLoading(true);
@@ -2386,6 +2440,7 @@ export default function AdminDashboard() {
     { icon: "filter_alt", label: "Embudo" },
     { icon: "online_prediction", label: "Previsión" },
     { icon: "receipt_long", label: "Costes" },
+    { icon: "document_scanner", label: "Facturas" },
     { icon: "trending_up", label: "Ventas" },
     { icon: "account_balance", label: "Finanzas" },
     { icon: "description", label: "Hoja asesor" },
@@ -3534,7 +3589,8 @@ export default function AdminDashboard() {
                 const trims = impData.trimestres;
                 const ingAcum = (T: number) => trims.slice(0, T + 1).reduce((s, x) => s + x.total, 0);
                 const mesesHasta = (T: number) => T < tActual ? (T + 1) * 3 : mesActual;
-                const gastoDedAcum = (T: number) => (impData.costeMensualDeducible + impCfg.reta) * mesesHasta(T);
+                const baseFactAcum = (T: number) => (impData.facturasTrim ?? []).slice(0, T + 1).reduce((s, x) => s + (x?.base || 0), 0);
+                const gastoDedAcum = (T: number) => (impData.costeMensualDeducible + impCfg.reta) * mesesHasta(T) + baseFactAcum(T);
                 const irpf130: number[] = [];
                 for (let T = 0; T <= tActual; T++) {
                   const benef = ingAcum(T) - gastoDedAcum(T);
@@ -3544,7 +3600,7 @@ export default function AdminDashboard() {
                 const irpfTrim = irpf130[tActual] ?? 0;
                 const benefActual = ingAcum(tActual) - gastoDedAcum(tActual);
                 const ivaRep = trims[tActual].noExento * (impCfg.ivaTipo / (100 + impCfg.ivaTipo));
-                const ivaSop = impCfg.ivaSoportado[tActual] || 0;
+                const ivaSop = (impData.facturasTrim?.[tActual]?.iva || 0) + (impCfg.ivaSoportado[tActual] || 0);
                 const ivaPagar = Math.max(0, ivaRep - ivaSop);
                 const retaAnio = impCfg.reta * mesActual;
                 const apartar = trims[tActual].total * 0.30;
@@ -3569,7 +3625,7 @@ export default function AdminDashboard() {
                 const card = "bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high";
                 const num = "w-full text-sm rounded-lg border px-2 py-1.5 bg-white";
                 const NOMBRE_T = ["1º · ene–mar", "2º · abr–jun", "3º · jul–sep", "4º · oct–dic"];
-                const ivaTrim = trims.map((t, q) => { const rep = t.noExento * (impCfg.ivaTipo / (100 + impCfg.ivaTipo)); const sop = impCfg.ivaSoportado[q] || 0; return { rep, sop, pagar: Math.max(0, rep - sop) }; });
+                const ivaTrim = trims.map((t, q) => { const rep = t.noExento * (impCfg.ivaTipo / (100 + impCfg.ivaTipo)); const sop = (impData.facturasTrim?.[q]?.iva || 0) + (impCfg.ivaSoportado[q] || 0); return { rep, sop, pagar: Math.max(0, rep - sop) }; });
                 return (
                   <section className="space-y-5">
                     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -5982,6 +6038,74 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+            </section>
+          )}
+
+          {activeSection === "Facturas" && (
+            <section className="space-y-5 max-w-3xl">
+              <div>
+                <h3 className="font-headline-md text-headline-md text-primary">Facturas de gastos</h3>
+                <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Sube la foto o el PDF y la IA lee fecha, importe e IVA; tú lo revisas y guardas. Alimentan el IVA soportado y los gastos deducibles del IRPF.</p>
+              </div>
+
+              <label className="inline-flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2.5 cursor-pointer" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                <Icon name="add_a_photo" className="text-base" /> Subir factura (foto o PDF)
+                <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFacturaFile(f); e.target.value = ""; }} />
+              </label>
+
+              {factForm && (
+                <div className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "#7d2b13", backgroundColor: "#fff" }}>
+                  <div className="flex items-start gap-3">
+                    {factArchivo?.preview
+                      ? <div className="w-20 h-20 rounded-lg border bg-cover bg-center shrink-0" style={{ borderColor: "#dcc1b9", backgroundImage: `url(${factArchivo.preview})` }} />
+                      : <div className="w-20 h-20 rounded-lg border flex items-center justify-center text-xs shrink-0" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>PDF</div>}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>{factOcr ? "Leyendo la factura con IA…" : "Revisa los datos y guarda"}</p>
+                      <p className="text-xs" style={{ color: "#89726c" }}>Corrige lo que haga falta antes de guardar.</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-xs" style={{ color: "#89726c" }}>Fecha<input type="date" value={factForm.fecha} onChange={e => setFactForm(f => f ? { ...f, fecha: e.target.value } : f)} className="w-full text-sm rounded-lg border px-2 py-1.5 bg-white" style={{ borderColor: "#dcc1b9" }} /></label>
+                    <label className="text-xs" style={{ color: "#89726c" }}>Proveedor<input value={factForm.proveedor} onChange={e => setFactForm(f => f ? { ...f, proveedor: e.target.value } : f)} className="w-full text-sm rounded-lg border px-2 py-1.5 bg-white" style={{ borderColor: "#dcc1b9" }} /></label>
+                    <label className="text-xs" style={{ color: "#89726c" }}>Base (sin IVA) €<input type="number" step="0.01" value={factForm.base} onChange={e => setFactForm(f => f ? { ...f, base: e.target.value } : f)} className="w-full text-sm rounded-lg border px-2 py-1.5 bg-white" style={{ borderColor: "#dcc1b9" }} /></label>
+                    <label className="text-xs" style={{ color: "#89726c" }}>IVA €<input type="number" step="0.01" value={factForm.iva} onChange={e => setFactForm(f => f ? { ...f, iva: e.target.value } : f)} className="w-full text-sm rounded-lg border px-2 py-1.5 bg-white" style={{ borderColor: "#dcc1b9" }} /></label>
+                    <label className="text-xs" style={{ color: "#89726c" }}>Total €<input type="number" step="0.01" value={factForm.total} onChange={e => setFactForm(f => f ? { ...f, total: e.target.value } : f)} className="w-full text-sm rounded-lg border px-2 py-1.5 bg-white" style={{ borderColor: "#dcc1b9" }} /></label>
+                    <label className="text-xs" style={{ color: "#89726c" }}>Categoría<input value={factForm.categoria} onChange={e => setFactForm(f => f ? { ...f, categoria: e.target.value } : f)} placeholder="Local, material…" className="w-full text-sm rounded-lg border px-2 py-1.5 bg-white" style={{ borderColor: "#dcc1b9" }} /></label>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs" style={{ color: "#56423d" }}>
+                    <input type="checkbox" checked={factForm.deducible} onChange={e => setFactForm(f => f ? { ...f, deducible: e.target.checked } : f)} /> Gasto deducible
+                  </label>
+                  <div className="flex gap-2">
+                    <button onClick={guardarFactura} disabled={factSaving || factOcr} className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>{factSaving ? "Guardando…" : "Guardar factura"}</button>
+                    <button onClick={() => { setFactForm(null); setFactArchivo(null); }} className="px-4 py-2.5 rounded-xl text-sm" style={{ color: "#89726c" }}>Cancelar</button>
+                  </div>
+                </div>
+              )}
+
+              {facturasLoading ? (
+                <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Cargando…</p>
+              ) : facturas.length === 0 ? (
+                <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Aún no hay facturas. Sube la primera 👆</p>
+              ) : (
+                <div className="rounded-2xl border overflow-x-auto" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff" }}>
+                  <table className="w-full text-sm">
+                    <thead><tr style={{ backgroundColor: "#fff8f5" }}>{["Fecha", "Proveedor", "Base", "IVA", "Total", "", ""].map((h, i) => <th key={i} className="text-left py-2.5 px-3 text-xs uppercase tracking-wider font-semibold" style={{ color: "#89726c" }}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {facturas.map(f => (
+                        <tr key={f.id} className="border-t" style={{ borderColor: "#f0e0d8" }}>
+                          <td className="py-2 px-3 whitespace-nowrap" style={{ color: "#89726c" }}>{f.fecha ? new Date(f.fecha + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "2-digit" }) : "—"}</td>
+                          <td className="py-2 px-3" style={{ color: "#25190f" }}>{f.proveedor || "—"}{!f.deducible && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#eee", color: "#888" }}>no deduc.</span>}</td>
+                          <td className="py-2 px-3" style={{ color: "#25190f" }}>{f.base != null ? `${f.base}€` : "—"}</td>
+                          <td className="py-2 px-3" style={{ color: "#25190f" }}>{f.iva != null ? `${f.iva}€` : "—"}</td>
+                          <td className="py-2 px-3 font-semibold" style={{ color: "#7d2b13" }}>{f.total != null ? `${f.total}€` : "—"}</td>
+                          <td className="py-2 px-3">{f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "#7d2b13" }}>Ver</a>}</td>
+                          <td className="py-2 px-3"><button onClick={() => borrarFactura(f.id)} className="text-xs font-semibold" style={{ color: "#b71c1c" }}>Borrar</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
           )}
 
