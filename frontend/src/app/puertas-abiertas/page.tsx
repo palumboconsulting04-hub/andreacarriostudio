@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Script from "next/script";
+import { SLOTS } from "@/lib/jornada";
 
 // Meta (Facebook) Pixel — solo en esta landing de Puertas Abiertas.
 const FB_PIXEL_ID = "2024231855152441";
@@ -13,11 +14,8 @@ declare global {
   }
 }
 
-const EDAD_NINA_OPTIONS = [
-  "Pre-Ballet · 3–6 años",
-  "Ballet 1 · 7–9 años",
-  "Ballet 2 · 10–14 años",
-];
+// Turnos de niñas de la jornada (mismos que /reservar-jornada; comparten aforo y admin).
+const SLOTS_NINAS = SLOTS.filter(s => s.bloque === "ninas");
 
 const C = {
   burgundy: "#7d2b13",
@@ -32,22 +30,6 @@ const C = {
 
 const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
 const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
-
-function chip(selected: boolean) {
-  return {
-    padding: "10px 20px",
-    borderRadius: "999px",
-    border: `2px solid ${selected ? C.burgundy : C.border}`,
-    backgroundColor: selected ? C.blush : C.cream,
-    color: selected ? C.burgundy : C.brown,
-    cursor: "pointer",
-    fontSize: "0.875rem",
-    fontFamily: fSans,
-    transition: "all 0.18s ease",
-    outline: "none",
-    whiteSpace: "nowrap" as const,
-  };
-}
 
 function inputStyle() {
   return {
@@ -79,19 +61,36 @@ function Check() {
 }
 
 export default function PuertasAbiertas() {
-  const [nombre, setNombre] = useState("");
+  const [nombre, setNombre] = useState("");         // madre/padre
   const [telefono, setTelefono] = useState("");
-  const [nombreHija, setNombreHija] = useState("");
-  const [edad, setEdad] = useState("");
+  const [nombreHija, setNombreHija] = useState(""); // niña
+  const [email, setEmail] = useState("");
+  const [slotId, setSlotId] = useState("");
+  const [disp, setDisp] = useState<Record<string, { libres: number; ocupadas: number }>>({});
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [esEspera, setEsEspera] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Disponibilidad real de cada turno (mismo endpoint y aforo que /reservar-jornada).
+  const cargarDisp = () => {
+    fetch("/api/reservar-jornada").then(r => r.json()).then(({ slots }) => {
+      const m: Record<string, { libres: number; ocupadas: number }> = {};
+      for (const s of (slots ?? []) as { id: string; libres: number; ocupadas: number }[]) m[s.id] = { libres: s.libres, ocupadas: s.ocupadas };
+      setDisp(m);
+    }).catch(() => {});
+  };
+  useEffect(cargarDisp, []);
+
+  const emailOk = /\S+@\S+\.\S+/.test(email.trim());
   const formValido =
     nombre.trim() !== "" &&
     telefono.trim() !== "" &&
     nombreHija.trim() !== "" &&
-    edad !== "";
+    emailOk &&
+    slotId !== "";
+  // Si el turno elegido está lleno → la acción es apuntarse a su lista de espera.
+  const selFull = !!slotId && !!disp[slotId] && disp[slotId].libres <= 0;
 
   // ── Evento de optimización de Meta ──
   // Dispara ViewContent (evento estándar) UNA sola vez cuando la persona llega
@@ -204,44 +203,33 @@ export default function PuertasAbiertas() {
     if (!formValido || enviando) return;
     setEnviando(true);
     setErrorMsg("");
+    // Reserva la plaza en el sistema de la jornada (mismo que /reservar-jornada):
+    // guarda en reservas_jornada y aparece en el admin → "Jornada 24J".
+    const endpoint = selFull ? "/api/lista-espera-jornada" : "/api/reservar-jornada";
     try {
-      // event_id compartido entre el Pixel (navegador) y la Conversions API
-      // (servidor) para que Meta deduplique y no cuente la conversión dos veces.
-      const eventId = (typeof crypto !== "undefined" && crypto.randomUUID)
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const getCookie = (n: string) =>
-        document.cookie.split("; ").find(c => c.startsWith(n + "="))?.split("=")[1] || null;
-
-      const res = await fetch("/api/puertas-abiertas", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nombre: nombre.trim(),
-          apellido: "",
-          email: "",
+          nombre: nombreHija.trim(),   // la niña
           telefono: telefono.trim(),
-          disciplina_adulta: null,
-          // El admin cuenta la niña por este array; la edad sirve para asignar horario.
-          ninas: [{ nombre: nombreHija.trim(), edad }],
-          alergias: null,
-          origen: atrib.current.origen,
-          utm_source: atrib.current.utm_source,
-          utm_medium: atrib.current.utm_medium,
-          utm_campaign: atrib.current.utm_campaign,
-          utm_content: atrib.current.utm_content,
-          utm_term: atrib.current.utm_term,
-          fbclid: atrib.current.fbclid,
-          eventId,
-          fbc: getCookie("_fbc"),
-          fbp: getCookie("_fbp"),
+          email: email.trim(),
+          slot_id: slotId,
+          nombre_madre: nombre.trim(), // madre/padre
         }),
       });
+      if (res.status === 409) {
+        // El turno se llenó justo ahora: recargamos para que aparezca como COMPLETO.
+        setErrorMsg("Ese grupo se acaba de llenar. Vuelve a pulsarlo para apuntarte a su lista de espera 👇");
+        cargarDisp();
+        return;
+      }
       if (!res.ok) throw new Error();
+      setEsEspera(selFull);
       setEnviado(true);
       logFunnel("pa_reserva");
-      // Conversión: la madre ha reservado su plaza con éxito. Mismo eventID que CAPI.
-      window.fbq?.("track", "Lead", {}, { eventID: eventId });
+      // Conversión para Meta: reserva de plaza (o apuntada a lista de espera).
+      window.fbq?.("track", "Lead", { content_name: selFull ? "Lista espera puertas" : "Reserva puertas" });
     } catch {
       setErrorMsg("Ha habido un problema al enviar. Inténtalo de nuevo.");
     } finally {
@@ -267,10 +255,12 @@ export default function PuertasAbiertas() {
           className="text-4xl sm:text-5xl mb-5"
           style={{ fontFamily: fSerif, color: C.burgundy }}
         >
-          ¡Plaza reservada!
+          {esEspera ? "¡Estás en la lista!" : "¡Plaza reservada!"}
         </h2>
         <p className="text-base max-w-md leading-relaxed mb-8" style={{ color: C.brown }}>
-          Me alegra muchísimo que tu hija venga a probar. He creado un grupo de WhatsApp donde voy compartiendo todos los detalles de la jornada. Únete para no perderte nada — y así te confirmo tu horario.
+          {esEspera
+            ? "Ese grupo está completo, pero te he apuntado a su lista de espera: si se libera una plaza serás de las primeras en saberlo. Únete al grupo de WhatsApp para no perderte nada."
+            : "Me alegra muchísimo que tu hija venga a probar. He creado un grupo de WhatsApp donde voy compartiendo todos los detalles de la jornada. Únete para no perderte nada — y así te confirmo tu horario."}
         </p>
 
         <a
@@ -549,40 +539,46 @@ export default function PuertasAbiertas() {
           </p>
 
           <div className="space-y-4">
-            <input
-              style={inputStyle()}
-              placeholder="Nombre de la madre o padre"
-              value={nombre}
-              onChange={e => setNombre(e.target.value)}
-            />
-            <input
-              style={inputStyle()}
-              placeholder="Teléfono (WhatsApp)"
-              type="tel"
-              value={telefono}
-              onChange={e => setTelefono(e.target.value)}
-            />
-            <input
-              style={inputStyle()}
-              placeholder="Nombre de tu hija"
-              value={nombreHija}
-              onChange={e => setNombreHija(e.target.value)}
-            />
-
+            {/* Elegir el grupo (por edad) con la disponibilidad real de cada turno */}
             <div>
-              <p className="text-sm font-semibold mb-2" style={{ color: C.brown, fontFamily: fSans }}>
-                Edad de tu hija
+              <p className="text-sm font-semibold mb-2.5" style={{ color: C.brown, fontFamily: fSans }}>
+                Elige el grupo de tu hija
               </p>
-              <div className="flex flex-wrap gap-2">
-                {EDAD_NINA_OPTIONS.map(o => (
-                  <button key={o} onClick={() => setEdad(o)} style={chip(edad === o)}>
-                    {o}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-2.5">
+                {SLOTS_NINAS.map(s => {
+                  const d = disp[s.id];
+                  const libres = d ? d.libres : s.tope;
+                  const lleno = libres <= 0;
+                  const sel = slotId === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => { setSlotId(s.id); logFunnel("pa_click"); }}
+                      className="w-full text-left rounded-2xl px-4 py-3 transition-all flex items-center justify-between"
+                      style={{ border: `2px solid ${sel ? C.burgundy : C.border}`, backgroundColor: sel ? (lleno ? "#fde7e7" : C.blush) : (lleno ? "#faf1ee" : C.cream), outline: "none", cursor: "pointer" }}
+                    >
+                      <span>
+                        <span className="block text-sm font-semibold" style={{ color: sel ? C.burgundy : C.dark, fontFamily: fSans }}>{s.titulo}</span>
+                        <span className="block text-xs" style={{ color: C.muted }}>{s.dia} · {s.hora}</span>
+                      </span>
+                      <span className="text-xs font-semibold text-right" style={{ color: lleno ? "#b71c1c" : "#1f7a3d" }}>
+                        {lleno ? "Completo · lista de espera" : `${libres} plazas`}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
+            <input style={inputStyle()} placeholder="Nombre de tu hija" value={nombreHija} onChange={e => setNombreHija(e.target.value)} />
+            <input style={inputStyle()} placeholder="Tu nombre (madre o padre)" value={nombre} onChange={e => setNombre(e.target.value)} />
+            <input style={inputStyle()} placeholder="Teléfono (WhatsApp)" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
+            <input style={inputStyle()} placeholder="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+
             {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
+            {selFull && !errorMsg && (
+              <p className="text-xs" style={{ color: C.burgundy }}>Ese grupo está completo → te apuntarás a su <strong>lista de espera</strong>.</p>
+            )}
 
             <button
               onClick={handleSubmit}
@@ -597,7 +593,7 @@ export default function PuertasAbiertas() {
                 opacity: enviando ? 0.7 : 1,
               }}
             >
-              {enviando ? "Reservando..." : "Reservar plaza"}
+              {enviando ? "Reservando..." : !slotId ? "Elige un grupo arriba" : selFull ? "Apuntarme a la lista de espera" : "Reservar plaza"}
             </button>
 
             <p className="text-xs text-center" style={{ color: C.muted }}>
