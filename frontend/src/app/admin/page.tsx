@@ -498,6 +498,9 @@ export default function AdminDashboard() {
   const [gmailEstado, setGmailEstado] = useState<{ conectado: boolean; email: string | null; configurado: boolean } | null>(null);
   const [gmailSync, setGmailSync] = useState(false);
   const [gmailMsg, setGmailMsg] = useState("");
+  const [factMes, setFactMes] = useState(() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`; });
+  const [factEnviando, setFactEnviando] = useState(false);
+  const [factAsesorMsg, setFactAsesorMsg] = useState("");
 
   // ── Hoja del asesor (libro de ingresos) ──
   const [asesorMes, setAsesorMes] = useState(() => {
@@ -1488,6 +1491,21 @@ export default function AdminDashboard() {
   const borrarFactura = async (id: string) => {
     setFacturas(prev => prev.filter(f => f.id !== id));
     await fetch(`/api/admin/facturas?id=${id}`, { method: "DELETE" }).catch(() => {});
+  };
+  const facturasMes = factMes ? facturas.filter(f => (f.fecha || "").startsWith(factMes)) : facturas;
+  const enviarFacturasAsesor = async () => {
+    if (factEnviando) return;
+    if (!factMes) { setFactAsesorMsg("Elige un mes concreto."); return; }
+    const email = asesorEmail.trim();
+    if (!/\S+@\S+\.\S+/.test(email)) { setFactAsesorMsg("Escribe el email del asesor."); return; }
+    setFactEnviando(true); setFactAsesorMsg("");
+    try { localStorage.setItem("acs_asesor_email", email); } catch {}
+    try {
+      const res = await fetch("/api/admin/facturas/enviar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mes: factMes, email }) });
+      const d = await res.json();
+      setFactAsesorMsg(res.ok ? `✓ Enviadas ${d.n} facturas al asesor.` : (d.error || "No se pudo enviar."));
+    } catch { setFactAsesorMsg("No se pudo enviar."); }
+    finally { setFactEnviando(false); }
   };
 
   async function fetchVentas() {
@@ -6118,16 +6136,35 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              {facturas.length > 0 && (
+                <div className="rounded-2xl border p-4 space-y-2" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff" }}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select value={factMes} onChange={e => setFactMes(e.target.value)} className="text-sm rounded-xl border px-3 py-2 bg-white" style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}>
+                      <option value="">Todos los meses</option>
+                      {mesesOptions.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
+                    </select>
+                    {factMes && <span className="text-xs" style={{ color: "#89726c" }}>{facturasMes.length} factura{facturasMes.length !== 1 ? "s" : ""} · IVA {facturasMes.reduce((s, f) => s + (Number(f.iva) || 0), 0).toFixed(2).replace(".", ",")} € · Total {facturasMes.reduce((s, f) => s + (Number(f.total) || 0), 0).toFixed(2).replace(".", ",")} €</span>}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input type="email" placeholder="Email del asesor" value={asesorEmail} onChange={e => setAsesorEmail(e.target.value)} className="text-sm rounded-xl border px-3 py-2 bg-white flex-1 min-w-[180px]" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />
+                    <button onClick={enviarFacturasAsesor} disabled={factEnviando || !factMes || facturasMes.length === 0} className="text-sm font-semibold rounded-xl px-4 py-2 disabled:opacity-40" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>{factEnviando ? "Enviando…" : "Enviar al asesor"}</button>
+                    {factAsesorMsg && <span className="text-sm" style={{ color: factAsesorMsg.includes("✓") ? "#1f7a3d" : "#b71c1c" }}>{factAsesorMsg}</span>}
+                  </div>
+                </div>
+              )}
+
               {facturasLoading ? (
                 <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Cargando…</p>
               ) : facturas.length === 0 ? (
                 <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Aún no hay facturas. Sube la primera 👆</p>
+              ) : facturasMes.length === 0 ? (
+                <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>No hay facturas en ese mes.</p>
               ) : (
                 <div className="rounded-2xl border overflow-x-auto" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff" }}>
                   <table className="w-full text-sm">
                     <thead><tr style={{ backgroundColor: "#fff8f5" }}>{["Fecha", "Proveedor", "Base", "IVA", "Total", "", ""].map((h, i) => <th key={i} className="text-left py-2.5 px-3 text-xs uppercase tracking-wider font-semibold" style={{ color: "#89726c" }}>{h}</th>)}</tr></thead>
                     <tbody>
-                      {facturas.map(f => (
+                      {facturasMes.map(f => (
                         <tr key={f.id} className="border-t" style={{ borderColor: "#f0e0d8" }}>
                           <td className="py-2 px-3 whitespace-nowrap" style={{ color: "#89726c" }}>{f.fecha ? new Date(f.fecha + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "2-digit" }) : "—"}</td>
                           <td className="py-2 px-3" style={{ color: "#25190f" }}>{f.proveedor || "—"}{!f.deducible && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#eee", color: "#888" }}>no deduc.</span>}</td>
