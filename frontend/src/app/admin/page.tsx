@@ -458,6 +458,12 @@ export default function AdminDashboard() {
   });
   const [ventasGranularity, setVentasGranularity] = useState<"diario" | "semanal">("semanal");
   const [ventasLoading, setVentasLoading] = useState(false);
+  type IngresoLinea = { fecha: string; concepto: string; disciplina: string; cliente: string; metodo: string; importe: number };
+  const [ingLineas, setIngLineas] = useState<IngresoLinea[]>([]);
+  const [ingLineasAnt, setIngLineasAnt] = useState<IngresoLinea[]>([]);
+  const [ingLoading, setIngLoading] = useState(false);
+  const [ventasConcepto, setVentasConcepto] = useState<"todos" | "Matrículas" | "Bonos" | "Cuotas mensuales">("todos");
+  const [ventasBuscar, setVentasBuscar] = useState("");
 
   // ── Hoja del asesor (libro de ingresos) ──
   const [asesorMes, setAsesorMes] = useState(() => {
@@ -1338,6 +1344,21 @@ export default function AdminDashboard() {
     await fetch(`/api/admin/sugerencias?id=${id}`, { method: "DELETE" }).catch(() => {});
   };
 
+  // Libro de ingresos unificado (mes actual + anterior) para Ventas y Finanzas.
+  useEffect(() => {
+    if (activeSection !== "Ventas" && activeSection !== "Finanzas") return;
+    const [yy, mm] = ventasMes.split("-").map(Number);
+    const prev = mm === 1 ? `${yy - 1}-12` : `${yy}-${String(mm - 1).padStart(2, "0")}`;
+    setIngLoading(true);
+    Promise.all([
+      fetch(`/api/admin/ingresos?mes=${ventasMes}`).then(r => r.json()),
+      fetch(`/api/admin/ingresos?mes=${prev}`).then(r => r.json()),
+    ])
+      .then(([a, b]) => { setIngLineas((a.lineas ?? []) as IngresoLinea[]); setIngLineasAnt((b.lineas ?? []) as IngresoLinea[]); })
+      .catch(() => { setIngLineas([]); setIngLineasAnt([]); })
+      .finally(() => setIngLoading(false));
+  }, [activeSection, ventasMes]);
+
   async function fetchVentas() {
     setVentasLoading(true);
     const [{ data: isc }, { data: piani }, { data: renovs }, { data: pagosM }] = await Promise.all([
@@ -2112,7 +2133,7 @@ export default function AdminDashboard() {
     "Otros": "more_horiz",
   };
 
-  // ── Ventas computations ──
+  // ── Ventas: libro de ingresos unificado (TODAS las fuentes de dinero) ──
   const mesesOptions = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(new Date().getFullYear(), new Date().getMonth() - i, 1);
     return {
@@ -2122,80 +2143,67 @@ export default function AdminDashboard() {
   });
   const [vYear, vMonth] = ventasMes.split("-").map(Number);
   const ventasMesFiltradas = ventasData.filter(v => v.created_at.startsWith(ventasMes));
-  const prevMesStr = vMonth === 1 ? `${vYear - 1}-12` : `${vYear}-${String(vMonth - 1).padStart(2, "0")}`;
-  const ventasPrevMes = ventasData.filter(v => v.created_at.startsWith(prevMesStr));
-  // Ingreso real aportado por una inscripción: cuota cobrándose + matrícula cuando está
-  // pagada; solo matrícula si el bono aún no ha arrancado (matricula_pagada, empieza en sept.).
-  // Para filas manuales (efectivo/bizum) el ingreso es solo el importe_matricula registrado.
-  const ingresoFila = (v: VentaRow) => {
-    if (v.tipo === "manual") return v.matricula ?? 0;
-    const prezzo = v.prezzo ?? 0;
-    const mat = v.matricula ?? 0;
-    if (isPaid(v.stato)) return prezzo + mat;
-    if (v.stato === "matricula_pagada") return mat;
-    return 0;
-  };
-  const pagadasMes = ventasMesFiltradas.filter(v => ingresoFila(v) > 0);
-  const ingresosMesV = pagadasMes.reduce((s, v) => s + ingresoFila(v), 0);
-  const ingresosMesAntV = ventasPrevMes.reduce((s, v) => s + ingresoFila(v), 0);
-  const ingresosDiff = ingresosMesAntV > 0 ? ((ingresosMesV - ingresosMesAntV) / ingresosMesAntV) * 100 : null;
-  const ticketMedioV = pagadasMes.length > 0 ? ingresosMesV / pagadasMes.length : 0;
   const pendientesCountV = ventasMesFiltradas.filter(v => v.stato === "attesa").length;
-  const daysInMonth = new Date(vYear, vMonth, 0).getDate();
+
+  // Agrupa cada concepto del libro en Matrículas / Bonos / Cuotas mensuales.
+  const conceptoGrupo = (c: string) => /matr/i.test(c) ? "Matrículas" : /bono/i.test(c) ? "Bonos" : "Cuotas mensuales";
+  const CONCEPTO_ORDER = ["Matrículas", "Bonos", "Cuotas mensuales"];
+  const CONCEPTO_COLOR: Record<string, string> = { "Matrículas": "#7d2b13", "Bonos": "#9c4228", "Cuotas mensuales": "#1f7a3d" };
+  const ingTotalMes = ingLineas.reduce((s, l) => s + l.importe, 0);
+  const ingTotalAnt = ingLineasAnt.reduce((s, l) => s + l.importe, 0);
+  const ingDiffV = ingTotalAnt > 0 ? ((ingTotalMes - ingTotalAnt) / ingTotalAnt) * 100 : null;
+  const ingTicket = ingLineas.length > 0 ? ingTotalMes / ingLineas.length : 0;
+
+  const conceptoMapV: Record<string, { total: number; count: number }> = {};
+  for (const l of ingLineas) {
+    const g = conceptoGrupo(l.concepto);
+    (conceptoMapV[g] ??= { total: 0, count: 0 });
+    conceptoMapV[g].total += l.importe;
+    conceptoMapV[g].count++;
+  }
+  const porConcepto = CONCEPTO_ORDER.filter(g => conceptoMapV[g]).map(g => ({ grupo: g, total: conceptoMapV[g].total, count: conceptoMapV[g].count, color: CONCEPTO_COLOR[g] }));
+
+  const metodoMapV: Record<string, { total: number; count: number }> = {};
+  for (const l of ingLineas) {
+    (metodoMapV[l.metodo] ??= { total: 0, count: 0 });
+    metodoMapV[l.metodo].total += l.importe;
+    metodoMapV[l.metodo].count++;
+  }
+  const porMetodoV = Object.entries(metodoMapV).map(([label, x]) => ({ label, total: x.total, count: x.count })).sort((a, b) => b.total - a.total);
+  const maxMetodoV = Math.max(...porMetodoV.map(m => m.total), 1);
+
+  const ingFiltradas = ingLineas
+    .filter(l => (ventasConcepto === "todos" || conceptoGrupo(l.concepto) === ventasConcepto) && (!ventasBuscar.trim() || l.cliente.toLowerCase().includes(ventasBuscar.trim().toLowerCase())))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha) || a.cliente.localeCompare(b.cliente));
+  const ingFiltTotal = ingFiltradas.reduce((s, l) => s + l.importe, 0);
+
+  const diasMesV = new Date(vYear, vMonth, 0).getDate();
   const ventasChartData = ventasGranularity === "diario"
-    ? Array.from({ length: daysInMonth }, (_, i) => {
-        const dayStr = `${ventasMes}-${String(i + 1).padStart(2, "0")}`;
-        const rows = pagadasMes.filter(v => v.created_at.startsWith(dayStr));
-        return { label: String(i + 1), ingresos: rows.reduce((s, v) => s + ingresoFila(v), 0), inscripciones: rows.length };
+    ? Array.from({ length: diasMesV }, (_, i) => {
+        const dstr = `${ventasMes}-${String(i + 1).padStart(2, "0")}`;
+        return { label: String(i + 1), ingresos: Math.round(ingLineas.filter(l => l.fecha === dstr).reduce((s, l) => s + l.importe, 0)) };
       })
     : [1, 2, 3, 4].map(w => {
         const start = (w - 1) * 7 + 1;
-        const end = w === 4 ? daysInMonth : w * 7;
-        const rows = pagadasMes.filter(v => { const d = new Date(v.created_at).getDate(); return d >= start && d <= end; });
-        return { label: `Sem ${w}`, ingresos: rows.reduce((s, v) => s + ingresoFila(v), 0), inscripciones: rows.length };
+        const end = w === 4 ? diasMesV : w * 7;
+        const rows = ingLineas.filter(l => { const d = Number(l.fecha.slice(8, 10)); return d >= start && d <= end; });
+        return { label: `Sem ${w}`, ingresos: Math.round(rows.reduce((s, l) => s + l.importe, 0)) };
       });
-  const discMap: Record<string, { nombre: string; ingresos: number; count: number }> = {};
-  pagadasMes.forEach(v => {
-    if (!discMap[v.disciplina_id]) discMap[v.disciplina_id] = { nombre: v.discipline?.nome ?? v.disciplina_id, ingresos: 0, count: 0 };
-    discMap[v.disciplina_id].ingresos += ingresoFila(v);
-    discMap[v.disciplina_id].count++;
-  });
-  const discBreakdown = Object.values(discMap).sort((a, b) => b.ingresos - a.ingresos);
-  const maxDisc = Math.max(...discBreakdown.map(d => d.ingresos), 1);
-  const planMapV: Record<string, { nombre: string; ingresos: number; count: number }> = {};
-  pagadasMes.forEach(v => {
-    if (!planMapV[v.piano_id]) planMapV[v.piano_id] = { nombre: PLAN_LABEL[v.piano_id] ?? v.piano_id, ingresos: 0, count: 0 };
-    planMapV[v.piano_id].ingresos += ingresoFila(v);
-    planMapV[v.piano_id].count++;
-  });
-  const planBreakdownV = Object.values(planMapV).sort((a, b) => b.ingresos - a.ingresos);
-  const maxPlan = Math.max(...planBreakdownV.map(p => p.ingresos), 1);
-  // Desglose por canal de pago.
-  const CANAL_INFO: Record<string, { label: string; color: string }> = {
-    online:    { label: "Online (Stripe)", color: "#7d2b13" },
-    efectivo:  { label: "Efectivo",        color: "#1f7a3d" },
-    bizum:     { label: "Bizum",           color: "#1b4f9c" },
+
+  const descargarVentasCSV = () => {
+    const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const num = (n: number) => n.toFixed(2).replace(".", ",");
+    const filas = [
+      ["Fecha", "Cliente", "Concepto", "Clase", "Método", "Importe (€)"].map(esc).join(";"),
+      ...ingFiltradas.map(l => [l.fecha, l.cliente, l.concepto, l.disciplina, l.metodo, num(l.importe)].map(esc).join(";")),
+      ["", "", "", "", "TOTAL", num(ingFiltTotal)].map(esc).join(";"),
+    ];
+    const csv = "﻿" + filas.join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a"); a.href = url; a.download = `ventas-${ventasMes}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  const canalMapV: Record<string, { label: string; color: string; ingresos: number; count: number }> = {};
-  pagadasMes.forEach(v => {
-    const mp = v.metodo_pagamento ?? "";
-    let key: string;
-    if (v.tipo === "manual") {
-      key = mp === "bizum" ? "bizum" : "efectivo";
-    } else {
-      key = ["tarjeta", "google-pay", "apple-pay", "paypal"].includes(mp) ? "online"
-          : mp === "bizum" ? "bizum"
-          : mp === "efectivo" ? "efectivo"
-          : "online";
-    }
-    const info = CANAL_INFO[key] ?? { label: key, color: "#89726c" };
-    if (!canalMapV[key]) canalMapV[key] = { ...info, ingresos: 0, count: 0 };
-    canalMapV[key].ingresos += ingresoFila(v);
-    canalMapV[key].count++;
-  });
-  const canalBreakdownV = Object.values(canalMapV).sort((a, b) => b.ingresos - a.ingresos);
-  const maxCanal = Math.max(...canalBreakdownV.map(c => c.ingresos), 1);
-  const totalCanalV = canalBreakdownV.reduce((s, c) => s + c.ingresos, 0);
 
   // Clases de hoy (para el bloque "Para hoy" del Resumen).
   const todayEs = DOW_ES[new Date().getDay()];
@@ -3127,11 +3135,11 @@ export default function AdminDashboard() {
                     <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Ingresos Mes</p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="euro" className="text-base" /></div>
                   </div>
-                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{ventasLoading ? "—" : `${ingresosMesV}€`}</p>
-                  {ingresosDiff !== null && (
-                    <p className="text-xs flex items-center gap-1" style={{ color: ingresosDiff >= 0 ? "#2e7d32" : "#c62828" }}>
-                      <Icon name={ingresosDiff >= 0 ? "trending_up" : "trending_down"} className="text-sm" />
-                      {ingresosDiff >= 0 ? "+" : ""}{ingresosDiff.toFixed(1)}% vs anterior
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{(ingLoading || ventasLoading) ? "—" : `${Math.round(ingTotalMes)}€`}</p>
+                  {ingDiffV !== null && (
+                    <p className="text-xs flex items-center gap-1" style={{ color: ingDiffV >= 0 ? "#2e7d32" : "#c62828" }}>
+                      <Icon name={ingDiffV >= 0 ? "trending_up" : "trending_down"} className="text-sm" />
+                      {ingDiffV >= 0 ? "+" : ""}{ingDiffV.toFixed(1)}% vs anterior
                     </p>
                   )}
                 </div>
@@ -3141,18 +3149,18 @@ export default function AdminDashboard() {
                     <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Mes Anterior</p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="history" className="text-base" /></div>
                   </div>
-                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{ventasLoading ? "—" : `${ingresosMesAntV}€`}</p>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{(ingLoading || ventasLoading) ? "—" : `${Math.round(ingTotalAnt)}€`}</p>
                   <p className="text-xs" style={{ color: "#89726c" }}>Referencia</p>
                 </div>
 
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col gap-3">
                   <div className="flex justify-between items-start">
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Pagos cobrados</p>
-                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="person_add" className="text-base" /></div>
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Nº de pagos</p>
+                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="receipt_long" className="text-base" /></div>
                   </div>
-                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{ventasLoading ? "—" : pagadasMes.length}</p>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{(ingLoading || ventasLoading) ? "—" : ingLineas.length}</p>
                   <p className="text-xs" style={{ color: pendientesCountV > 0 ? "#c62828" : "#89726c" }}>
-                    {pendientesCountV > 0 ? `${pendientesCountV} pendiente${pendientesCountV > 1 ? "s" : ""} sin pagar` : "Solo pagos reales"}
+                    {pendientesCountV > 0 ? `${pendientesCountV} inscrita${pendientesCountV > 1 ? "s" : ""} sin pagar` : "Todos los cobros del mes"}
                   </p>
                 </div>
 
@@ -3161,8 +3169,25 @@ export default function AdminDashboard() {
                     <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>Ticket Medio</p>
                     <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container"><Icon name="receipt" className="text-base" /></div>
                   </div>
-                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{ventasLoading ? "—" : `${ticketMedioV.toFixed(0)}€`}</p>
-                  <p className="text-xs" style={{ color: "#89726c" }}>Por alumna cobrada</p>
+                  <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>{(ingLoading || ventasLoading) ? "—" : `${ingTicket.toFixed(0)}€`}</p>
+                  <p className="text-xs" style={{ color: "#89726c" }}>Por pago</p>
+                </div>
+              </div>
+
+              {/* Desglose por concepto — toca una tarjeta para filtrar el detalle */}
+              <div>
+                <p className="text-sm font-semibold mb-2" style={{ color: "#7d2b13" }}>¿De dónde viene el dinero? <span className="font-normal" style={{ color: "#89726c" }}>· toca para ver quién pagó</span></p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[{ grupo: "todos", label: "Todo", total: ingTotalMes, count: ingLineas.length, color: "#25190f" }, ...porConcepto.map(c => ({ grupo: c.grupo, label: c.grupo, total: c.total, count: c.count, color: c.color }))].map(c => {
+                    const active = ventasConcepto === c.grupo;
+                    return (
+                      <button key={c.grupo} onClick={() => setVentasConcepto(c.grupo as typeof ventasConcepto)} className="text-left rounded-2xl p-4 border transition-all" style={{ borderColor: active ? c.color : "#dcc1b9", backgroundColor: active ? "#fff6f2" : "#fff" }}>
+                        <p className="text-xs font-semibold uppercase tracking-wider truncate" style={{ color: "#89726c" }}>{c.label}</p>
+                        <p className="text-2xl font-bold mt-1" style={{ color: c.color }}>{Math.round(c.total)}€</p>
+                        <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{c.count} pago{c.count !== 1 ? "s" : ""}</p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -3190,21 +3215,22 @@ export default function AdminDashboard() {
                 </ResponsiveContainer>
               </div>
 
-              {/* Breakdowns */}
-              <div className="grid md:grid-cols-3 gap-4">
+              {/* Desglose por método de pago y por clase */}
+              <div className="grid md:grid-cols-2 gap-4">
                 <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
-                  <p className="text-sm font-semibold mb-4" style={{ color: "#7d2b13" }}>Por Disciplina</p>
-                  {discBreakdown.length === 0
-                    ? <p className="text-sm" style={{ color: "#89726c" }}>Sin datos cobrados este mes</p>
+                  <p className="text-sm font-semibold mb-1" style={{ color: "#7d2b13" }}>Por método de pago</p>
+                  <p className="text-xs mb-4" style={{ color: "#89726c" }}>Cómo entra el dinero (web, efectivo, bizum, transferencia)</p>
+                  {porMetodoV.length === 0
+                    ? <p className="text-sm" style={{ color: "#89726c" }}>Sin datos este mes</p>
                     : <div className="space-y-3">
-                        {discBreakdown.map(d => (
-                          <div key={d.nombre}>
+                        {porMetodoV.map(m => (
+                          <div key={m.label}>
                             <div className="flex justify-between text-xs mb-1">
-                              <span style={{ color: "#25190f" }}>{d.nombre}</span>
-                              <span className="font-semibold" style={{ color: "#7d2b13" }}>{d.ingresos}€ · {d.count} alumna{d.count !== 1 ? "s" : ""}</span>
+                              <span style={{ color: "#25190f" }}>{m.label}</span>
+                              <span className="font-semibold" style={{ color: "#7d2b13" }}>{Math.round(m.total)}€ · {m.count} pago{m.count !== 1 ? "s" : ""}</span>
                             </div>
                             <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#f3e6e0" }}>
-                              <div className="h-full rounded-full transition-all" style={{ width: `${(d.ingresos / maxDisc) * 100}%`, backgroundColor: "#7d2b13" }} />
+                              <div className="h-full rounded-full transition-all" style={{ width: `${(m.total / maxMetodoV) * 100}%`, backgroundColor: "#7d2b13" }} />
                             </div>
                           </div>
                         ))}
@@ -3213,96 +3239,64 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
-                  <p className="text-sm font-semibold mb-4" style={{ color: "#7d2b13" }}>Por Plan</p>
-                  {planBreakdownV.length === 0
-                    ? <p className="text-sm" style={{ color: "#89726c" }}>Sin datos cobrados este mes</p>
-                    : <div className="space-y-3">
-                        {planBreakdownV.map(p => (
-                          <div key={p.nombre}>
-                            <div className="flex justify-between text-xs mb-1">
-                              <span style={{ color: "#25190f" }}>{p.nombre}</span>
-                              <span className="font-semibold" style={{ color: "#7d2b13" }}>{p.ingresos}€ · {p.count} alumna{p.count !== 1 ? "s" : ""}</span>
-                            </div>
-                            <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#f3e6e0" }}>
-                              <div className="h-full rounded-full transition-all" style={{ width: `${(p.ingresos / maxPlan) * 100}%`, backgroundColor: "#9c4228" }} />
-                            </div>
+                  <p className="text-sm font-semibold mb-1" style={{ color: "#7d2b13" }}>Por clase</p>
+                  <p className="text-xs mb-4" style={{ color: "#89726c" }}>Barre · Pilates · Ballet…</p>
+                  {(() => {
+                    const dm: Record<string, number> = {};
+                    for (const l of ingLineas) { const k = l.disciplina || "—"; dm[k] = (dm[k] ?? 0) + l.importe; }
+                    const arr = Object.entries(dm).map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v);
+                    const mx = Math.max(...arr.map(a => a.v), 1);
+                    return arr.length === 0
+                      ? <p className="text-sm" style={{ color: "#89726c" }}>Sin datos este mes</p>
+                      : <div className="space-y-3">{arr.map(d => (
+                          <div key={d.k}>
+                            <div className="flex justify-between text-xs mb-1"><span style={{ color: "#25190f" }}>{d.k}</span><span className="font-semibold" style={{ color: "#9c4228" }}>{Math.round(d.v)}€</span></div>
+                            <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#f3e6e0" }}><div className="h-full rounded-full transition-all" style={{ width: `${(d.v / mx) * 100}%`, backgroundColor: "#9c4228" }} /></div>
                           </div>
-                        ))}
-                      </div>
-                  }
-                </div>
-
-                <div className="bg-surface-container-lowest rounded-[24px] p-6 shadow-sm border border-surface-container-high">
-                  <p className="text-sm font-semibold mb-1" style={{ color: "#7d2b13" }}>Por Canal de Pago</p>
-                  <p className="text-xs mb-4" style={{ color: "#89726c" }}>Cómo entra el dinero</p>
-                  {canalBreakdownV.length === 0
-                    ? <p className="text-sm" style={{ color: "#89726c" }}>Sin datos cobrados este mes</p>
-                    : <div className="space-y-3">
-                        {canalBreakdownV.map(c => {
-                          const pct = totalCanalV > 0 ? Math.round((c.ingresos / totalCanalV) * 100) : 0;
-                          return (
-                            <div key={c.label}>
-                              <div className="flex justify-between text-xs mb-1">
-                                <span style={{ color: "#25190f" }}>{c.label}</span>
-                                <span className="font-semibold" style={{ color: c.color }}>{c.ingresos}€ · {pct}%</span>
-                              </div>
-                              <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#f3e6e0" }}>
-                                <div className="h-full rounded-full transition-all" style={{ width: `${(c.ingresos / maxCanal) * 100}%`, backgroundColor: c.color }} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                  }
+                        ))}</div>;
+                  })()}
                 </div>
               </div>
 
-              {/* Tabla detalle */}
+              {/* Tabla detalle: cada euro — quién pagó, qué compró, cuándo y cómo */}
               <div className="bg-surface-container-lowest rounded-[24px] shadow-sm border border-surface-container-high overflow-hidden">
-                <div className="p-6 border-b" style={{ borderColor: "#dcc1b9" }}>
-                  <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Detalle de pagos cobrados</p>
-                  <p className="text-xs mt-1" style={{ color: "#89726c" }}>{pagadasMes.length} pago{pagadasMes.length !== 1 ? "s" : ""} en el período · {ingresosMesV}€</p>
+                <div className="p-6 border-b flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "#dcc1b9" }}>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>Detalle de pagos{ventasConcepto !== "todos" ? ` · ${ventasConcepto}` : ""}</p>
+                    <p className="text-xs mt-1" style={{ color: "#89726c" }}>{ingFiltradas.length} pago{ingFiltradas.length !== 1 ? "s" : ""} · {Math.round(ingFiltTotal)}€{ventasConcepto !== "todos" ? " · toca «Todo» para quitar el filtro" : ""}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input value={ventasBuscar} onChange={e => setVentasBuscar(e.target.value)} placeholder="Buscar por nombre…" className="text-sm rounded-xl border px-3 py-2 bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />
+                    <button onClick={descargarVentasCSV} disabled={ingFiltradas.length === 0} className="text-sm font-semibold rounded-xl px-4 py-2 disabled:opacity-40" style={{ backgroundColor: "#fff", border: "1.5px solid #7d2b13", color: "#7d2b13" }}>CSV</button>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5" }}>
-                        {["Alumna", "Disciplina", "Plan", "Precio", "Fecha", "Método", "Estado"].map(h => (
+                        {["Fecha", "Cliente", "Concepto", "Clase", "Método", "Importe"].map(h => (
                           <th key={h} className="text-left py-3 px-4 text-xs uppercase tracking-widest font-semibold" style={{ color: "#89726c" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {pagadasMes.length === 0
-                        ? <tr><td colSpan={7} className="py-10 text-center text-sm" style={{ color: "#89726c" }}>Sin pagos cobrados en este período</td></tr>
-                        : pagadasMes.map(v => {
-                            const alumna = v.nome_alumna ? `${v.nome_alumna} ${v.cognome_alumna ?? ""}`.trim() : `${v.nome} ${v.cognome}`.trim();
-                            const mp = v.metodo_pagamento ?? "";
-                            const metodoLabel = METODO_LABEL[mp] ?? (mp === "efectivo" ? "Efectivo" : mp === "bizum" ? "Bizum" : mp || "—");
-                            const metodoColor = v.tipo === "manual"
-                              ? (mp === "bizum" ? { bg: "#e6efff", fg: "#1b4f9c" } : { bg: "#e7f7ec", fg: "#1f7a3d" })
-                              : { bg: "#fff0eb", fg: "#7d2b13" };
-                            return (
-                              <tr key={v.id} className="border-b hover:bg-[#fff8f5] transition-colors" style={{ borderColor: "#f0e0d8" }}>
-                                <td className="py-3 px-4 font-medium" style={{ color: "#25190f" }}>
-                                  {alumna}
-                                  {v.tipo === "manual" && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "#fff3e0", color: "#e65100" }}>Manual</span>}
-                                </td>
-                                <td className="py-3 px-4" style={{ color: "#25190f" }}>{v.discipline?.nome ?? "—"}</td>
-                                <td className="py-3 px-4" style={{ color: "#25190f" }}>{PLAN_LABEL[v.piano_id] ?? v.piano_id}</td>
-                                <td className="py-3 px-4 font-semibold" style={{ color: "#7d2b13" }}>{ingresoFila(v) > 0 ? `${ingresoFila(v)}€` : "—"}</td>
-                                <td className="py-3 px-4 whitespace-nowrap" style={{ color: "#89726c" }}>{new Date(v.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</td>
-                                <td className="py-3 px-4">
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: metodoColor.bg, color: metodoColor.fg }}>{metodoLabel}</span>
-                                </td>
-                                <td className="py-3 px-4">
-                                  {ingresoFila(v) > 0
-                                    ? <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e8f5e9] text-[#2e7d32] text-xs font-semibold">Cobrado</span>
-                                    : <span className="inline-flex items-center px-3 py-1 rounded-full bg-error-container text-on-error-container text-xs font-semibold">Pendiente</span>}
-                                </td>
-                              </tr>
-                            );
-                          })
+                      {ingLoading
+                        ? <tr><td colSpan={6} className="py-10 text-center text-sm" style={{ color: "#89726c" }}>Cargando…</td></tr>
+                        : ingFiltradas.length === 0
+                          ? <tr><td colSpan={6} className="py-10 text-center text-sm" style={{ color: "#89726c" }}>Sin pagos en este período</td></tr>
+                          : ingFiltradas.map((l, i) => {
+                              const cc = CONCEPTO_COLOR[conceptoGrupo(l.concepto)] ?? "#7d2b13";
+                              return (
+                                <tr key={i} className="border-b hover:bg-[#fff8f5] transition-colors" style={{ borderColor: "#f0e0d8" }}>
+                                  <td className="py-3 px-4 whitespace-nowrap" style={{ color: "#89726c" }}>{new Date(l.fecha + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</td>
+                                  <td className="py-3 px-4 font-medium" style={{ color: "#25190f" }}>{l.cliente}</td>
+                                  <td className="py-3 px-4"><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fff0eb", color: cc }}>{l.concepto}</span></td>
+                                  <td className="py-3 px-4" style={{ color: "#25190f" }}>{l.disciplina}</td>
+                                  <td className="py-3 px-4" style={{ color: "#25190f" }}>{l.metodo}</td>
+                                  <td className="py-3 px-4 font-semibold whitespace-nowrap" style={{ color: "#7d2b13" }}>{l.importe.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}€</td>
+                                </tr>
+                              );
+                            })
                       }
                     </tbody>
                   </table>
