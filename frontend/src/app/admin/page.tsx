@@ -495,6 +495,9 @@ export default function AdminDashboard() {
   const [factArchivo, setFactArchivo] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const [factOcr, setFactOcr] = useState(false);
   const [factSaving, setFactSaving] = useState(false);
+  const [gmailEstado, setGmailEstado] = useState<{ conectado: boolean; email: string | null; configurado: boolean } | null>(null);
+  const [gmailSync, setGmailSync] = useState(false);
+  const [gmailMsg, setGmailMsg] = useState("");
 
   // ── Hoja del asesor (libro de ingresos) ──
   const [asesorMes, setAsesorMes] = useState(() => {
@@ -1435,7 +1438,16 @@ export default function AdminDashboard() {
 
   // ── Facturas ──
   const cargarFacturas = () => fetch("/api/admin/facturas").then(r => r.json()).then(({ facturas }) => setFacturas((facturas ?? []) as Factura[])).catch(() => {});
-  useEffect(() => { if (activeSection !== "Facturas") return; setFacturasLoading(true); cargarFacturas().finally(() => setFacturasLoading(false)); }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (activeSection !== "Facturas") return; setFacturasLoading(true); cargarFacturas().finally(() => setFacturasLoading(false)); fetch("/api/admin/gmail/estado").then(r => r.json()).then(setGmailEstado).catch(() => setGmailEstado(null)); }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sincronizarGmail = async () => {
+    setGmailSync(true); setGmailMsg("");
+    try {
+      const res = await fetch("/api/admin/gmail/sincronizar", { method: "POST" });
+      const d = await res.json();
+      if (res.ok) { setGmailMsg(d.nuevas > 0 ? `Añadidas ${d.nuevas} factura(s) del correo.${d.limiteAlcanzado ? " Pulsa otra vez para seguir con más." : ""}` : "No hay facturas nuevas en el correo."); await cargarFacturas(); }
+      else setGmailMsg(d.error || "No se pudo sincronizar.");
+    } finally { setGmailSync(false); }
+  };
   const comprimirImagen = (file: File): Promise<{ b64: string; dataUrl: string }> => new Promise(async resolve => {
     const img = await createImageBitmap(file);
     const max = 1600, scale = Math.min(1, max / Math.max(img.width, img.height));
@@ -6048,10 +6060,34 @@ export default function AdminDashboard() {
                 <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Sube la foto o el PDF y la IA lee fecha, importe e IVA; tú lo revisas y guardas. Alimentan el IVA soportado y los gastos deducibles del IRPF.</p>
               </div>
 
-              <label className="inline-flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2.5 cursor-pointer" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
-                <Icon name="add_a_photo" className="text-base" /> Subir factura (foto o PDF)
-                <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFacturaFile(f); e.target.value = ""; }} />
-              </label>
+              <div className="flex flex-wrap items-start gap-3">
+                <label className="inline-flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2.5 cursor-pointer" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                  <Icon name="add_a_photo" className="text-base" /> Subir factura (foto o PDF)
+                  <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFacturaFile(f); e.target.value = ""; }} />
+                </label>
+              </div>
+
+              {/* Facturas desde el correo (Gmail) */}
+              <div className="rounded-2xl border p-4" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff" }}>
+                <p className="text-sm font-semibold mb-1 flex items-center gap-1.5" style={{ color: "#7d2b13" }}><Icon name="mail" className="text-base" /> Facturas desde el correo (Gmail)</p>
+                {!gmailEstado ? (
+                  <p className="text-xs" style={{ color: "#89726c" }}>Comprobando…</p>
+                ) : !gmailEstado.configurado ? (
+                  <p className="text-xs" style={{ color: "#e65100" }}>Falta poner las credenciales de Google en el servidor (GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en Vercel). En cuanto estén, aquí saldrá el botón de conectar.</p>
+                ) : !gmailEstado.conectado ? (
+                  <>
+                    <p className="text-xs mb-2" style={{ color: "#89726c" }}>Conecta tu Gmail (solo lectura) para buscar facturas en tu correo.</p>
+                    <a href="/api/admin/gmail/conectar" className="inline-block text-sm font-semibold rounded-xl px-4 py-2" style={{ backgroundColor: "#7d2b13", color: "#fff8f5", textDecoration: "none" }}>Conectar Gmail</a>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs mb-2" style={{ color: "#89726c" }}>Conectado{gmailEstado.email ? ` (${gmailEstado.email})` : ""}. Busca los adjuntos de factura de los últimos meses; la IA los lee y los añade abajo.</p>
+                    <button onClick={sincronizarGmail} disabled={gmailSync} className="text-sm font-semibold rounded-xl px-4 py-2 disabled:opacity-40" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>{gmailSync ? "Buscando…" : "Buscar facturas en el correo"}</button>
+                    <a href="/api/admin/gmail/conectar" className="text-xs ml-3" style={{ color: "#89726c" }}>Reconectar</a>
+                    {gmailMsg && <p className="text-xs mt-2" style={{ color: "#1f7a3d" }}>{gmailMsg}</p>}
+                  </>
+                )}
+              </div>
 
               {factForm && (
                 <div className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "#7d2b13", backgroundColor: "#fff" }}>
