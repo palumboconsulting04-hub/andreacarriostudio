@@ -86,9 +86,12 @@ export async function GET(req: NextRequest) {
   .paid{display:inline-block;margin-top:16px;padding:6px 14px;border-radius:9999px;background:#e8f5e9;color:#2e7d32;font-size:12px;font-weight:700}
   .foot{padding:18px 32px;font-size:11px;color:#a2938d;text-align:center;border-top:1px solid #f0ddd5;line-height:1.6}
   .btn{display:block;width:100%;max-width:600px;margin:18px auto 0;padding:14px;border:0;border-radius:14px;background:#7d2b13;color:#fff8f5;font-size:14px;font-weight:700;cursor:pointer}
-  @media print{body{background:#fff;padding:0}.doc{box-shadow:none;border-radius:0}.btn{display:none}}
+  .topbar{max-width:600px;margin:0 auto 14px}
+  .back{display:inline-block;padding:10px 18px;border-radius:9999px;background:#fff;border:1.5px solid #7d2b13;color:#7d2b13;font-size:14px;font-weight:700;text-decoration:none}
+  @media print{body{background:#fff;padding:0}.doc{box-shadow:none;border-radius:0}.btn,.topbar{display:none}}
 </style></head>
 <body>
+  <div class="topbar"><a class="back" href="/mis-clases" onclick="if(window.history.length>1){window.history.back();return false;}">← Volver a Mis clases</a></div>
   <div class="doc">
     <div class="head">
       <div class="brand">Andrea Carrió Studio</div>
