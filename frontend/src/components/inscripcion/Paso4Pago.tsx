@@ -32,13 +32,6 @@ interface Props {
   existingContattoId?: string | null;
 }
 
-const metodosPago: { id: MetodoPago; label: string; proximamente?: boolean }[] = [
-  { id: "tarjeta", label: "Tarjeta de crédito" },
-  { id: "google-pay", label: "Google Pay", proximamente: true },
-  { id: "apple-pay", label: "Apple Pay", proximamente: true },
-  { id: "paypal", label: "PayPal", proximamente: true },
-];
-
 function ModalPrivacidad({ onClose, onAceptar }: { onClose: () => void; onAceptar: () => void }) {
   return (
     <div
@@ -616,38 +609,6 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
             </div>
           ))}
 
-          {/* Método de pago */}
-          <div>
-            <h3 className="text-2xl mb-4" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif", color: "#7d2b13" }}>Método de pago</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {metodosPago.map((m) => {
-                const activo = estado.metodoPago === m.id;
-                const disabled = !!m.proximamente;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => !disabled && onChange({ metodoPago: m.id })}
-                    disabled={disabled}
-                    className="rounded-xl border px-4 py-3 text-sm transition-all text-left relative"
-                    style={{
-                      borderColor: activo ? "#7d2b13" : "#dcc1b9",
-                      backgroundColor: disabled ? "#f5f5f5" : activo ? "#ffdbd1" : "#fff1e9",
-                      color: disabled ? "#aaa" : activo ? "#7d2b13" : "#56423d",
-                      fontWeight: activo ? 600 : 400,
-                      cursor: disabled ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {m.label}
-                    {m.proximamente && (
-                      <span className="absolute top-1.5 right-2 text-[10px] tracking-wider uppercase font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#dcc1b9", color: "#56423d" }}>
-                        Próximamente
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
         {/* Summary */}
@@ -801,13 +762,14 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
               }}
             >
               {enviando
-                ? "Preparando pago..."
-                : estado.metodoPago === "tarjeta"
-                  ? bozze.length > 1 ? `Continuar al pago (${bozze.length} inscripciones)` : "Continuar al pago"
-                  : bozze.length > 1 ? `Confirmar ${bozze.length} inscripciones` : "Confirmar inscripción"}
+                ? "Preparando tu pago…"
+                : bozze.length > 1 ? `Reservar mis ${bozze.length} plazas` : "Reservar mi plaza"}
             </button>
 
-            <p className="text-xs text-center mt-3" style={{ color: "#89726c" }}>Sin compromiso. Cancela cuando quieras.</p>
+            <p className="text-xs text-center mt-3" style={{ color: "#89726c" }}>
+              Pago seguro. En el siguiente paso eliges cómo pagar: tarjeta, Apple&nbsp;Pay, Google&nbsp;Pay…
+            </p>
+            <p className="text-xs text-center mt-1" style={{ color: "#89726c" }}>Sin compromiso. Cancela cuando quieras.</p>
           </div>
         </div>
       </div>
