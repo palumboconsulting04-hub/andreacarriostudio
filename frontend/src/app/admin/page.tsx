@@ -429,7 +429,7 @@ export default function AdminDashboard() {
 
   // ── Nueva inscripción ──
   const [showNuevaInscripcion, setShowNuevaInscripcion] = useState(false);
-  const [nif, setNif] = useState({ nome: "", cognome: "", email: "", telefono: "", disciplina_id: "", piano_id: "", metodo_pagamento: "en-escuela", nome_alumna: "", cognome_alumna: "", horarios: [] as string[] });
+  const [nif, setNif] = useState({ nome: "", cognome: "", email: "", telefono: "", disciplina_id: "", piano_id: "", metodo_pagamento: "en-escuela", nome_alumna: "", cognome_alumna: "", horarios: [] as string[], estado: "matricula_pagada", matricula: "35" });
   const [nifPiani, setNifPiani] = useState<{ id: string; nome: string; prezzo: number }[]>([]);
   const [nifLoading, setNifLoading] = useState(false);
 
@@ -1712,11 +1712,22 @@ export default function AdminDashboard() {
           nome: nif.nome, cognome: nif.cognome, email: nif.email, telefono: nif.telefono || null,
           metodo_pagamento: nif.metodo_pagamento,
           nome_alumna: nif.nome_alumna || null, cognome_alumna: nif.cognome_alumna || null,
-          matricula: 0, horarios: nif.horarios,
+          matricula: Number(nif.matricula) || 0, horarios: nif.horarios,
         }],
       }),
     });
     if (!res.ok) { setNifLoading(false); return; }
+    // /api/inscripcion es el endpoint de la web y siempre crea "attesa" (allí el pago
+    // lo confirma Stripe después). En el alta manual la alumna ya ha pagado (efectivo,
+    // transferencia…), así que aplicamos aquí el estado elegido para que cuente desde
+    // el minuto uno en Resumen, Calendario, Asistencia, Clientas, Ventas y Finanzas.
+    const creada = (await res.json().catch(() => null)) as { firstId?: string } | null;
+    if (creada?.firstId && nif.estado !== "attesa") {
+      await fetch("/api/admin/iscrizioni", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: creada.firstId, stato: nif.estado }),
+      }).catch(() => {});
+    }
     const newPrezzo = nifPiani.find(p => p.id === nif.piano_id)?.prezzo ?? 0;
     setPendingCount(p => p + 1);
     setPendingAmount(p => p + newPrezzo);
@@ -1745,7 +1756,7 @@ export default function AdminDashboard() {
         metodoPago: nif.metodo_pagamento,
       }),
     }).catch(() => {});
-    setNif({ nome: "", cognome: "", email: "", telefono: "", disciplina_id: "", piano_id: "", metodo_pagamento: "en-escuela", nome_alumna: "", cognome_alumna: "", horarios: [] });
+    setNif({ nome: "", cognome: "", email: "", telefono: "", disciplina_id: "", piano_id: "", metodo_pagamento: "en-escuela", nome_alumna: "", cognome_alumna: "", horarios: [], estado: "matricula_pagada", matricula: "35" });
     setNifPiani([]);
     setShowNuevaInscripcion(false);
     setNifLoading(false);
@@ -8152,6 +8163,24 @@ export default function AdminDashboard() {
                 <select value={nif.metodo_pagamento} onChange={e => setNif(p => ({ ...p, metodo_pagamento: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
                   {Object.entries(METODO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
+              </div>
+
+              {/* Estado de pago y matrícula: el alta manual suele ser de alguien que
+                  YA ha pagado fuera de la web (transferencia, efectivo, bizum). */}
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>¿Ya ha pagado?</label>
+                <select value={nif.estado} onChange={e => setNif(p => ({ ...p, estado: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }}>
+                  <option value="matricula_pagada">Sí — ha pagado la matrícula</option>
+                  <option value="pagato">Sí — matrícula + cuota</option>
+                  <option value="attesa">No — queda pendiente de pago</option>
+                </select>
+                <p className="text-[11px] mt-1" style={{ color: "#89726c" }}>Si eliges &laquo;pendiente&raquo; NO contará como alumna ni en las cuentas hasta que la marques pagada.</p>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold block mb-1.5" style={{ color: "#89726c" }}>Matrícula cobrada (€)</label>
+                <input type="number" min="0" value={nif.matricula} onChange={e => setNif(p => ({ ...p, matricula: e.target.value }))} className="w-full border rounded-xl px-3 py-2.5 text-sm" style={{ borderColor: "#dcc1b9" }} />
+                <p className="text-[11px] mt-1" style={{ color: "#89726c" }}>Se contabiliza como ingreso en Ventas y Finanzas. Pon 0 si no le has cobrado matrícula.</p>
               </div>
 
             </div>
