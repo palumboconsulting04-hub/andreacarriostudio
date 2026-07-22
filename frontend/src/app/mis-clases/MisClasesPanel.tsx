@@ -744,7 +744,10 @@ export default function MisClasesPanel() {
                   </div>
                   <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
                     <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>4</span>
-                    <p className="text-sm flex-1" style={{ color: C.dark }}>Pulsa <strong>«Añadir»</strong>. ¡Ya está en tu móvil! 🎉</p>
+                    <p className="text-sm flex-1" style={{ color: C.dark }}>Pulsa <strong>«Añadir»</strong> (arriba a la derecha).</p>
+                  </div>
+                  <div className="rounded-2xl p-3 mt-1" style={{ backgroundColor: C.blush }}>
+                    <p className="text-sm" style={{ color: C.burgundy }}>✨ <strong>¡Ya está!</strong> El icono del estudio aparecerá en la pantalla de tu móvil, junto a tus otras apps (WhatsApp, las fotos…). Para entrar, solo tienes que tocarlo, como cualquier otra aplicación.</p>
                   </div>
                   <p className="text-[11px] text-center mt-1" style={{ color: C.muted }}>Tiene que ser con <strong>Safari</strong> (la brújula azul del iPhone).</p>
                 </div>
@@ -760,7 +763,10 @@ export default function MisClasesPanel() {
                   </div>
                   <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
                     <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>3</span>
-                    <p className="text-sm flex-1" style={{ color: C.dark }}>Confirma. ¡Ya está en tu móvil! 🎉</p>
+                    <p className="text-sm flex-1" style={{ color: C.dark }}>Pulsa <strong>«Añadir»</strong> para confirmar.</p>
+                  </div>
+                  <div className="rounded-2xl p-3 mt-1" style={{ backgroundColor: C.blush }}>
+                    <p className="text-sm" style={{ color: C.burgundy }}>✨ <strong>¡Ya está!</strong> El icono del estudio aparecerá en la pantalla de tu móvil, junto a tus otras apps (WhatsApp, las fotos…). Para entrar, solo tienes que tocarlo, como cualquier otra aplicación.</p>
                   </div>
                 </div>
               )}
