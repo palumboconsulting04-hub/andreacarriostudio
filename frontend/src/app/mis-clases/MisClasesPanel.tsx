@@ -662,7 +662,7 @@ export default function MisClasesPanel() {
             <p className="text-sm text-center py-8" style={{ color: C.muted }}>No tienes clases reservadas. Ve a <strong style={{ color: C.burgundy }}>Reservar</strong> para elegir un día.</p>
           ) : (
             <div className="flex flex-col gap-2">
-              <p className="text-xs text-center mb-1" style={{ color: C.muted }}>Puedes cancelar hasta <strong style={{ color: C.burgundy }}>4 h antes</strong> de la clase y recuperas el crédito.</p>
+              <p className="text-xs text-center mb-1" style={{ color: C.muted }}>Cancela con más de <strong style={{ color: C.burgundy }}>4 h</strong> de antelación para recuperar el crédito.</p>
               {misReservas.map(c => (
                 <div key={c.orario_id + c.fecha} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: C.blush, border: `1px solid ${C.burgundy}` }}>
                   <div className="min-w-0">
@@ -817,7 +817,7 @@ export default function MisClasesPanel() {
                   <p className="text-xs mb-4" style={{ color: C.muted }}>Se usará 1 crédito.</p>
                   {menos4 && (
                     <div className="rounded-2xl px-4 py-3 mb-4 text-xs text-left" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>
-                      Es en menos de 4 h: una vez reservada <strong>no podrás cancelarla</strong> ni recuperar el crédito.
+                      Es en menos de 4 h: si la cancelas <strong>no recuperarás el crédito</strong>.
                     </div>
                   )}
                   <div className="flex gap-2">
@@ -843,7 +843,7 @@ export default function MisClasesPanel() {
                   <p className="text-sm mb-3" style={{ color: C.brown }}>{fechaLabel(c.fecha, c.dia)} · {c.hora}–{c.horaFin}</p>
                   <div className="rounded-2xl px-4 py-3 mb-4 text-xs text-left" style={{ backgroundColor: menos4 ? "#fde7e7" : "#eaf6ee", color: menos4 ? "#b71c1c" : "#1f7a3d" }}>
                     {menos4
-                      ? <>Es en menos de 4 h: al cancelar <strong>no recuperarás el crédito</strong>.</>
+                      ? <>Faltan menos de 4 h para la clase: <strong>puedes cancelar, pero perderás el crédito</strong> (no se devuelve tan cerca del inicio).</>
                       : <>Recuperarás tu crédito para otra clase.</>}
                   </div>
                   {cancelErr && <p className="text-xs mb-3" style={{ color: "#b71c1c" }}>{cancelErr}</p>}
