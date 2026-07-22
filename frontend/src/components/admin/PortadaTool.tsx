@@ -66,33 +66,32 @@ async function componer(aiUrl: string, codigo: string): Promise<string> {
   const serif = "'Playfair Display', Georgia, serif";
   const sans = "'Montserrat', Arial, sans-serif";
 
-  // Velo claro arriba para que la cabecera se lea siempre.
-  const gTop = ctx.createLinearGradient(0, 0, 0, 250);
-  gTop.addColorStop(0, "rgba(255,248,245,0.88)");
-  gTop.addColorStop(1, "rgba(255,248,245,0)");
-  ctx.fillStyle = gTop;
-  ctx.fillRect(0, 0, W, 250);
+  // Toda la promo va en una BANDA INFERIOR (zona segura): en Instagram Story el
+  // perfil/logo tapa la parte de arriba, así que la marca se pone abajo, visible.
+  const gBand = ctx.createLinearGradient(0, 1340, 0, 1600);
+  gBand.addColorStop(0, "rgba(125,43,19,0)");
+  gBand.addColorStop(1, "rgba(125,43,19,0.92)");
+  ctx.fillStyle = gBand;
+  ctx.fillRect(0, 1340, W, 300);
+  ctx.fillStyle = "rgba(125,43,19,0.92)";
+  ctx.fillRect(0, 1600, W, H - 1600);
 
   ctx.textAlign = "left";
-  ctx.fillStyle = C.burgundy;
-  ctx.font = `700 50px ${serif}`;
-  ctx.fillText("ANDREA CARRIÓ STUDIO", 56, 96);
-  ctx.fillStyle = C.dark;
-  ctx.font = `600 26px ${sans}`;
-  ctx.fillText("Danza & Pilates · Valencia (Alfahuir)", 58, 142);
-
-  // Banda inferior burdeos con la llamada a la acción + código.
-  ctx.fillStyle = "rgba(125,43,19,0.82)";
-  ctx.fillRect(0, H - 340, W, 340);
   ctx.fillStyle = C.cream;
-  ctx.font = `700 66px ${serif}`;
-  ctx.fillText("VEN A PROBAR", 56, H - 210);
+  ctx.font = `700 46px ${serif}`;
+  ctx.fillText("ANDREA CARRIÓ STUDIO", 56, 1556);
   ctx.fillStyle = C.blush;
-  ctx.font = `700 34px ${sans}`;
-  ctx.fillText(`Reserva con mi código  →  ${codigo || "TU CÓDIGO"}`, 58, H - 130);
+  ctx.font = `600 25px ${sans}`;
+  ctx.fillText("Danza & Pilates · Valencia (Alfahuir)", 58, 1598);
   ctx.fillStyle = C.cream;
-  ctx.font = `500 27px ${sans}`;
-  ctx.fillText("andreacarriostudio.es", 58, H - 78);
+  ctx.font = `700 54px ${serif}`;
+  ctx.fillText("VEN A PROBAR", 56, 1684);
+  ctx.fillStyle = C.blush;
+  ctx.font = `700 30px ${sans}`;
+  ctx.fillText(`Reserva con mi código  →  ${codigo || "TU CÓDIGO"}`, 58, 1732);
+  ctx.fillStyle = C.cream;
+  ctx.font = `500 25px ${sans}`;
+  ctx.fillText("andreacarriostudio.es", 58, 1774);
 
   return cv.toDataURL("image/png");
 }
@@ -138,6 +137,23 @@ export default function PortadaTool() {
     } finally {
       setCargando(false);
     }
+  };
+
+  const compartir = async () => {
+    if (!resultado) return;
+    const filename = `portada-${(nombre || "clienta").toLowerCase().replace(/\s+/g, "-")}.png`;
+    try {
+      const blob = await (await fetch(resultado)).blob();
+      const file = new File([blob], filename, { type: "image/png" });
+      const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void>; canShare?: (d: ShareData) => boolean };
+      if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file] });
+        return;
+      }
+    } catch { /* cancelado o no soportado → descarga */ }
+    const a = document.createElement("a");
+    a.href = resultado; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
   };
 
   const inputStyle = { border: `1.5px solid ${C.border}`, borderRadius: "12px", padding: "10px 14px", fontSize: "14px", color: C.dark, backgroundColor: "#fff", outline: "none", width: "100%" } as const;
@@ -193,9 +209,10 @@ export default function PortadaTool() {
           {resultado ? (
             <>
               <img src={resultado} alt="Portada generada" className="rounded-xl w-full max-w-[280px]" style={{ border: `1px solid ${C.border}` }} />
-              <a href={resultado} download={`portada-${(nombre || "clienta").toLowerCase().replace(/\s+/g, "-")}.png`} className="mt-3 py-2.5 px-6 rounded-full text-sm font-bold" style={{ backgroundColor: C.burgundy, color: C.cream, textDecoration: "none" }}>
-                Descargar
-              </a>
+              <button onClick={compartir} className="mt-3 py-2.5 px-6 rounded-full text-sm font-bold" style={{ backgroundColor: C.burgundy, color: C.cream }}>
+                📲 Compartir en Instagram
+              </button>
+              <button onClick={() => { const a = document.createElement("a"); a.href = resultado; a.download = "portada.png"; a.click(); }} className="mt-1 text-xs" style={{ color: C.muted }}>o descargar la imagen</button>
             </>
           ) : (
             <p className="text-sm text-center" style={{ color: C.muted }}>{cargando ? "Creando la portada en el estudio…" : "La portada aparecerá aquí"}</p>
