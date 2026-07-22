@@ -97,7 +97,7 @@ async function componer(aiUrl: string, codigo: string): Promise<string> {
 }
 
 export default function PortadaTool() {
-  const [foto, setFoto] = useState<{ data: string; mime: string; preview: string } | null>(null);
+  const [fotos, setFotos] = useState<{ data: string; mime: string; preview: string }[]>([]);
   const [disciplina, setDisciplina] = useState<Disc>("pilates");
   const [nombre, setNombre] = useState("");
   const [codigo, setCodigo] = useState("");
@@ -107,25 +107,29 @@ export default function PortadaTool() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
     setError(""); setResultado(null);
     try {
-      const { data, mime } = await fotoABase64(f);
-      setFoto({ data, mime, preview: `data:${mime};base64,${data}` });
+      const nuevas = await Promise.all(files.map(async (f) => {
+        const { data, mime } = await fotoABase64(f);
+        return { data, mime, preview: `data:${mime};base64,${data}` };
+      }));
+      setFotos((prev) => [...prev, ...nuevas].slice(0, 4));
     } catch {
-      setError("No se pudo leer la foto. Prueba con otra.");
+      setError("No se pudo leer alguna foto. Prueba con otra.");
     }
+    e.target.value = "";
   };
 
   const generar = async () => {
-    if (!foto || cargando) return;
+    if (fotos.length === 0 || cargando) return;
     setCargando(true); setError(""); setResultado(null);
     try {
       const res = await fetch("/api/admin/portada", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: foto.data, mimeType: foto.mime, disciplina }),
+        body: JSON.stringify({ imagenes: fotos.map((f) => ({ data: f.data, mime: f.mime })), disciplina }),
       });
       const d = await res.json();
       if (!res.ok) { setError(d.error || "No se pudo generar."); return; }
@@ -169,12 +173,22 @@ export default function PortadaTool() {
         {/* Panel de controles */}
         <div className="flex flex-col gap-3">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: C.brown }}>1. Foto de la clienta</label>
-            <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: C.brown }}>1. Fotos de la clienta (varias)</label>
+            <input ref={fileRef} type="file" accept="image/*" multiple onChange={onFile} className="hidden" />
             <button onClick={() => fileRef.current?.click()} className="w-full py-3 rounded-xl text-sm font-semibold" style={{ border: `1.5px dashed ${C.burgundy}`, color: C.burgundy, backgroundColor: "#fff6f2" }}>
-              {foto ? "Cambiar foto" : "📷 Subir / hacer foto"}
+              {fotos.length ? "Añadir más fotos" : "📷 Subir fotos (mejor varias)"}
             </button>
-            {foto && <img src={foto.preview} alt="" className="mt-2 rounded-xl w-24 h-32 object-cover" style={{ border: `1px solid ${C.border}` }} />}
+            {fotos.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {fotos.map((f, i) => (
+                  <div key={i} className="relative">
+                    <img src={f.preview} alt="" className="rounded-xl w-16 h-20 object-cover" style={{ border: `1px solid ${C.border}` }} />
+                    <button onClick={() => setFotos((prev) => prev.filter((_, j) => j !== i))} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center" style={{ backgroundColor: C.burgundy, color: C.cream }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[11px] mt-1.5" style={{ color: C.muted }}>Sube 2-4 fotos de la misma persona: <strong>cara de frente</strong> + <strong>cuerpo entero</strong>. Cuantas más, más se parece.</p>
           </div>
 
           <div>
@@ -197,7 +211,7 @@ export default function PortadaTool() {
             </div>
           </div>
 
-          <button onClick={generar} disabled={!foto || cargando} className="mt-1 py-3 rounded-xl text-sm font-bold uppercase tracking-wider disabled:opacity-40" style={{ backgroundColor: C.burgundy, color: C.cream }}>
+          <button onClick={generar} disabled={fotos.length === 0 || cargando} className="mt-1 py-3 rounded-xl text-sm font-bold uppercase tracking-wider disabled:opacity-40" style={{ backgroundColor: C.burgundy, color: C.cream }}>
             {cargando ? "Generando… (10-20 s)" : "Generar portada"}
           </button>
           {error && <p className="text-sm" style={{ color: "#b71c1c" }}>{error}</p>}

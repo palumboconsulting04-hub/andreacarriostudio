@@ -15,19 +15,6 @@ const ACTIVIDAD: Record<string, string> = {
   ballet: "in an elegant, graceful ballet pose next to the ballet barre",
 };
 
-function construirPrompt(disciplina: string): string {
-  const act = ACTIVIDAD[disciplina] ?? "in an elegant, active pose";
-  return `You are given several reference photos.
-- The FIRST photo is THE PERSON. Keep this exact person: same face, same hair, same body shape, same height, same skin. Do NOT beautify, slim, age, or change them in any way. It must be unmistakably the same real person.
-- The OTHER photos show the REAL dance & pilates studio where this must be set. Recreate THIS exact studio and its details: terracotta / salmon accent wall, cream walls, honey-toned wood laminate floor, wooden ballet barres mounted on the wall, a large wall mirror, and beige pilates stability balls on a light wooden shelf.
-Create ONE realistic, editorial-style promotional photo of that exact person ${act}, inside that real studio.
-Rules:
-- Front view, with the face clearly visible. It must NOT be a side profile.
-- Realistic and authentic, as if it were a real photo actually taken in that studio.
-- Fitted activewear. Warm natural light, cozy premium atmosphere.
-- Vertical 9:16 composition. Leave clean empty space at the top and at the bottom for text overlays.`;
-}
-
 // Nano Banana (Gemini). Modelo de imagen: barato y preserva la identidad.
 const MODEL = "gemini-2.5-flash-image";
 
@@ -58,6 +45,7 @@ type GeminiResp = {
   candidates?: { content?: { parts?: Part[] } }[];
   error?: { message?: string };
 };
+type ImgIn = { data?: string; mime?: string };
 
 export async function POST(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -65,19 +53,25 @@ export async function POST(req: NextRequest) {
   if (!key) return NextResponse.json({ error: "Falta GEMINI_API_KEY en el servidor." }, { status: 500 });
 
   const body = await req.json().catch(() => null);
-  const imageBase64 = (body?.imageBase64 ?? "").toString();
-  const mimeType = (body?.mimeType ?? "image/jpeg").toString();
+  const imagenes = (Array.isArray(body?.imagenes) ? body.imagenes : []) as ImgIn[];
+  const persona = imagenes.filter((i) => typeof i?.data === "string" && i.data);
   const disciplina = (body?.disciplina ?? "pilates").toString();
-  if (!imageBase64) return NextResponse.json({ error: "Falta la foto." }, { status: 400 });
+  if (persona.length === 0) return NextResponse.json({ error: "Falta la foto de la persona." }, { status: 400 });
 
+  const act = ACTIVIDAD[disciplina] ?? "in an elegant, active pose";
   const base = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
   const studio = await getStudioRefs(base);
 
+  // Se etiquetan los grupos con texto para que la IA sepa qué es la persona y qué el estudio.
   const parts: Part[] = [
-    { text: construirPrompt(disciplina) },
-    { inlineData: { mimeType, data: imageBase64 } }, // la persona (primera)
-    ...studio.map((s) => ({ inlineData: { mimeType: s.mimeType, data: s.data } })),
+    { text: `You will create ONE realistic, editorial promotional photo. First, here ${persona.length > 1 ? "are photos" : "is a photo"} of THE PERSON — this is the exact real person you must keep: same face, same hair, same body shape, same height, same skin. Do NOT beautify, slim, age or change them. It must be unmistakably the same person.` },
+    ...persona.map((i) => ({ inlineData: { mimeType: i.mime || "image/jpeg", data: i.data as string } })),
   ];
+  if (studio.length) {
+    parts.push({ text: "Now, here are photos of the REAL studio. Recreate THIS exact studio and its details: terracotta / salmon accent wall, cream walls, honey-toned wood laminate floor, wooden ballet barres mounted on the wall, a large wall mirror, and beige pilates stability balls on a light wooden shelf." });
+    parts.push(...studio.map((s) => ({ inlineData: { mimeType: s.mimeType, data: s.data } })));
+  }
+  parts.push({ text: `Now create ONE photo of that exact person ${act}, inside that real studio. Front view, with the face clearly visible — NOT a side profile. Keep the person unmistakably identical to the reference photos. Realistic and authentic, as if really photographed in that studio. Fitted activewear, warm natural light. Vertical 9:16, leave clean empty space at the top and at the bottom for text overlays.` });
 
   let res: Response;
   try {
