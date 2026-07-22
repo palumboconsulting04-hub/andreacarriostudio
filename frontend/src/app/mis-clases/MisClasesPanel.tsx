@@ -848,21 +848,21 @@ export default function MisClasesPanel() {
       </div>
 
       {!preview && (
-        <nav className="fixed bottom-0 left-0 right-0 z-40" style={{ backgroundColor: "#fff", borderTop: `1px solid ${C.border}`, paddingBottom: "env(safe-area-inset-bottom)" }}>
+        <nav className="fixed bottom-0 left-0 right-0 z-40" style={{ backgroundColor: C.burgundy, boxShadow: "0 -2px 16px rgba(0,0,0,0.18)", paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div className="max-w-md mx-auto flex">
-            <button onClick={() => setSeccion("clases")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "clases" ? C.burgundy : C.muted }}>
+            <button onClick={() => setSeccion("clases")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "clases" ? "#ffffff" : C.blush }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
               <span className="text-[10px] font-semibold">Mis clases</span>
             </button>
-            <button onClick={() => setSeccion("recibos")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "recibos" ? C.burgundy : C.muted }}>
+            <button onClick={() => setSeccion("recibos")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "recibos" ? "#ffffff" : C.blush }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></svg>
               <span className="text-[10px] font-semibold">Recibos</span>
             </button>
-            <button onClick={() => setSeccion("contacto")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "contacto" ? C.burgundy : C.muted }}>
+            <button onClick={() => setSeccion("contacto")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "contacto" ? "#ffffff" : C.blush }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
               <span className="text-[10px] font-semibold">Contacto</span>
             </button>
-            <button onClick={() => setSeccion("premios")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "premios" ? C.burgundy : C.muted }}>
+            <button onClick={() => setSeccion("premios")} className="flex-1 flex flex-col items-center gap-0.5 py-2.5" style={{ color: seccion === "premios" ? "#ffffff" : C.blush }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><path d="M12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></svg>
               <span className="text-[10px] font-semibold">Premios</span>
             </button>
