@@ -100,7 +100,7 @@ export default function CompartirCodigo({ codigo }: { codigo: string }) {
   const whatsapp = () => window.open(`https://wa.me/?text=${encodeURIComponent(textoDe(codigo, "wa"))}`, "_blank");
 
   const copiar = async () => {
-    try { await navigator.clipboard.writeText(linkDe(codigo, "copy")); setCopiado(true); setTimeout(() => setCopiado(false), 1800); } catch { /* sin permiso */ }
+    try { await navigator.clipboard.writeText(textoDe(codigo, "copy")); setCopiado(true); setTimeout(() => setCopiado(false), 1800); } catch { /* sin permiso */ }
   };
 
   const instagram = async () => {
@@ -141,7 +141,7 @@ export default function CompartirCodigo({ codigo }: { codigo: string }) {
       <button onClick={instagram} disabled={generando} style={{ ...btn, backgroundColor: C.burgundy, color: C.cream, opacity: generando ? 0.6 : 1 }}>
         {generando ? "Preparando tu foto…" : "Compartir en mi Instagram Story"}
       </button>
-      <button onClick={copiar} style={{ ...btn, backgroundColor: "#fff0eb", color: C.burgundy, border: "1px solid #dcc1b9" }}>{copiado ? "¡Link copiado!" : "Copiar el link"}</button>
+      <button onClick={copiar} style={{ ...btn, backgroundColor: "#fff0eb", color: C.burgundy, border: "1px solid #dcc1b9" }}>{copiado ? "¡Mensaje copiado!" : "Copiar el mensaje"}</button>
 
       {instrucciones && (
         <div className="rounded-2xl p-4 mt-1 text-left" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
