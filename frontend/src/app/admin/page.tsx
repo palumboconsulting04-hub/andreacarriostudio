@@ -553,6 +553,7 @@ export default function AdminDashboard() {
   const [detallePiani, setDetallePiani] = useState<{ id: string; nome: string; prezzo: number }[]>([]);
   const [editando, setEditando] = useState(false);
   const [editForm, setEditForm] = useState<{ stato: string; piano_id: string; matricula: string; metodo: string; cuota: string }>({ stato: "", piano_id: "", matricula: "", metodo: "", cuota: "" });
+  const [editError, setEditError] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   // Edición del contacto (email / teléfono) en la ficha de Clientas.
   const [editContacto, setEditContacto] = useState(false);
@@ -1842,22 +1843,31 @@ export default function AdminDashboard() {
   const guardarEdicionAlumna = async () => {
     if (!usuariosProfile) return;
     setEditLoading(true);
+    setEditError("");
     const mat = Number(editForm.matricula) || 0;
     const planPrice = detallePiani.find(p => p.id === editForm.piano_id)?.prezzo ?? null;
     const cuotaNum = editForm.cuota === "" ? null : Number(editForm.cuota);
     // Solo guardamos override si la cuota difiere del precio del plan (si no, sigue el plan).
     const prezzoOverride = (cuotaNum == null || Number.isNaN(cuotaNum) || cuotaNum === planPrice) ? null : cuotaNum;
-    const res = await fetch("/api/admin/iscrizioni", {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: usuariosProfile.id, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo || undefined, prezzo: prezzoOverride }),
-    });
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/admin/iscrizioni", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: usuariosProfile.id, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo || undefined, prezzo: prezzoOverride }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        setEditError(json?.error || `No se pudo guardar (error ${res.status}). Vuelve a intentarlo.`);
+        return;
+      }
       const nuevoPrezzo = prezzoOverride ?? planPrice;
       setUsuariosProfile(p => (p ? { ...p, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo, prezzo: nuevoPrezzo } : p));
       setUsuariosData(prev => prev.map(u => (u.id === usuariosProfile.id ? { ...u, stato: editForm.stato, piano_id: editForm.piano_id, metodo_pagamento: editForm.metodo, prezzo: nuevoPrezzo } : u)));
       setEditando(false);
+    } catch {
+      setEditError("Error de conexión. Comprueba internet y vuelve a intentarlo.");
+    } finally {
+      setEditLoading(false);
     }
-    setEditLoading(false);
   };
 
   // ── Estado real en Stripe (bajo demanda) ──
@@ -8468,8 +8478,11 @@ export default function AdminDashboard() {
                             {Object.entries(METODO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                           </select>
                         </label>
+                        {editError && (
+                          <p className="text-xs rounded-lg px-3 py-2" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>{editError}</p>
+                        )}
                         <div className="flex gap-2 pt-1">
-                          <button onClick={() => setEditando(false)} disabled={editLoading} className="flex-1 py-2 rounded-lg text-sm font-semibold border" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>Cancelar</button>
+                          <button onClick={() => { setEditando(false); setEditError(""); }} disabled={editLoading} className="flex-1 py-2 rounded-lg text-sm font-semibold border" style={{ borderColor: "#dcc1b9", color: "#89726c" }}>Cancelar</button>
                           <button onClick={guardarEdicionAlumna} disabled={editLoading} className="flex-1 py-2 rounded-lg text-sm font-semibold text-white" style={{ backgroundColor: "#7d2b13", opacity: editLoading ? 0.6 : 1 }}>{editLoading ? "Guardando…" : "Guardar"}</button>
                         </div>
                       </div>
