@@ -2172,13 +2172,17 @@ export default function AdminDashboard() {
         { key: "mensualidad", label: "Mensualidad", total: nuevasMensualidad.length, items: nuevasMensualidad },
         { key: "bono", label: "Bono", total: nuevasBono.length, items: nuevasBono },
       ]);
+      // Solo cuentan las que han pagado: una inscripción empezada en la web y no
+      // pagada no es un alta real, así que no debe sumar en el Resumen.
       const nuevasEstesMes = allIsc.filter(i => {
+        if (!INSCRITA_STATI_ARR.includes(i.stato)) return false;
         const d = new Date(i.created_at);
         return d.getMonth() === tm && d.getFullYear() === ty;
       }).length;
       setNuevasInscripcionesMes(nuevasEstesMes + bonosMesCount);
       const td = now2.getDate();
       const nuevasHoy = allIsc.filter(i => {
+        if (!INSCRITA_STATI_ARR.includes(i.stato)) return false;
         const d = new Date(i.created_at);
         return d.getDate() === td && d.getMonth() === tm && d.getFullYear() === ty;
       }).length;
@@ -2776,7 +2780,7 @@ export default function AdminDashboard() {
                 {/* Inscripciones Hoy */}
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Inscripciones Hoy <InfoTip text="Altas nuevas registradas hoy (matrículas y bonos). Se reinicia cada día a medianoche." /></p>
+                    <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Inscripciones Hoy <InfoTip text="Altas nuevas de hoy que YA han pagado (matrículas y bonos). Las inscripciones empezadas en la web y sin pagar no cuentan. Se reinicia cada día a medianoche." /></p>
                     <div className="p-2 rounded-full" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>
                       <Icon name="today" className="text-base" />
                     </div>
