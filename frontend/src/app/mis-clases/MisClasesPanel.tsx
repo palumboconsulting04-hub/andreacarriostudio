@@ -127,6 +127,7 @@ export default function MisClasesPanel() {
   const [avisando, setAvisando] = useState<string | null>(null);
   const iniciado = useRef(false);
   const semanaMInit = useRef(false);
+  const diaBonoInit = useRef(false);
 
   // Al cargar la mensualidad, abre el calendario en la primera semana con el horario
   // completo (la 1ª semana del curso puede ser parcial porque arranca en martes).
@@ -190,8 +191,11 @@ export default function MisClasesPanel() {
     })();
   }, [params, cargarCalendario]);
 
+  // Fija el día/semana inicial UNA sola vez. Sin el guard, el refresco cada 20 s
+  // (setInterval → setClases) reiniciaría el día que la alumna tenía seleccionado.
   useEffect(() => {
-    if (!clases.length) return;
+    if (!clases.length || diaBonoInit.current) return;
+    diaBonoInit.current = true;
     const primera = [...new Set(clases.map(c => c.fecha))].sort()[0];
     setDiaSel(primera);
     setSemana(Math.max(0, Math.floor((new Date(primera + "T00:00").getTime() - lunesDe(new Date()).getTime()) / MSW)));
