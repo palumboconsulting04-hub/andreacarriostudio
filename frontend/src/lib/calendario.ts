@@ -8,6 +8,9 @@ const DIAS: Record<string, number> = {
   "Domingo": 0, "Lunes": 1, "Martes": 2, "Miércoles": 3, "Miercoles": 3,
   "Jueves": 4, "Viernes": 5, "Sábado": 6, "Sabado": 6,
 };
+// Estados que ocupan plaza de verdad. Una inscripción "attesa" (empezada en la web
+// y sin terminar de pagar) NO debe comerse plazas: antes lo hacía y cerraba clases.
+const INSCRITA_STATI = ["pagato", "pagado", "activa", "matricula_pagada"];
 const HORIZON_DIAS = 28;          // por defecto (vista previa pública): 4 semanas
 const HORIZON_MAX = 100;          // tope de seguridad (~3 meses, el bono más largo)
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -37,7 +40,11 @@ export async function generarClases(disciplinas: string[], hasta?: string): Prom
 
   const mensuales: Record<string, number> = {};
   {
-    const { data: io } = await supabaseAdmin.from("iscrizione_orari").select("orario_id").in("orario_id", orarioIds);
+    const { data: io } = await supabaseAdmin
+      .from("iscrizione_orari")
+      .select("orario_id, iscrizioni!inner(stato)")
+      .in("orario_id", orarioIds)
+      .in("iscrizioni.stato", INSCRITA_STATI);
     for (const r of (io ?? []) as { orario_id: string }[]) mensuales[r.orario_id] = (mensuales[r.orario_id] ?? 0) + 1;
   }
 
