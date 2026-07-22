@@ -6,7 +6,6 @@ import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { fetchBonos, type BonoTipo } from "@/lib/queries";
 import CompartirCodigo from "@/components/CompartirCodigo";
-import PostsInstagram from "@/components/PostsInstagram";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -780,7 +779,6 @@ export default function MisClasesPanel() {
             <p className="text-xs mb-3" style={{ color: C.brown }}>Cuando se apunte al estudio (bono o mensualidad), tú y ella os lleváis un regalo. Comparte tu código:</p>
             <span className="block text-center text-sm font-bold tracking-widest py-2.5 rounded-xl mb-3" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
             <CompartirCodigo codigo={codigo} />
-            <PostsInstagram codigo={codigo} />
 
             {/* Camino a Embajadora: objetivo (5 amigas = mes gratis) y progreso */}
             <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.border}` }}>
