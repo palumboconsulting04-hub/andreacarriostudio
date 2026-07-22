@@ -6,6 +6,7 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { SLOTS, EVENTO } from "@/lib/jornada";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
+import PortadaTool from "@/components/admin/PortadaTool";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -2466,6 +2467,7 @@ export default function AdminDashboard() {
     { icon: "event_repeat", label: "Cuotas" },
     { icon: "confirmation_number", label: "Bonos" },
     { icon: "diversity_3", label: "Referidos" },
+    { icon: "photo_camera", label: "Portada" },
     { icon: "insights", label: "Marketing" },
     { icon: "filter_alt", label: "Embudo" },
     { icon: "online_prediction", label: "Previsión" },
@@ -6068,6 +6070,12 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+            </section>
+          )}
+
+          {activeSection === "Portada" && (
+            <section className="max-w-3xl">
+              <PortadaTool />
             </section>
           )}
 
