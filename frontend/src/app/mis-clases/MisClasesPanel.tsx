@@ -710,12 +710,21 @@ export default function MisClasesPanel() {
             </div>
 
             <div className="rounded-2xl p-4" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
-              <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Ten Mis clases a mano 📲</p>
-              <p className="text-xs mb-2 leading-relaxed" style={{ color: C.brown }}>Instálalo como app en tu móvil para entrar de un toque, sin buscar el enlace.</p>
+              <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Ten «Mis clases» en tu móvil 📲</p>
+              <p className="text-xs mb-3 leading-relaxed" style={{ color: C.brown }}>Guárdalo como app y entra de un toque, sin buscar el enlace cada vez.</p>
               {installPrompt ? (
                 <button onClick={instalarApp} className="w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>Instalar la app</button>
               ) : (
-                <p className="text-xs" style={{ color: C.muted }}>En el menú del navegador (⋮ o Compartir), elige <strong style={{ color: C.burgundy }}>«Añadir a pantalla de inicio»</strong>.</p>
+                <div className="text-xs leading-relaxed" style={{ color: C.brown }}>
+                  <p className="font-bold mb-1" style={{ color: C.burgundy }}>En iPhone (con Safari):</p>
+                  <ol className="list-decimal pl-4 space-y-1 mb-2">
+                    <li>Toca <strong>Compartir</strong> ⬆️ (la flecha hacia arriba: según tu iPhone está <strong>abajo en el centro</strong> o <strong>arriba a la derecha</strong>).</li>
+                    <li>Desliza la lista hacia abajo. Si no ves la opción, toca <strong>«Más»</strong>.</li>
+                    <li>Toca <strong>«Añadir a pantalla de inicio»</strong>.</li>
+                    <li>Toca <strong>Añadir</strong>. ¡Listo, ya tienes el icono!</li>
+                  </ol>
+                  <p><strong style={{ color: C.burgundy }}>En Android:</strong> menú <strong>⋮</strong> (arriba a la derecha) → <strong>«Instalar aplicación»</strong>.</p>
+                </div>
               )}
             </div>
           </div>
