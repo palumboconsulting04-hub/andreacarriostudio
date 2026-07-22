@@ -45,9 +45,9 @@ async function generarImagenStory(): Promise<Blob> {
   }
 
   // Velo oscuro arriba y abajo para que el texto se lea.
-  const gTop = ctx.createLinearGradient(0, 0, 0, 340);
-  gTop.addColorStop(0, "rgba(37,25,15,0.55)"); gTop.addColorStop(1, "rgba(37,25,15,0)");
-  ctx.fillStyle = gTop; ctx.fillRect(0, 0, W, 340);
+  const gTop = ctx.createLinearGradient(0, 0, 0, 470);
+  gTop.addColorStop(0, "rgba(37,25,15,0.68)"); gTop.addColorStop(0.6, "rgba(37,25,15,0.45)"); gTop.addColorStop(1, "rgba(37,25,15,0)");
+  ctx.fillStyle = gTop; ctx.fillRect(0, 0, W, 470);
   const gBot = ctx.createLinearGradient(0, H - 820, 0, H);
   gBot.addColorStop(0, "rgba(37,25,15,0)"); gBot.addColorStop(0.55, "rgba(37,25,15,0.75)"); gBot.addColorStop(1, "rgba(37,25,15,0.92)");
   ctx.fillStyle = gBot; ctx.fillRect(0, H - 820, W, 820);
@@ -55,16 +55,16 @@ async function generarImagenStory(): Promise<Blob> {
   ctx.textAlign = "center";
 
   // Nombre completo arriba.
-  texto(ctx, "ANDREA CARRIÓ STUDIO", centro, 150, "bold 42px 'Helvetica Neue', Arial, sans-serif", "#ffffff", 6);
-  texto(ctx, "Danza & Pilates · Valencia (Alfahuir)", centro, 200, "30px 'Helvetica Neue', Arial, sans-serif", "#ffe9e0", 1);
+  texto(ctx, "ANDREA CARRIÓ STUDIO", centro, 320, "bold 42px 'Helvetica Neue', Arial, sans-serif", "#ffffff", 6);
+  texto(ctx, "Danza & Pilates · Valencia (Alfahuir)", centro, 372, "30px 'Helvetica Neue', Arial, sans-serif", "#ffe9e0", 1);
 
   // Titular marketiniano abajo.
-  texto(ctx, "Ven a probar", centro, H - 470, "80px Georgia, 'Times New Roman', serif", "#ffffff");
-  texto(ctx, "una clase conmigo", centro, H - 380, "80px Georgia, 'Times New Roman', serif", "#ffffff");
-  texto(ctx, "Tu primera clase te va a encantar 🤎", centro, H - 300, "36px 'Helvetica Neue', Arial, sans-serif", "#ffe9e0");
+  texto(ctx, "Ven a probar", centro, H - 600, "80px Georgia, 'Times New Roman', serif", "#ffffff");
+  texto(ctx, "una clase conmigo", centro, H - 510, "80px Georgia, 'Times New Roman', serif", "#ffffff");
+  texto(ctx, "Te mando tu invitación con descuento 🤎", centro, H - 425, "36px 'Helvetica Neue', Arial, sans-serif", "#ffe9e0");
 
-  // Píldora CTA hacia el enlace.
-  const pw = 620, ph = 110, px = centro - pw / 2, py = H - 220, pr = 55;
+  // Píldora CTA: comentar para recibir el link por privado (no depende del sticker de enlace).
+  const pw = 720, ph = 116, px = centro - pw / 2, py = H - 375, pr = 58;
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
   ctx.moveTo(px + pr, py);
@@ -75,8 +75,8 @@ async function generarImagenStory(): Promise<Blob> {
   ctx.closePath();
   ctx.fill();
   ctx.fillStyle = C.burgundy;
-  ctx.font = "bold 40px 'Helvetica Neue', Arial, sans-serif";
-  ctx.fillText("TOCA EL ENLACE PARA VENIR", centro, py + 70);
+  ctx.font = "bold 38px 'Helvetica Neue', Arial, sans-serif";
+  ctx.fillText("COMENTA «SABER MÁS» 💬", centro, py + 74);
 
   return await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.9));
 }
@@ -129,7 +129,6 @@ export default function CompartirCodigo({ codigo }: { codigo: string }) {
         setTimeout(() => URL.revokeObjectURL(url), 30000);
       }
     }
-    try { await navigator.clipboard.writeText(linkDe(codigo, "ig")); } catch {}
     setInstrucciones(true);
   };
 
@@ -147,9 +146,9 @@ export default function CompartirCodigo({ codigo }: { codigo: string }) {
         <div className="rounded-2xl p-4 mt-1 text-left" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
           <p className="text-sm font-bold mb-2" style={{ color: C.burgundy }}>Para tu Story de Instagram 🤎</p>
           <ol className="text-xs space-y-1.5" style={{ color: C.brown, paddingLeft: "18px", listStyle: "decimal" }}>
-            <li>Sube la foto a tu Instagram Story.</li>
-            <li>Toca el sticker <strong>“Enlace”</strong> y pega el link (ya lo he copiado por ti).</li>
-            <li>¡Publica! Tu amiga solo tiene que tocar el enlace, tu código va puesto.</li>
+            <li>Sube la foto a tu Story y publícala (no hace falta poner enlaces).</li>
+            <li>Cuando alguien comente <strong>«Saber más»</strong>, vuelve aquí, pulsa <strong>«Copiar el mensaje»</strong> y envíaselo por privado (DM).</li>
+            <li>Tu amiga toca tu enlace (tu código ya va puesto) y ganáis las dos un regalo 🤎</li>
           </ol>
         </div>
       )}
