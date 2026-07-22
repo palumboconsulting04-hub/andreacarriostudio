@@ -101,6 +101,7 @@ export default function MisClasesPanel() {
   const [ideaEnviando, setIdeaEnviando] = useState(false);
   type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
   const [installPrompt, setInstallPrompt] = useState<BIPEvent | null>(null);
+  const [esIOS, setEsIOS] = useState(false);
   type Recibo = { id: string; fecha: string; concepto: string; importe: number; metodo: string };
   const [recibos, setRecibos] = useState<Recibo[]>([]);
   const [recibosLoading, setRecibosLoading] = useState(false);
@@ -212,6 +213,7 @@ export default function MisClasesPanel() {
   // PWA: captura el evento para poder ofrecer "Instalar la app" (Android/Chrome).
   useEffect(() => {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+    setEsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
     const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e as BIPEvent); };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
@@ -718,20 +720,44 @@ export default function MisClasesPanel() {
             </div>
 
             <div className="rounded-2xl p-4" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
-              <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Ten «Mis clases» en tu móvil 📲</p>
-              <p className="text-xs mb-3 leading-relaxed" style={{ color: C.brown }}>Guárdalo como app y entra de un toque, sin buscar el enlace cada vez.</p>
+              <p className="text-base font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>¿Lo quieres como app en tu móvil? 📲</p>
+              <p className="text-xs mb-3 leading-relaxed" style={{ color: C.brown }}>Así lo abres de un toque, sin buscar el enlace. Se hace en 10 segundos:</p>
               {installPrompt ? (
-                <button onClick={instalarApp} className="w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider" style={{ backgroundColor: C.burgundy, color: C.cream }}>Instalar la app</button>
+                <button onClick={instalarApp} className="w-full py-3 rounded-xl text-sm font-bold" style={{ backgroundColor: C.burgundy, color: C.cream }}>📲 Añadir a mi móvil</button>
+              ) : esIOS ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
+                    <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>1</span>
+                    <p className="text-sm flex-1" style={{ color: C.dark }}>Pulsa este botón
+                      <span className="inline-flex items-center justify-center align-middle w-7 h-7 rounded-lg mx-1" style={{ backgroundColor: "#e8f0ff", color: "#0a7cff", border: "1px solid #cfe0ff", verticalAlign: "middle" }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M6 12v7a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-7"/></svg>
+                      </span>
+                      Está <strong>abajo</strong> o <strong>arriba</strong> en la pantalla.</p>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
+                    <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>2</span>
+                    <p className="text-sm flex-1" style={{ color: C.dark }}>Baja un poco y pulsa donde pone <strong>«Añadir a pantalla de inicio»</strong>.</p>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
+                    <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>3</span>
+                    <p className="text-sm flex-1" style={{ color: C.dark }}>Pulsa <strong>«Añadir»</strong>. ¡Ya está en tu móvil! 🎉</p>
+                  </div>
+                  <p className="text-[11px] text-center mt-1" style={{ color: C.muted }}>Tiene que ser con <strong>Safari</strong> (la brújula azul del iPhone).</p>
+                </div>
               ) : (
-                <div className="text-xs leading-relaxed" style={{ color: C.brown }}>
-                  <p className="font-bold mb-1" style={{ color: C.burgundy }}>En iPhone (con Safari):</p>
-                  <ol className="list-decimal pl-4 space-y-1 mb-2">
-                    <li>Toca <strong>Compartir</strong> ⬆️ (la flecha hacia arriba: según tu iPhone está <strong>abajo en el centro</strong> o <strong>arriba a la derecha</strong>).</li>
-                    <li>Desliza la lista hacia abajo. Si no ves la opción, toca <strong>«Más»</strong>.</li>
-                    <li>Toca <strong>«Añadir a pantalla de inicio»</strong>.</li>
-                    <li>Toca <strong>Añadir</strong>. ¡Listo, ya tienes el icono!</li>
-                  </ol>
-                  <p><strong style={{ color: C.burgundy }}>En Android:</strong> menú <strong>⋮</strong> (arriba a la derecha) → <strong>«Instalar aplicación»</strong>.</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
+                    <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>1</span>
+                    <p className="text-sm flex-1" style={{ color: C.dark }}>Pulsa los <strong>tres puntitos ⋮</strong> de arriba a la derecha.</p>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
+                    <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>2</span>
+                    <p className="text-sm flex-1" style={{ color: C.dark }}>Pulsa donde pone <strong>«Instalar aplicación»</strong> (o «Añadir a pantalla de inicio»).</p>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
+                    <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>3</span>
+                    <p className="text-sm flex-1" style={{ color: C.dark }}>Confirma. ¡Ya está en tu móvil! 🎉</p>
+                  </div>
                 </div>
               )}
             </div>
