@@ -736,10 +736,14 @@ export default function MisClasesPanel() {
                   </div>
                   <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
                     <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>2</span>
-                    <p className="text-sm flex-1" style={{ color: C.dark }}>Baja un poco y pulsa donde pone <strong>«Añadir a pantalla de inicio»</strong>.</p>
+                    <p className="text-sm flex-1" style={{ color: C.dark }}>Baja del todo y pulsa <strong>«Ver más»</strong> (si te aparece).</p>
                   </div>
                   <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
                     <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>3</span>
+                    <p className="text-sm flex-1" style={{ color: C.dark }}>Pulsa donde pone <strong>«Añadir a pantalla de inicio»</strong>.</p>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl p-3" style={{ backgroundColor: C.cream, border: `1px solid ${C.border}` }}>
+                    <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>4</span>
                     <p className="text-sm flex-1" style={{ color: C.dark }}>Pulsa <strong>«Añadir»</strong>. ¡Ya está en tu móvil! 🎉</p>
                   </div>
                   <p className="text-[11px] text-center mt-1" style={{ color: C.muted }}>Tiene que ser con <strong>Safari</strong> (la brújula azul del iPhone).</p>
