@@ -68,6 +68,8 @@ type LineaIngreso = { fecha: string; concepto: string; disciplina: string; clien
 
 type OcupacionClase = { id: string; giorno: string; ora_inizio: string; ora_fine: string; ocupados: number; total: number };
 type OcupacionDisciplina = { disciplina_id: string; nombre: string; ocupados: number; total: number; clases: OcupacionClase[] };
+// Alumna apuntada a una clase concreta (Ocupación → disciplina → clase → alumnas).
+type ClaseAlumna = { id: string; nome: string; cognome: string; nome_alumna: string | null; cognome_alumna: string | null; disciplina_id: string; stato: string; email: string | null; telefono: string | null };
 
 type IscrizioneDetalle = {
   id: string;
@@ -1098,6 +1100,9 @@ export default function AdminDashboard() {
   const [kpiStudents, setKpiStudents] = useState<KpiStudentRow[]>([]);
   const [kpiStudentProfile, setKpiStudentProfile] = useState<IscrizioneDetalle | null>(null);
   const [kpiOcupacionDisciplina, setKpiOcupacionDisciplina] = useState<OcupacionDisciplina | null>(null);
+  const [kpiOcupacionClase, setKpiOcupacionClase] = useState<OcupacionClase | null>(null);
+  const [kpiClaseAlumnas, setKpiClaseAlumnas] = useState<ClaseAlumna[]>([]);
+  const [kpiClaseLoading, setKpiClaseLoading] = useState(false);
   const [kpiDiscSummary, setKpiDiscSummary] = useState<{ disciplina_id: string; nombre: string; enrolled: number; maxCapacity: number }[]>([]);
   const [kpiAlumnosDisciplina, setKpiAlumnosDisciplina] = useState<{ disciplina_id: string; nombre: string } | null>(null);
 
@@ -1791,10 +1796,29 @@ export default function AdminDashboard() {
     }
   };
 
+  // Alumnas apuntadas a una clase concreta (Ocupación → disciplina → clase).
+  // Andrea tiene que poder llegar SIEMPRE hasta el nombre de la alumna.
+  const abrirClaseOcupacion = async (c: OcupacionClase) => {
+    setKpiOcupacionClase(c);
+    setKpiClaseLoading(true);
+    setKpiClaseAlumnas([]);
+    try {
+      const { data } = await fetch(`/api/admin/iscrizioni?orario_id=${c.id}`).then(r => r.json());
+      const filas = (data ?? []) as { iscrizioni?: ClaseAlumna | ClaseAlumna[] | null }[];
+      const alumnas = filas
+        .map(f => (Array.isArray(f.iscrizioni) ? f.iscrizioni[0] : f.iscrizioni))
+        .filter((a): a is ClaseAlumna => !!a && INSCRITA_STATI_ARR.includes(a.stato));
+      setKpiClaseAlumnas(alumnas);
+    } catch {
+      setKpiClaseAlumnas([]);
+    }
+    setKpiClaseLoading(false);
+  };
+
   const fetchKpiStudents = async (filter?: { stato: string }) => {
     setKpiLoading(true);
     setKpiStudentProfile(null);
-    setKpiOcupacionDisciplina(null);
+    setKpiOcupacionDisciplina(null); setKpiOcupacionClase(null);
     const url = filter ? `/api/admin/iscrizioni?stato=${encodeURIComponent(filter.stato)}` : "/api/admin/iscrizioni";
     const [{ data: isc }, { data: piani }] = await Promise.all([
       fetch(url).then(r => r.json()).then(j => ({ data: j.data ?? [] })),
@@ -1971,7 +1995,7 @@ export default function AdminDashboard() {
     setKpiDrawer("facturacion");
     setKpiStudentProfile(null);
     setKpiAlumnosDisciplina(null);
-    setKpiOcupacionDisciplina(null);
+    setKpiOcupacionDisciplina(null); setKpiOcupacionClase(null);
     setFactCat(null); // vuelve al desglose por origen; el detalle ya está calculado
   };
 
@@ -1979,7 +2003,7 @@ export default function AdminDashboard() {
     setKpiDrawer("nuevas");
     setKpiStudentProfile(null);
     setKpiAlumnosDisciplina(null);
-    setKpiOcupacionDisciplina(null);
+    setKpiOcupacionDisciplina(null); setKpiOcupacionClase(null);
     setFactCat(null);
   };
 
@@ -2793,7 +2817,7 @@ export default function AdminDashboard() {
 
                 {/* Ocupación Media */}
                 <button
-                  onClick={() => { setKpiDrawer("ocupacion"); setKpiStudentProfile(null); setKpiOcupacionDisciplina(null); }}
+                  onClick={() => { setKpiDrawer("ocupacion"); setKpiStudentProfile(null); setKpiOcupacionDisciplina(null); setKpiOcupacionClase(null); }}
                   className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high text-left hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]"
                 >
                   <div className="flex justify-between items-start mb-3">
@@ -7364,11 +7388,12 @@ export default function AdminDashboard() {
 
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b border-outline-variant" style={{ backgroundColor: "#fff8f5" }}>
-              {(kpiStudentProfile || kpiOcupacionDisciplina || kpiAlumnosDisciplina) && (
+              {(kpiStudentProfile || kpiOcupacionClase || kpiOcupacionDisciplina || kpiAlumnosDisciplina) && (
                 <button
                   onClick={() => {
                     if (kpiStudentProfile) { setKpiStudentProfile(null); }
-                    else if (kpiOcupacionDisciplina) { setKpiOcupacionDisciplina(null); }
+                    else if (kpiOcupacionClase) { setKpiOcupacionClase(null); setKpiClaseAlumnas([]); }
+                    else if (kpiOcupacionDisciplina) { setKpiOcupacionDisciplina(null); setKpiOcupacionClase(null); }
                     else if (kpiAlumnosDisciplina) { setKpiAlumnosDisciplina(null); setKpiStudents([]); }
                   }}
                   className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
@@ -7383,6 +7408,7 @@ export default function AdminDashboard() {
                     ? (NINAS_IDS.has(kpiStudentProfile.disciplina_id) && kpiStudentProfile.nome_alumna
                       ? `${kpiStudentProfile.nome_alumna} ${kpiStudentProfile.cognome_alumna}`
                       : `${kpiStudentProfile.nome} ${kpiStudentProfile.cognome}`)
+                    : kpiOcupacionClase ? `${kpiOcupacionClase.giorno} ${kpiOcupacionClase.ora_inizio.substring(0, 5)}`
                     : kpiOcupacionDisciplina ? kpiOcupacionDisciplina.nombre
                     : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? kpiAlumnosDisciplina.nombre
                     : kpiDrawer === "pendientes" ? "Interesadas sin pagar"
@@ -7393,6 +7419,7 @@ export default function AdminDashboard() {
                 </p>
                 <p className="text-xs" style={{ color: "#89726c" }}>
                   {kpiStudentProfile ? "Perfil"
+                    : kpiOcupacionClase ? `${kpiClaseAlumnas.length} de ${kpiOcupacionClase.total} plazas`
                     : kpiOcupacionDisciplina ? "Clases"
                     : kpiDrawer === "pendientes" ? `${pendingCount} contacto${pendingCount !== 1 ? "s" : ""} · ${pendingAmount}€ potencial`
                     : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? `${kpiStudents.length} alumna${kpiStudents.length !== 1 ? "s" : ""}`
@@ -7484,15 +7511,48 @@ export default function AdminDashboard() {
                   })}
                 </div>
 
+              ) : kpiDrawer === "ocupacion" && kpiOcupacionClase ? (
+                /* ── Alumnas apuntadas a una clase ── */
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>Alumnas de esta clase</p>
+                  {kpiClaseLoading ? (
+                    <p className="text-sm" style={{ color: "#89726c" }}>Cargando…</p>
+                  ) : kpiClaseAlumnas.length === 0 ? (
+                    <p className="text-sm" style={{ color: "#89726c" }}>Todavía no hay ninguna alumna apuntada a esta clase.</p>
+                  ) : (
+                    kpiClaseAlumnas.map(a => {
+                      const nombre = NINAS_IDS.has(a.disciplina_id) && a.nome_alumna
+                        ? `${a.nome_alumna} ${a.cognome_alumna ?? ""}`.trim()
+                        : `${a.nome} ${a.cognome ?? ""}`.trim();
+                      return (
+                        <div key={a.id} className="p-4 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                          <p className="text-sm font-semibold" style={{ color: "#25190f" }}>{nombre}</p>
+                          {NINAS_IDS.has(a.disciplina_id) && a.nome_alumna && (
+                            <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>Contacto: {a.nome} {a.cognome}</p>
+                          )}
+                          <div className="flex flex-wrap gap-3 mt-2">
+                            {a.telefono && (
+                              <a href={`tel:${a.telefono}`} className="text-xs font-semibold" style={{ color: "#7d2b13" }}>📞 {a.telefono}</a>
+                            )}
+                            {a.email && (
+                              <a href={`mailto:${a.email}`} className="text-xs" style={{ color: "#89726c" }}>✉️ {a.email}</a>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
               ) : kpiDrawer === "ocupacion" && kpiOcupacionDisciplina ? (
                 /* ── Ocupación por clase ── */
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>Clases de {kpiOcupacionDisciplina.nombre}</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>Clases de {kpiOcupacionDisciplina.nombre} · pulsa una para ver quién va</p>
                   {kpiOcupacionDisciplina.clases.map((c, i) => {
                     const pct = c.total > 0 ? Math.round((c.ocupados / c.total) * 100) : 0;
                     const lleno = c.ocupados >= c.total;
                     return (
-                      <div key={i} className="p-4 rounded-xl border" style={{ borderColor: "#dcc1b9" }}>
+                      <button key={i} onClick={() => abrirClaseOcupacion(c)} className="w-full text-left p-4 rounded-xl border hover:shadow-md transition-shadow" style={{ borderColor: "#dcc1b9" }}>
                         <div className="flex justify-between items-center mb-2">
                           <div>
                             <p className="text-sm font-medium" style={{ color: "#25190f" }}>{c.giorno}</p>
@@ -7503,7 +7563,7 @@ export default function AdminDashboard() {
                         <div className="h-1.5 rounded-full bg-surface-container-high overflow-hidden">
                           <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: lleno ? "#b71c1c" : "#7d2b13" }} />
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

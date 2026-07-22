@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   if (orarioId) {
     const { data, error } = await supabaseAdmin
       .from("iscrizione_orari")
-      .select("iscrizione_id, iscrizioni(id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, stato)")
+      .select("iscrizione_id, iscrizioni(id, nome, cognome, nome_alumna, cognome_alumna, disciplina_id, stato, email, telefono)")
       .eq("orario_id", orarioId);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ data: data ?? [] });
