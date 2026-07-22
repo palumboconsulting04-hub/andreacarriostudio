@@ -67,7 +67,7 @@ export async function generarClases(disciplinas: string[], hasta?: string): Prom
     const fecha = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     for (const o of orari) {
       if (DIAS[o.giorno] !== dow) continue;
-      if (i === 0 && horaMin(o.ora_inizio) <= nowMinutes + 60) continue; // hoy: nada que empiece en <1h
+      if (i === 0 && horaMin(o.ora_inizio) <= nowMinutes) continue; // hoy: oculta solo las que YA han empezado
       const k = `${o.id}|${fecha}`;
       const ocup = (mensuales[o.id] ?? 0) + (bonoCount[k] ?? 0);
       clases.push({
