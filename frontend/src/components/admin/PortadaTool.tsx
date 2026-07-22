@@ -66,32 +66,52 @@ async function componer(aiUrl: string, codigo: string): Promise<string> {
   const serif = "'Playfair Display', Georgia, serif";
   const sans = "'Montserrat', Arial, sans-serif";
 
-  // Toda la promo va en una BANDA INFERIOR (zona segura): en Instagram Story el
-  // perfil/logo tapa la parte de arriba, así que la marca se pone abajo, visible.
-  const gBand = ctx.createLinearGradient(0, 1340, 0, 1600);
+  // ── Promo tipo ANUNCIO: jerarquía tipográfica fuerte en la banda inferior ──
+  // (en la Story el perfil de Instagram tapa la parte de arriba → la marca va abajo)
+  const gBand = ctx.createLinearGradient(0, 1170, 0, 1470);
   gBand.addColorStop(0, "rgba(125,43,19,0)");
-  gBand.addColorStop(1, "rgba(125,43,19,0.92)");
+  gBand.addColorStop(1, "rgba(125,43,19,0.94)");
   ctx.fillStyle = gBand;
-  ctx.fillRect(0, 1340, W, 300);
-  ctx.fillStyle = "rgba(125,43,19,0.92)";
-  ctx.fillRect(0, 1600, W, H - 1600);
+  ctx.fillRect(0, 1170, W, 300);
+  ctx.fillStyle = "rgba(125,43,19,0.94)";
+  ctx.fillRect(0, 1470, W, H - 1470);
 
   ctx.textAlign = "left";
-  ctx.fillStyle = C.cream;
-  ctx.font = `700 46px ${serif}`;
-  ctx.fillText("ANDREA CARRIÓ STUDIO", 56, 1556);
+  const ls = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+
+  // Antetítulo: marca + ciudad, pequeño y muy espaciado.
   ctx.fillStyle = C.blush;
-  ctx.font = `600 25px ${sans}`;
-  ctx.fillText("Danza & Pilates · Valencia (Alfahuir)", 58, 1598);
+  ctx.font = `700 26px ${sans}`;
+  try { ls.letterSpacing = "4px"; } catch { /* sin soporte */ }
+  ctx.fillText("ANDREA CARRIÓ STUDIO · VALENCIA", 56, 1398);
+  try { ls.letterSpacing = "0px"; } catch { /* sin soporte */ }
+
+  // Titular: el gancho, bien grande.
   ctx.fillStyle = C.cream;
-  ctx.font = `700 54px ${serif}`;
-  ctx.fillText("VEN A PROBAR", 56, 1684);
+  ctx.font = `700 92px ${serif}`;
+  ctx.fillText("VEN A PROBAR", 54, 1514);
+
+  // Código en píldora clara: máximo contraste, es lo que hay que leer.
+  const codeTxt = `CÓDIGO  ${codigo || "TU CÓDIGO"}`;
+  ctx.font = `800 36px ${sans}`;
+  const pw = ctx.measureText(codeTxt).width + 60;
+  const px = 56, py = 1558, ph = 82, pr = 41;
+  ctx.fillStyle = C.cream;
+  ctx.beginPath();
+  ctx.moveTo(px + pr, py);
+  ctx.arcTo(px + pw, py, px + pw, py + ph, pr);
+  ctx.arcTo(px + pw, py + ph, px, py + ph, pr);
+  ctx.arcTo(px, py + ph, px, py, pr);
+  ctx.arcTo(px, py, px + pw, py, pr);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = C.burgundy;
+  ctx.fillText(codeTxt, px + 30, py + 55);
+
+  // Pie: disciplinas + web.
   ctx.fillStyle = C.blush;
-  ctx.font = `700 30px ${sans}`;
-  ctx.fillText(`Reserva con mi código  →  ${codigo || "TU CÓDIGO"}`, 58, 1732);
-  ctx.fillStyle = C.cream;
-  ctx.font = `500 25px ${sans}`;
-  ctx.fillText("andreacarriostudio.es", 58, 1774);
+  ctx.font = `500 27px ${sans}`;
+  ctx.fillText("Danza · Pilates · Barre      andreacarriostudio.es", 58, 1716);
 
   return cv.toDataURL("image/png");
 }

@@ -10,9 +10,9 @@ async function isAdmin(): Promise<boolean> {
 }
 
 const ACTIVIDAD: Record<string, string> = {
-  pilates: "performing a calm, controlled Pilates mat exercise on a mat on the floor (for example a seated roll-up or a leg stretch), with good posture and engaged core",
-  barre: "performing an elegant barre exercise, one hand resting lightly on the wooden ballet barre, standing tall with good posture",
-  ballet: "holding an elegant, graceful ballet position beside the wooden ballet barre, with good posture and soft arms",
+  pilates: "performing a calm, controlled Pilates mat exercise on a mat on the floor (for example a seated roll-up or a leg stretch), with good posture and engaged core, concentrated on the movement and not on the camera",
+  barre: "performing an elegant barre exercise, one hand resting lightly on the wooden ballet barre, standing tall with good posture, focused on the movement and not on the camera",
+  ballet: "holding an elegant, graceful ballet position beside the wooden ballet barre, with good posture and soft arms, gaze following the movement and not the camera",
 };
 
 // Nano Banana Pro primero (mucho mejor preservando la identidad); si no estuviera
@@ -102,9 +102,10 @@ PHOTOGRAPHIC REALISM:
 - Natural, realistic skin texture with pores and small imperfections. Natural warm indoor light matching the studio photos. Believable shadows on the floor.
 - Simple, plain fitted activewear in neutral tones. Nothing flashy.
 
-FRAMING:
+FRAMING & GAZE:
 - Vertical 9:16 format.
-- The person seen from the FRONT, face fully visible and well lit. It must NOT be a side profile and the face must not be cropped or turned away.
+- VERY IMPORTANT: the person must NEVER look into the camera. Their gaze is on the movement — looking down at their hands or feet, to the side, or slightly away — like a candid documentary photo of someone genuinely training. The head can be turned or gently lowered.
+- The face is still visible in a natural three-quarter view and softly lit, but the eyes never meet the lens.
 - The person is the clear subject, centred, with the studio recognisable around them.
 - Leave clean, uncluttered space at the TOP and at the BOTTOM of the frame, because text will be overlaid there afterwards.
 
