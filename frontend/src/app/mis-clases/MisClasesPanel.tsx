@@ -120,6 +120,8 @@ export default function MisClasesPanel() {
   const [msg, setMsg] = useState("");
   const [accion, setAccion] = useState(false);
   const [confirmar, setConfirmar] = useState<Clase | null>(null);
+  const [cancelarConfirm, setCancelarConfirm] = useState<Clase | null>(null);
+  const [cancelErr, setCancelErr] = useState("");
   const [codigo, setCodigo] = useState("");
   const [refAmigas, setRefAmigas] = useState(0);
   const [refPremios, setRefPremios] = useState<{ detalle: string }[]>([]);
@@ -276,13 +278,15 @@ export default function MisClasesPanel() {
 
   const cancelar = async (c: Clase) => {
     if (!c.reserva_id || accion) return;
-    setAccion(true); setMsg("");
+    setAccion(true); setCancelErr("");
     try {
       const res = await fetch("/api/panel/cancelar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reserva_id: c.reserva_id }) });
       const data = await res.json();
-      if (!res.ok) setMsg(data.error || "No se pudo eliminar.");
+      if (!res.ok) { setCancelErr(data.error || "No se pudo cancelar."); return; }
+      setCancelarConfirm(null);
       await cargarCalendario();
-    } finally { setAccion(false); }
+    } catch { setCancelErr("No se pudo conectar. Inténtalo de nuevo."); }
+    finally { setAccion(false); }
   };
 
   const salir = async () => { await fetch("/api/panel/salir", { method: "POST" }); window.location.reload(); };
@@ -568,7 +572,7 @@ export default function MisClasesPanel() {
                     {preview ? (
                       <span className="text-xs shrink-0" style={{ color: C.muted }}>{lleno ? "Completa" : `${c.libres} libres`}</span>
                     ) : reservada ? (
-                      <button onClick={() => cancelar(c)} disabled={accion} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Cancelar</button>
+                      <button onClick={() => setCancelarConfirm(c)} disabled={accion} className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Cancelar</button>
                     ) : puede && !lleno ? (
                       <button onClick={() => setConfirmar(c)} disabled={accion} className="px-4 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: C.burgundy, color: C.cream }}>Reservar</button>
                     ) : (
@@ -667,7 +671,7 @@ export default function MisClasesPanel() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button onClick={() => addCalendar(`${DISC[c.disciplina_id] ?? c.disciplina_id} · Andrea Carrió Studio`, c.fecha, c.hora, c.horaFin)} title="Añadir a mi calendario" className="w-9 h-9 rounded-full flex items-center justify-center text-base" style={{ backgroundColor: "#fff", border: `1px solid ${C.burgundy}` }}>📅</button>
-                    <button onClick={() => cancelar(c)} disabled={accion} className="px-3 py-1.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Eliminar</button>
+                    <button onClick={() => setCancelarConfirm(c)} disabled={accion} className="px-3 py-1.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>Eliminar</button>
                   </div>
                 </div>
               ))}
@@ -819,6 +823,33 @@ export default function MisClasesPanel() {
                   <div className="flex gap-2">
                     <button onClick={() => setConfirmar(null)} className="flex-1 py-3 rounded-2xl text-sm font-semibold" style={{ border: `1.5px solid ${C.border}`, color: C.brown, backgroundColor: "#fff" }}>Cancelar</button>
                     <button onClick={() => { setConfirmar(null); reservar(c); }} disabled={accion} className="flex-1 py-3 rounded-2xl text-sm font-bold" style={{ backgroundColor: C.burgundy, color: C.cream }}>Reservar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {cancelarConfirm && (() => {
+          const c = cancelarConfirm;
+          const menos4 = new Date(`${c.fecha}T${c.hora}`).getTime() - Date.now() < 4 * 3600 * 1000;
+          const cerrar = () => { setCancelarConfirm(null); setCancelErr(""); };
+          return (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: "rgba(37,25,15,0.55)" }} onClick={cerrar}>
+              <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl" style={{ backgroundColor: "#fff" }} onClick={e => e.stopPropagation()}>
+                <div className="p-6 text-center">
+                  <p className="text-lg font-bold mb-2" style={{ color: C.dark, fontFamily: fSans }}>¿Cancelar esta reserva?</p>
+                  <p className="text-sm font-semibold" style={{ color: C.burgundy, fontFamily: fSans }}>{DISC[c.disciplina_id] ?? c.disciplina_id}</p>
+                  <p className="text-sm mb-3" style={{ color: C.brown }}>{fechaLabel(c.fecha, c.dia)} · {c.hora}–{c.horaFin}</p>
+                  <div className="rounded-2xl px-4 py-3 mb-4 text-xs text-left" style={{ backgroundColor: menos4 ? "#fde7e7" : "#eaf6ee", color: menos4 ? "#b71c1c" : "#1f7a3d" }}>
+                    {menos4
+                      ? <>Es en menos de 4 h: al cancelar <strong>no recuperarás el crédito</strong>.</>
+                      : <>Recuperarás tu crédito para otra clase.</>}
+                  </div>
+                  {cancelErr && <p className="text-xs mb-3" style={{ color: "#b71c1c" }}>{cancelErr}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={cerrar} className="flex-1 py-3 rounded-2xl text-sm font-semibold" style={{ border: `1.5px solid ${C.border}`, color: C.brown, backgroundColor: "#fff" }}>No, volver</button>
+                    <button onClick={() => cancelar(c)} disabled={accion} className="flex-1 py-3 rounded-2xl text-sm font-bold" style={{ backgroundColor: "#b71c1c", color: "#fff" }}>{accion ? "Cancelando…" : "Sí, cancelar"}</button>
                   </div>
                 </div>
               </div>
