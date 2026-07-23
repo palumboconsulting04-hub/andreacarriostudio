@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { SLOTS, EVENTO } from "@/lib/jornada";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 import PortadaTool from "@/components/admin/PortadaTool";
+import EmailTool from "@/components/admin/EmailTool";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -2517,6 +2518,7 @@ export default function AdminDashboard() {
     { icon: "confirmation_number", label: "Bonos" },
     { icon: "diversity_3", label: "Referidos" },
     { icon: "photo_camera", label: "Portada" },
+    { icon: "mail", label: "Email marketing" },
     { icon: "insights", label: "Marketing" },
     { icon: "filter_alt", label: "Embudo" },
     { icon: "online_prediction", label: "Previsión" },
@@ -6130,6 +6132,12 @@ export default function AdminDashboard() {
           {activeSection === "Portada" && (
             <section className="max-w-3xl">
               <PortadaTool />
+            </section>
+          )}
+
+          {activeSection === "Email marketing" && (
+            <section className="max-w-3xl">
+              <EmailTool />
             </section>
           )}
 
