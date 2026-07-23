@@ -364,6 +364,7 @@ export default function Home() {
               iscrizioneId={iscrizioneId}
               disciplinaId={bozze[0].disciplinaId}
               nombre={estado.nombre}
+              email={estado.email}
             />
           )}
         </main>
