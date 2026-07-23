@@ -9,8 +9,10 @@ import BotonImprimir from "./BotonImprimir";
 
 export const dynamic = "force-dynamic";
 
-type Reserva = { id: string; nombre: string; nombre_madre: string | null; slot_id: string };
-type Espera = { id: string; nombre: string; nombre_madre: string | null; telefono: string | null; slot_id: string };
+// En adultas se lleva el teléfono: la mitad se apunta solo con el nombre de pila
+// (y hay nombres repetidos en el mismo turno), así que es lo único que las
+// distingue. En niñas no hace falta: el par niña + madre ya es único.
+type Reserva = { id: string; nombre: string; nombre_madre: string | null; telefono: string | null; slot_id: string };
 
 const FILAS_EXTRA = 3; // filas en blanco para quien venga sin reserva
 
@@ -21,12 +23,10 @@ function Casilla() {
 }
 
 export default async function JornadaListaPage() {
-  const [{ data: rRes }, { data: rEsp }] = await Promise.all([
-    supabaseAdmin.from("reservas_jornada").select("id, nombre, nombre_madre, slot_id"),
-    supabaseAdmin.from("lista_espera_jornada").select("id, nombre, nombre_madre, telefono, slot_id"),
-  ]);
+  const { data: rRes } = await supabaseAdmin
+    .from("reservas_jornada")
+    .select("id, nombre, nombre_madre, telefono, slot_id");
   const reservas = (rRes ?? []) as Reserva[];
-  const espera = (rEsp ?? []) as Espera[];
 
   const th: React.CSSProperties = {
     border: "1px solid #999", padding: "6px 8px", fontSize: "11px",
@@ -79,10 +79,11 @@ export default async function JornadaListaPage() {
                   <th style={{ ...th, width: "26px", textAlign: "center" }}>#</th>
                   <th style={th}>{esNinas ? "Niña" : "Nombre"}</th>
                   {esNinas && <th style={th}>Madre / Padre</th>}
+                  {!esNinas && <th style={{ ...th, width: "108px" }}>Teléfono</th>}
                   <th style={{ ...th, width: "52px", textAlign: "center" }}>Vino</th>
                   <th style={{ ...th, width: "52px", textAlign: "center" }}>Pagó</th>
                   <th style={{ ...th, width: "120px" }}>Forma de pago</th>
-                  <th style={{ ...th, width: esNinas ? "150px" : "230px" }}>Comentario</th>
+                  <th style={{ ...th, width: "160px" }}>Comentario</th>
                 </tr>
               </thead>
               <tbody>
@@ -91,6 +92,7 @@ export default async function JornadaListaPage() {
                     <td style={tdC}>{i + 1}</td>
                     <td style={{ ...td, fontWeight: 600 }}>{r.nombre}</td>
                     {esNinas && <td style={td}>{r.nombre_madre || ""}</td>}
+                    {!esNinas && <td style={{ ...td, fontSize: "12px", color: "#444" }}>{r.telefono || ""}</td>}
                     <td style={tdC}><Casilla /></td>
                     <td style={tdC}><Casilla /></td>
                     <td style={td} />
@@ -103,6 +105,7 @@ export default async function JornadaListaPage() {
                     <td style={{ ...tdC, color: "#aaa" }}>{lista.length + i + 1}</td>
                     <td style={td} />
                     {esNinas && <td style={td} />}
+                    {!esNinas && <td style={td} />}
                     <td style={tdC}><Casilla /></td>
                     <td style={tdC}><Casilla /></td>
                     <td style={td} />
@@ -119,48 +122,6 @@ export default async function JornadaListaPage() {
         );
       })}
 
-      {/* Hoja final: lista de espera (aquí SÍ el teléfono, es para llamarlas) */}
-      {espera.length > 0 && (
-        <section className="hoja">
-          <div style={{ borderBottom: "3px solid #7d2b13", paddingBottom: "8px", marginBottom: "10px" }}>
-            <p style={{ margin: 0, fontSize: "12px", letterSpacing: "2px", color: "#7d2b13", fontWeight: 700 }}>
-              ANDREA CARRIÓ STUDIO · {EVENTO.titulo.toUpperCase()}
-            </p>
-            <h1 style={{ margin: "6px 0 0", fontSize: "22px" }}>LISTA DE ESPERA</h1>
-            <p style={{ margin: "2px 0 0", fontSize: "13px", color: "#555" }}>
-              Si alguien no viene, llama a la siguiente de su turno.
-            </p>
-          </div>
-
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ ...th, width: "26px", textAlign: "center" }}>#</th>
-                <th style={th}>Turno</th>
-                <th style={th}>Nombre</th>
-                <th style={{ ...th, width: "120px" }}>Teléfono</th>
-                <th style={{ ...th, width: "60px", textAlign: "center" }}>Avisada</th>
-                <th style={{ ...th, width: "170px" }}>Comentario</th>
-              </tr>
-            </thead>
-            <tbody>
-              {espera.map((e, i) => {
-                const s = SLOTS.find((x) => x.id === e.slot_id);
-                return (
-                  <tr key={e.id}>
-                    <td style={tdC}>{i + 1}</td>
-                    <td style={{ ...td, fontSize: "12px" }}>{s ? `${s.dia.replace(" de julio", "")} · ${s.hora} · ${s.titulo}` : e.slot_id}</td>
-                    <td style={{ ...td, fontWeight: 600 }}>{e.nombre}{e.nombre_madre ? ` (${e.nombre_madre})` : ""}</td>
-                    <td style={td}>{e.telefono || ""}</td>
-                    <td style={tdC}><Casilla /></td>
-                    <td style={td} />
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </section>
-      )}
     </div>
   );
 }
