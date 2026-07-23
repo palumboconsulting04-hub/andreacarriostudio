@@ -5112,9 +5112,14 @@ export default function AdminDashboard() {
                     <h3 className="font-headline-md text-headline-md text-primary">{EVENTO.titulo} · {EVENTO.fecha}</h3>
                     <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>{total} reservas · control de asistencia</p>
                   </div>
-                  <a href="/reservar-jornada" target="_blank" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full border transition-colors hover:bg-surface-container-high" style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}>
-                    <Icon name="open_in_new" className="text-sm" /> Página de reserva
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <a href="/admin/jornada-lista" target="_blank" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full transition-opacity hover:opacity-90" style={{ backgroundColor: "#7d2b13", color: "#fff8f5" }}>
+                      <Icon name="print" className="text-sm" /> Imprimir lista
+                    </a>
+                    <a href="/reservar-jornada" target="_blank" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full border transition-colors hover:bg-surface-container-high" style={{ borderColor: "#dcc1b9", color: "#7d2b13" }}>
+                      <Icon name="open_in_new" className="text-sm" /> Página de reserva
+                    </a>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
