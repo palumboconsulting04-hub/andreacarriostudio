@@ -30,27 +30,28 @@ type Body = {
 
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as Body | null;
-  if (!body?.contatto?.email || !Array.isArray(body.inscripciones) || body.inscripciones.length === 0) {
-    return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
+  if (!body?.contatto?.nome || !Array.isArray(body.inscripciones) || body.inscripciones.length === 0) {
+    return NextResponse.json({ error: "Faltan datos: el nombre y al menos una inscripción son obligatorios." }, { status: 400 });
   }
 
-  // 1) Contacto: reutiliza el existente por email o créalo.
+  // email y cognome son NOT NULL en la base de datos: si no los dan (alta manual),
+  // se guardan como cadena vacía, nunca null.
+  const emailNorm = (body.contatto.email ?? "").toLowerCase().trim();
+
+  // 1) Contacto: reutiliza el existente por email (solo si hay email) o créalo.
   let cId = body.existingContattoId ?? null;
   if (!cId) {
-    const emailNorm = body.contatto.email.toLowerCase().trim();
-    const { data: existing } = await supabaseAdmin
-      .from("contatti")
-      .select("id")
-      .eq("email", emailNorm)
-      .maybeSingle();
-    if (existing) {
-      cId = existing.id;
-    } else {
+    if (emailNorm) {
+      const { data: existing } = await supabaseAdmin
+        .from("contatti").select("id").eq("email", emailNorm).maybeSingle();
+      if (existing) cId = existing.id;
+    }
+    if (!cId) {
       const { data: created, error: cErr } = await supabaseAdmin
         .from("contatti")
         .insert({
           nome: body.contatto.nome,
-          cognome: body.contatto.cognome,
+          cognome: body.contatto.cognome || "",
           email: emailNorm,
           telefono: body.contatto.telefono || null,
         })
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   // 2) Una fila de iscrizioni por cada inscripción + sus horarios.
   // Código de madrina (Trae a tu amiga): normalizado, sin autorreferido.
-  const emailComprador = body.contatto.email.toLowerCase().trim();
+  const emailComprador = emailNorm;
   let referidoPor = (body.referidoPor || "").trim().toUpperCase().slice(0, 20) || null;
   if (referidoPor) {
     const { data: mad } = await supabaseAdmin
@@ -78,8 +79,8 @@ export async function POST(req: NextRequest) {
       .insert({
         contatto_id: cId,
         nome: item.nome,
-        cognome: item.cognome,
-        email: item.email,
+        cognome: item.cognome || "",
+        email: item.email || "",
         telefono: item.telefono || null,
         disciplina_id: item.disciplina_id,
         piano_id: item.piano_id,

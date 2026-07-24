@@ -436,6 +436,7 @@ export default function AdminDashboard() {
   const [nifPiani, setNifPiani] = useState<{ id: string; nome: string; prezzo: number }[]>([]);
   const [nifLoading, setNifLoading] = useState(false);
   const [nifMsg, setNifMsg] = useState("");
+  const [nifError, setNifError] = useState("");
 
   // ── Nuevo horario ──
   const [showNuevoHorario, setShowNuevoHorario] = useState(false);
@@ -1709,7 +1710,8 @@ export default function AdminDashboard() {
   };
 
   const handleNuevaInscripcionSubmit = async () => {
-    if (!nif.nome || !nif.cognome || !nif.email || !nif.disciplina_id || !nif.piano_id) return;
+    if (!nif.nome || !nif.disciplina_id || !nif.piano_id) { setNifError("Faltan datos: nombre, disciplina y plan son obligatorios."); return; }
+    setNifError(""); setNifMsg("");
     setNifLoading(true);
     const res = await fetch("/api/inscripcion", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -1724,7 +1726,12 @@ export default function AdminDashboard() {
         }],
       }),
     });
-    if (!res.ok) { setNifLoading(false); return; }
+    if (!res.ok) {
+      const d = await res.json().catch(() => null);
+      setNifError(d?.error || `No se pudo guardar (error ${res.status}). Inténtalo de nuevo.`);
+      setNifLoading(false);
+      return;
+    }
     // /api/inscripcion es el endpoint de la web y siempre crea "attesa" (allí el pago
     // lo confirma Stripe después). En el alta manual la alumna ya ha pagado (efectivo,
     // transferencia…), así que aplicamos aquí el estado elegido para que cuente desde
@@ -8366,7 +8373,10 @@ export default function AdminDashboard() {
 
             </div>
             <div className="p-5 border-t" style={{ borderColor: "#dcc1b9" }}>
-              <button onClick={handleNuevaInscripcionSubmit} disabled={nifLoading || !nif.nome || !nif.email || !nif.disciplina_id || !nif.piano_id} className="w-full py-3 rounded-full text-sm font-semibold text-white transition-opacity disabled:opacity-40" style={{ backgroundColor: "#7d2b13" }}>
+              {nifError && (
+                <p className="mb-3 rounded-xl px-4 py-3 text-sm font-semibold" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>{nifError}</p>
+              )}
+              <button onClick={handleNuevaInscripcionSubmit} disabled={nifLoading || !nif.nome || !nif.disciplina_id || !nif.piano_id} className="w-full py-3 rounded-full text-sm font-semibold text-white transition-opacity disabled:opacity-40" style={{ backgroundColor: "#7d2b13" }}>
                 {nifLoading ? "Guardando..." : "Crear inscripción"}
               </button>
             </div>
