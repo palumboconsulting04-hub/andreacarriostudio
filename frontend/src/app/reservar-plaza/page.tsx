@@ -138,7 +138,7 @@ export default async function ReservarPlazaPage() {
           <div className="rounded-3xl p-6" style={{ backgroundColor: C.soft, border: `1px solid ${C.border}` }}>
             <p className="text-sm leading-relaxed" style={{ color: C.brown }}>
               <strong style={{ color: C.burgundy }}>¿Aún no lo tienes claro?</strong> Sin problema: escríbeme en septiembre y miramos si queda hueco.
-              Te lo digo con honestidad — las tardes de ballet y las mañanas de Barre son las primeras en llenarse,
+              Te lo digo con honestidad — las tardes de ballet niñas y el Barre por la tarde son las primeras en llenarse,
               así que no puedo prometerte sitio, pero si queda es tuyo.
             </p>
           </div>
