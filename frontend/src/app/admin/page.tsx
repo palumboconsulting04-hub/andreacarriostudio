@@ -1094,9 +1094,10 @@ export default function AdminDashboard() {
   };
 
   // KPI drawer
-  const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | "facturacion" | "nuevas" | null>(null);
+  const [kpiDrawer, setKpiDrawer] = useState<"pendientes" | "alumnos" | "ocupacion" | "facturacion" | "nuevas" | "hoy" | null>(null);
   const [facturacionDetalle, setFacturacionDetalle] = useState<FactCat[]>([]);
   const [nuevasDetalle, setNuevasDetalle] = useState<FactCat[]>([]);
+  const [nuevasHoyDetalle, setNuevasHoyDetalle] = useState<FactItem[]>([]);
   const [factCat, setFactCat] = useState<string | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
   const [kpiStudents, setKpiStudents] = useState<KpiStudentRow[]>([]);
@@ -2222,6 +2223,37 @@ export default function AdminDashboard() {
         return d.getMonth() === tm && d.getFullYear() === ty;
       }).length;
       setNuevasInscripcionesMes(nuevasEstesMes + bonosMesCount);
+
+      // Quiénes se han apuntado HOY (para poder pinchar el KPI y ver los nombres).
+      const esHoy = (iso: string | null | undefined) => {
+        if (!iso) return false;
+        const d = new Date(iso);
+        return d.getDate() === now2.getDate() && d.getMonth() === tm && d.getFullYear() === ty;
+      };
+      const hoyItems: FactItem[] = [];
+      for (const isc of allIsc) {
+        if (!INSCRITA_STATI_ARR.includes(isc.stato) || !esHoy(isc.created_at as string)) continue;
+        const alumna = (isc.nome_alumna as string) || "";
+        const nombre = alumna ? `${alumna} ${(isc.cognome_alumna as string) ?? ""}`.trim() : nomIsc(isc);
+        const mat = (isc.matricula as number) ?? 0;
+        hoyItems.push({
+          nombre,
+          email: (isc.email as string) ?? "",
+          detalle: nombreDisc(isc.disciplina_id) + (alumna ? ` · contacto: ${nomIsc(isc)}` : ""),
+          importe: mat,
+        });
+      }
+      for (const b of bonosAll) {
+        if (b.estado === "cancelado" || b.estado === "reembolsado" || !esHoy(b.created_at)) continue;
+        hoyItems.push({
+          nombre: b.nombre ?? "—",
+          email: b.email ?? "",
+          detalle: `Bono · ${b.creditos_totales} clase${b.creditos_totales !== 1 ? "s" : ""} · ${nombreDisc(b.disciplina_id)}`,
+          importe: b.precio_pagado ?? 0,
+        });
+      }
+      setNuevasHoyDetalle(hoyItems);
+
       const td = now2.getDate();
       const nuevasHoy = allIsc.filter(i => {
         if (!INSCRITA_STATI_ARR.includes(i.stato)) return false;
@@ -2821,7 +2853,10 @@ export default function AdminDashboard() {
                 </button>
 
                 {/* Inscripciones Hoy */}
-                <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
+                <button
+                  onClick={() => { setKpiDrawer("hoy"); setKpiStudentProfile(null); setKpiAlumnosDisciplina(null); setKpiOcupacionDisciplina(null); setKpiOcupacionClase(null); setFactCat(null); }}
+                  className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px] text-left hover:shadow-md transition-shadow"
+                >
                   <div className="flex justify-between items-start mb-3">
                     <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Inscripciones Hoy <InfoTip text="Altas nuevas de hoy que YA han pagado (matrículas y bonos). Las inscripciones empezadas en la web y sin pagar no cuentan. Se reinicia cada día a medianoche." /></p>
                     <div className="p-2 rounded-full" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>
@@ -2831,8 +2866,9 @@ export default function AdminDashboard() {
                   <p className="text-3xl font-bold" style={{ color: nuevasInscripcionesHoy > 0 ? "#2e7d32" : "#7d2b13" }}>{loading ? "—" : nuevasInscripcionesHoy}</p>
                   <p className="text-xs mt-2" style={{ color: "#89726c" }}>
                     {new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long" })}
+                    {nuevasInscripcionesHoy > 0 && " · pulsa para ver quién →"}
                   </p>
-                </div>
+                </button>
 
                 {/* Ocupación Media */}
                 <button
@@ -7443,6 +7479,7 @@ export default function AdminDashboard() {
                     : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? kpiAlumnosDisciplina.nombre
                     : kpiDrawer === "pendientes" ? "Interesadas sin pagar"
                     : kpiDrawer === "facturacion" ? "Facturación del mes"
+                    : kpiDrawer === "hoy" ? "Se han apuntado hoy"
                     : kpiDrawer === "nuevas" ? "Nuevas inscripciones"
                     : kpiDrawer === "alumnos" ? "Alumnas Activas"
                     : "Ocupación por Disciplina"}
@@ -7455,6 +7492,7 @@ export default function AdminDashboard() {
                     : kpiDrawer === "alumnos" && kpiAlumnosDisciplina ? `${kpiStudents.length} alumna${kpiStudents.length !== 1 ? "s" : ""}`
                     : kpiDrawer === "alumnos" ? `${iscrittiCount} alumna${iscrittiCount !== 1 ? "s" : ""} activas`
                     : kpiDrawer === "facturacion" ? `${facturacionMes}€ este mes`
+                    : kpiDrawer === "hoy" ? `${nuevasHoyDetalle.length} alta${nuevasHoyDetalle.length !== 1 ? "s" : ""} · ${new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long" })}`
                     : kpiDrawer === "nuevas" ? `${nuevasInscripcionesMes} este mes`
                     : `${ocupacionMedia}% media`}
                 </p>
@@ -7629,6 +7667,38 @@ export default function AdminDashboard() {
                         </button>
                       );
                     })
+                  )}
+                </div>
+
+              ) : kpiDrawer === "hoy" ? (
+                /* ── Quién se ha apuntado hoy ── */
+                <div className="space-y-2">
+                  {nuevasHoyDetalle.length === 0 ? (
+                    <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Todavía no se ha apuntado nadie hoy.</p>
+                  ) : (
+                    <>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#89726c" }}>Altas de hoy</p>
+                      {nuevasHoyDetalle.map((it, i) => (
+                        <div key={i} className="p-4 rounded-xl border" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff1e9" }}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold" style={{ color: "#25190f" }}>{it.nombre}</p>
+                              <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{it.detalle}</p>
+                              {it.email && it.email !== "-" && (
+                                <a href={`mailto:${it.email}`} className="text-xs mt-1 inline-block" style={{ color: "#7d2b13" }}>{it.email}</a>
+                              )}
+                            </div>
+                            {it.importe > 0 && (
+                              <p className="text-sm font-bold flex-shrink-0" style={{ color: "#2e7d32" }}>{it.importe}€</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between p-4 rounded-xl mt-1" style={{ backgroundColor: "#7d2b13" }}>
+                        <p className="text-sm font-semibold" style={{ color: "#fff8f5" }}>Cobrado hoy</p>
+                        <p className="text-lg font-bold" style={{ color: "#fff8f5" }}>{nuevasHoyDetalle.reduce((s, x) => s + x.importe, 0)}€</p>
+                      </div>
+                    </>
                   )}
                 </div>
 
