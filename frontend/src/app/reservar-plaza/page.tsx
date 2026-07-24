@@ -98,8 +98,8 @@ export default async function ReservarPlazaPage() {
         {/* ── Gancho madre + hija ── */}
         <div className="mt-10 rounded-2xl p-5 text-center" style={{ backgroundColor: C.blush }}>
           <p className="text-sm leading-relaxed" style={{ color: C.burgundy }}>
-            🎁 <strong>¿Venís las dos?</strong> Apunta a tu hija y apúntate tú: con el código{" "}
-            <strong>JUNTAS</strong> al pagar, <strong>tu matrícula es gratis</strong>.
+            🎁 <strong>¿Venís las dos?</strong> Apunta a tu hija y apúntate tú <strong>en la misma reserva</strong>,
+            y con el código <strong>JUNTAS</strong> al pagar <strong>una matrícula es gratis</strong>.
           </p>
         </div>
 
