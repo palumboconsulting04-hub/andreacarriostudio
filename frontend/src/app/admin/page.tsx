@@ -435,6 +435,7 @@ export default function AdminDashboard() {
   const [nif, setNif] = useState({ nome: "", cognome: "", email: "", telefono: "", disciplina_id: "", piano_id: "", metodo_pagamento: "en-escuela", nome_alumna: "", cognome_alumna: "", horarios: [] as string[], estado: "matricula_pagada", matricula: "35" });
   const [nifPiani, setNifPiani] = useState<{ id: string; nome: string; prezzo: number }[]>([]);
   const [nifLoading, setNifLoading] = useState(false);
+  const [nifMsg, setNifMsg] = useState("");
 
   // ── Nuevo horario ──
   const [showNuevoHorario, setShowNuevoHorario] = useState(false);
@@ -1735,8 +1736,23 @@ export default function AdminDashboard() {
       }).catch(() => {});
     }
     const newPrezzo = nifPiani.find(p => p.id === nif.piano_id)?.prezzo ?? 0;
-    setPendingCount(p => p + 1);
-    setPendingAmount(p => p + newPrezzo);
+    // Los contadores dependen de si nace pagada o pendiente (antes sumaba
+    // siempre a "pendientes", aunque la hubieras dado de alta ya pagada).
+    if (nif.estado === "attesa") {
+      setPendingCount(p => p + 1);
+      setPendingAmount(p => p + newPrezzo);
+    } else {
+      setIscrittiCount(p => p + 1);
+      setFacturacionMes(p => p + (Number(nif.matricula) || 0));
+    }
+    // Recarga la lista de Clientas para que la nueva alumna se vea AL MOMENTO.
+    // Sin esto parecía que no se había guardado y se daba de alta dos veces.
+    fetch("/api/admin/iscrizioni")
+      .then(r => r.json())
+      .then(j => setUsuariosData((j.data ?? []) as KpiStudentRow[]))
+      .catch(() => {});
+    setNifMsg(`✅ ${nif.nome_alumna || nif.nome} guardada correctamente.`);
+    setTimeout(() => setNifMsg(""), 6000);
     // Fire-and-forget confirmation email
     const disciplinaNombre = orari.find(o => o.disciplina_id === nif.disciplina_id)?.discipline?.nome ?? nif.disciplina_id;
     const planNombre = nifPiani.find(p => p.id === nif.piano_id)?.nome ?? nif.piano_id;
@@ -1764,7 +1780,8 @@ export default function AdminDashboard() {
     }).catch(() => {});
     setNif({ nome: "", cognome: "", email: "", telefono: "", disciplina_id: "", piano_id: "", metodo_pagamento: "en-escuela", nome_alumna: "", cognome_alumna: "", horarios: [], estado: "matricula_pagada", matricula: "35" });
     setNifPiani([]);
-    setShowNuevaInscripcion(false);
+    // El panel se queda ABIERTO con el aviso de guardado y el formulario limpio:
+    // así se ve que ha funcionado y se encadena la siguiente alta sin clics.
     setNifLoading(false);
   };
 
@@ -8173,6 +8190,13 @@ export default function AdminDashboard() {
               <button onClick={() => setShowNuevaInscripcion(false)} className="p-2 rounded-full hover:bg-surface-container-high" style={{ color: "#89726c" }}><Icon name="close" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+              {nifMsg && (
+                <div className="rounded-xl px-4 py-3 text-sm font-semibold" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>
+                  {nifMsg}
+                  <span className="block text-xs font-normal mt-0.5" style={{ color: "#3d7a44" }}>Ya está en Clientas. Puedes apuntar la siguiente.</span>
+                </div>
+              )}
 
               {/* Disciplina */}
               <div>
