@@ -51,7 +51,9 @@ export default async function ReservarPlazaPage() {
     .from("iscrizioni")
     .select("id", { count: "exact", head: true })
     .in("stato", ["pagato", "pagado", "activa", "matricula_pagada"]);
-  const familias = count ?? 0;
+  // La consulta solo ve las pagadas por web; sumamos las de la jornada y fuera
+  // de la web con un suelo. Si el número real supera el suelo, manda el real.
+  const familias = Math.max(count ?? 0, 27);
 
   // Días que quedan con el precio de 35€ (hasta el 31 de julio incluido).
   const fin = new Date("2026-07-31T23:59:59");
