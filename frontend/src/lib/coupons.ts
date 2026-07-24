@@ -16,15 +16,9 @@ export interface Coupon {
 
 const COUPONS: Coupon[] = [
   { code: "GIOANDRE€€", descuento: 0.99, label: "Descuento de prueba" },
-  // Madre + hija: se regala la matrícula de la madre. El mínimo de 70€ hace que
-  // solo funcione cuando hay DOS matrículas, nunca para una persona sola.
-  {
-    code: "JUNTAS",
-    descuentoFijo: 35,
-    minImporte: 70,
-    label: "Matrícula de mamá gratis",
-    avisoMinimo: "Este código es para apuntaros dos (por ejemplo, madre e hija). Añade la segunda inscripción y se aplica solo.",
-  },
+  // Madre + hija: se regala una matrícula (35€). Sin mínimo, para poder usarlo
+  // también cuando la madre se apunta sola porque la hija ya está inscrita.
+  { code: "JUNTAS", descuentoFijo: 35, label: "Matrícula gratis" },
 ];
 
 // Stripe rejects charges below €0.50.
