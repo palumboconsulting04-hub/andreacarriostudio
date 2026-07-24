@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { loadStripe, type Appearance } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { findCoupon, applyCoupon, type Coupon } from "@/lib/coupons";
+import { findCoupon, applyCoupon, couponAplicable, couponEtiqueta, type Coupon } from "@/lib/coupons";
 import type { InscripcionState, MetodoPago, BozzaIscrizione } from "./types";
 import type { InscripcionEmailData } from "@/app/api/send-confirmation/route";
 import { fbTrack, getCookie } from "@/lib/meta";
@@ -270,15 +270,20 @@ function StripePaymentFase({
                 </div>
               </div>
 
-              {couponAplicado && (
+              {couponAplicado && couponAplicable(totalMatricula, couponAplicado) && (
                 <div className="flex justify-between items-center pt-1">
                   <span className="text-xs font-semibold" style={{ color: "#7d2b13" }}>
-                    Cupón {couponAplicado.code}
+                    {couponAplicado.label}
                   </span>
                   <span className="text-xs font-semibold" style={{ color: "#7d2b13" }}>
-                    −{Math.round(couponAplicado.descuento * 100)}%
+                    {couponEtiqueta(couponAplicado)}
                   </span>
                 </div>
+              )}
+              {couponAplicado && !couponAplicable(totalMatricula, couponAplicado) && (
+                <p className="text-xs pt-1" style={{ color: "#b71c1c" }}>
+                  {couponAplicado.avisoMinimo ?? "Este código todavía no se puede aplicar."}
+                </p>
               )}
 
               <div className="flex justify-between items-end pt-1 border-t" style={{ borderColor: "#dcc1b9" }}>
@@ -664,7 +669,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
                   <div className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ backgroundColor: "#ffdbd1" }}>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold" style={{ color: "#7d2b13" }}>
-                        {couponAplicado.code} · −{Math.round(couponAplicado.descuento * 100)}%
+                        {couponAplicado.code} · {couponEtiqueta(couponAplicado)}
                       </span>
                     </div>
                     <button
