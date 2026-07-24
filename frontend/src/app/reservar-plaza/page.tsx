@@ -1,15 +1,21 @@
 import type { Metadata } from "next";
 import FooterLegal from "@/components/FooterLegal";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // Landing de cierre de matrículas antes de vacaciones. Un solo enlace para
 // todos los canales (grupo de WhatsApp, email, Instagram): el hero es común y
 // justo debajo cada una elige si la plaza es para su hija o para ella.
+//
+// Los horarios salen de la base de datos: nadie reserva sin ver a qué hora es
+// (sobre todo quien paga por bizum o en efectivo, que no pasa por el flujo web).
 
 export const metadata: Metadata = {
   title: "Reserva tu plaza para septiembre — Andrea Carrió Studio",
   description:
     "Los grupos se cierran ahora. Con la matrícula reservo tu plaza para septiembre: 35€ en vez de 50€ hasta el 31 de julio. Solo 12 personas por clase.",
 };
+
+export const revalidate = 300;
 
 // En cuanto tengamos el número, se rellena aquí y la opción aparece sola.
 const BIZUM = "";
@@ -28,6 +34,12 @@ const C = {
 const serif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
 const sans = "var(--font-montserrat), 'Montserrat', sans-serif";
 
+const ORDEN_DISC = ["pre-ballet", "ballet-i", "ballet-ii", "barre-fit", "pilates-mat"];
+const ORDEN_DIA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const NINAS = new Set(["pre-ballet", "ballet-i", "ballet-ii"]);
+
+type Fila = { disciplina_id: string; giorno: string; ora_inizio: string; ora_fine: string; discipline: { nome: string } | null };
+
 function Cta({ children, href = "/" }: { children: React.ReactNode; href?: string }) {
   return (
     <a
@@ -40,7 +52,59 @@ function Cta({ children, href = "/" }: { children: React.ReactNode; href?: strin
   );
 }
 
-export default function ReservarPlazaPage() {
+// Agrupa los horarios de una disciplina por día, en orden de semana.
+function agrupar(filas: Fila[]) {
+  const porDia = new Map<string, string[]>();
+  for (const f of filas) {
+    const hora = `${f.ora_inizio.slice(0, 5)}`;
+    porDia.set(f.giorno, [...(porDia.get(f.giorno) ?? []), hora]);
+  }
+  return [...porDia.entries()].sort((a, b) => ORDEN_DIA.indexOf(a[0]) - ORDEN_DIA.indexOf(b[0]));
+}
+
+function Horario({ nombre, filas }: { nombre: string; filas: Fila[] }) {
+  const dias = agrupar(filas);
+  // Si todas las clases son a la misma hora, se resume en una línea.
+  const rangos = new Set(filas.map(f => `${f.ora_inizio.slice(0, 5)}–${f.ora_fine.slice(0, 5)}`));
+  const mismaHora = rangos.size === 1;
+
+  return (
+    <div className="rounded-2xl p-5" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
+      <p className="font-semibold text-base mb-2" style={{ color: C.burgundy, fontFamily: serif }}>{nombre}</p>
+      {mismaHora ? (
+        <p className="text-sm" style={{ color: C.brown }}>
+          <strong style={{ color: C.dark }}>{dias.map(([d]) => d).join(" y ")}</strong>
+          {" · "}{[...rangos][0]}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-1">
+          {dias.map(([dia, horas]) => (
+            <p key={dia} className="text-sm" style={{ color: C.brown }}>
+              <strong style={{ color: C.dark }}>{dia}</strong> · {horas.join("  ·  ")}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default async function ReservarPlazaPage() {
+  const { data } = await supabaseAdmin
+    .from("orari")
+    .select("disciplina_id, giorno, ora_inizio, ora_fine, discipline(nome)")
+    .eq("attivo", true)
+    .order("ora_inizio");
+  const filas = (data ?? []) as unknown as Fila[];
+
+  const porDisc = new Map<string, Fila[]>();
+  for (const f of filas) porDisc.set(f.disciplina_id, [...(porDisc.get(f.disciplina_id) ?? []), f]);
+  const ordenadas = ORDEN_DISC
+    .filter(id => porDisc.has(id))
+    .map(id => ({ id, nombre: porDisc.get(id)![0].discipline?.nome ?? id, filas: porDisc.get(id)! }));
+  const ninas = ordenadas.filter(d => NINAS.has(d.id));
+  const adultas = ordenadas.filter(d => !NINAS.has(d.id));
+
   return (
     <div style={{ backgroundColor: C.cream, minHeight: "100vh" }}>
       <main className="max-w-2xl mx-auto px-6 py-14 sm:py-20">
@@ -54,8 +118,9 @@ export default function ReservarPlazaPage() {
             Me voy de vacaciones.<br />¿Te guardo la plaza?
           </h1>
           <p className="text-base sm:text-lg leading-relaxed mb-7" style={{ color: C.brown }}>
-            En septiembre empezamos, pero <strong style={{ color: C.dark }}>los grupos los cierro ahora</strong>.
-            Con la matrícula reservo el sitio — y hasta el <strong style={{ color: C.dark }}>31 de julio son 35€ en vez de 50€</strong>.
+            Empezamos el <strong style={{ color: C.dark }}>martes 1 de septiembre</strong>, pero{" "}
+            <strong style={{ color: C.dark }}>los grupos los cierro ahora</strong>. Con la matrícula reservo el sitio
+            — y hasta el <strong style={{ color: C.dark }}>31 de julio son 35€ en vez de 50€</strong>.
           </p>
 
           <div className="rounded-2xl px-5 py-4 mb-7 inline-flex items-baseline gap-3" style={{ backgroundColor: C.blush }}>
@@ -67,7 +132,7 @@ export default function ReservarPlazaPage() {
           <Cta>Reservar la plaza · 35€</Cta>
 
           <p className="text-xs mt-4" style={{ color: C.muted }}>
-            Solo 12 personas por clase · Las clases empiezan en septiembre
+            Solo 12 personas por clase · Empezamos el martes 1 de septiembre
           </p>
         </header>
 
@@ -102,6 +167,42 @@ export default function ReservarPlazaPage() {
           </div>
         </section>
 
+        {/* ── Horarios: sin esto nadie reserva ── */}
+        <section className="mt-16">
+          <h2 className="text-2xl text-center mb-2" style={{ fontFamily: serif, color: C.burgundy }}>
+            Horarios del curso
+          </h2>
+          <p className="text-sm text-center mb-7" style={{ color: C.muted }}>
+            Mira si te encaja antes de reservar. Empezamos el <strong style={{ color: C.brown }}>martes 1 de septiembre</strong>.
+          </p>
+
+          {ninas.length > 0 && (
+            <>
+              <p className="text-xs uppercase tracking-widest font-semibold mb-3" style={{ color: C.burgundy, fontFamily: sans }}>
+                🩰 Ballet · niñas
+              </p>
+              <div className="flex flex-col gap-3 mb-7">
+                {ninas.map(d => <Horario key={d.id} nombre={d.nombre} filas={d.filas} />)}
+              </div>
+            </>
+          )}
+
+          {adultas.length > 0 && (
+            <>
+              <p className="text-xs uppercase tracking-widest font-semibold mb-3" style={{ color: C.burgundy, fontFamily: sans }}>
+                💪 Adultas · Barre y Pilates
+              </p>
+              <div className="flex flex-col gap-3">
+                {adultas.map(d => <Horario key={d.id} nombre={d.nombre} filas={d.filas} />)}
+              </div>
+            </>
+          )}
+
+          <p className="text-xs text-center mt-5" style={{ color: C.muted }}>
+            Eliges tu día y tu hora al reservar. Si dudas entre dos, escríbeme y lo vemos.
+          </p>
+        </section>
+
         {/* ── Cómo pagar ── */}
         <section className="mt-16">
           <h2 className="text-2xl text-center mb-7" style={{ fontFamily: serif, color: C.burgundy }}>
@@ -113,7 +214,7 @@ export default function ReservarPlazaPage() {
               <span className="text-2xl">💳</span>
               <div className="min-w-0">
                 <p className="font-semibold text-sm mb-0.5" style={{ color: C.dark, fontFamily: sans }}>Ahora, con tarjeta</p>
-                <p className="text-sm" style={{ color: C.brown }}>Dos minutos y tu plaza queda reservada. <a href="/" style={{ color: C.burgundy, fontWeight: 600 }}>Reservar →</a></p>
+                <p className="text-sm" style={{ color: C.brown }}>Eliges horario y en dos minutos tu plaza queda reservada. <a href="/" style={{ color: C.burgundy, fontWeight: 600 }}>Reservar →</a></p>
               </div>
             </div>
 
@@ -123,7 +224,7 @@ export default function ReservarPlazaPage() {
                 <div className="min-w-0">
                   <p className="font-semibold text-sm mb-0.5" style={{ color: C.dark, fontFamily: sans }}>Bizum</p>
                   <p className="text-sm" style={{ color: C.brown }}>
-                    Al <strong style={{ color: C.burgundy }}>{BIZUM}</strong> · pon el nombre en el concepto y te confirmo la plaza.
+                    Al <strong style={{ color: C.burgundy }}>{BIZUM}</strong> · pon el nombre y el horario que quieres en el concepto, y te confirmo la plaza.
                   </p>
                 </div>
               </div>
@@ -132,8 +233,11 @@ export default function ReservarPlazaPage() {
             <div className="rounded-2xl p-5 flex items-start gap-4" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
               <span className="text-2xl">💵</span>
               <div className="min-w-0">
-                <p className="font-semibold text-sm mb-0.5" style={{ color: C.dark, fontFamily: sans }}>Mañana, en efectivo</p>
-                <p className="text-sm" style={{ color: C.brown }}>En el estudio, de <strong>9:00 a 13:00</strong>. C/ Motilla del Palancar 34 bajo.</p>
+                <p className="font-semibold text-sm mb-0.5" style={{ color: C.dark, fontFamily: sans }}>Mañana sábado, en efectivo</p>
+                <p className="text-sm" style={{ color: C.brown }}>
+                  En el estudio, de <strong>9:00 a 13:00</strong>. Aunque esté dando clase, en recepción te atienden
+                  y te dejan la plaza reservada. C/ Motilla del Palancar 34 bajo.
+                </p>
               </div>
             </div>
           </div>
