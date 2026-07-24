@@ -2649,6 +2649,16 @@ export default function AdminDashboard() {
         <ul className="mt-auto space-y-1 border-t border-outline-variant pt-4 md:space-y-0.5">
           <li>
             <a
+              href="/reservar-plaza"
+              target="_blank"
+              className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 font-label-md text-label-md md:py-2.5 md:px-3 md:rounded-lg md:text-sm"
+            >
+              <Icon name="campaign" className="mr-3 md:mr-2.5 md:text-[18px]" />
+              Landing matrículas
+            </a>
+          </li>
+          <li>
+            <a
               href="/admin/preview-gracias"
               target="_blank"
               className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors duration-200 font-label-md text-label-md md:py-2.5 md:px-3 md:rounded-lg md:text-sm"
