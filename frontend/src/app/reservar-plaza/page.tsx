@@ -11,7 +11,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 export const metadata: Metadata = {
   title: "Reserva tu plaza para septiembre — Andrea Carrió Studio",
   description:
-    "Antes de irme de vacaciones te reservo tu plaza para septiembre: matrícula 35€ en vez de 50€ hasta el 31 de julio. Solo 12 personas por clase.",
+    "Reserva tu plaza para septiembre antes de vacaciones: matrícula 35€ en vez de 50€ hasta el 31 de julio. Solo 12 personas por clase.",
 };
 
 export const revalidate = 300;
@@ -76,11 +76,11 @@ export default async function ReservarPlazaPage() {
             Andrea Carrió Studio · Valencia
           </p>
           <h1 className="text-4xl sm:text-5xl leading-tight mb-5" style={{ fontFamily: serif, color: C.burgundy }}>
-            Me voy de vacaciones.<br />¿Te guardo la plaza?
+            Nos vamos de vacaciones.<br />¿Te guardamos la plaza?
           </h1>
           <p className="text-base sm:text-lg leading-relaxed mb-6" style={{ color: C.brown }}>
-            Empezamos el <strong style={{ color: C.dark }}>martes 1 de septiembre</strong>. Antes de irme te dejo
-            reservar tu sitio con la matrícula — <strong style={{ color: C.dark }}>hoy 35€ en vez de 50€</strong>.
+            Empezamos el <strong style={{ color: C.dark }}>martes 1 de septiembre</strong>. Reserva tu plaza con la
+            matrícula y déjala lista para la vuelta — <strong style={{ color: C.dark }}>hoy 35€ en vez de 50€</strong>.
           </p>
 
           <div className="max-w-sm mx-auto">
