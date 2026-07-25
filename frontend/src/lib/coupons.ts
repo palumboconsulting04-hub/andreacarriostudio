@@ -26,6 +26,15 @@ const COUPONS: Coupon[] = [
     label: "Matrícula de la 2ª gratis",
     avisoMinimo: "Este código es para apuntaros dos con el mismo email (por ejemplo, tu hija y tú). Añade la segunda inscripción y se aplica solo.",
   },
+  // Madre cuya hija YA está apuntada y que ahora se apunta ella sola (Barre/
+  // Pilates): se le regala su matrícula. Sin mínimo, porque va sola. Stripe cobra
+  // un mínimo de 0,50€, así que la matrícula queda prácticamente gratis.
+  {
+    code: "MAMAGRATIS",
+    descuento: 1, // 100% de la matrícula
+    minImporte: 0,
+    label: "Matrícula gratis",
+  },
 ];
 
 // Stripe rejects charges below €0.50.
