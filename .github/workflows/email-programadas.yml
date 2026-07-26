@@ -1,0 +1,25 @@
+name: Emails programados
+
+# Envía las campañas de email cuya hora programada ya ha llegado.
+# Corre cada 15 min (GitHub puede retrasarlo unos minutos bajo carga, así que un
+# correo programado sale dentro de ~15-20 min de la hora elegida).
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:   # lanzar a mano desde la pestaña "Actions"
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Enviar campañas programadas
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+        run: node tools/email/enviar-programadas.mjs

@@ -19,9 +19,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ contactos });
   }
 
-  const [resumen, campanas] = await Promise.all([
+  const [resumen, campanas, programadas] = await Promise.all([
     resumenSegmentos(),
     supabaseAdmin.from("email_campanas").select("*").order("created_at", { ascending: false }).limit(10),
+    supabaseAdmin.from("email_programadas")
+      .select("id, segmento, asunto, programado_para, estado, destinatarios")
+      .eq("estado", "pendiente").order("programado_para", { ascending: true }),
   ]);
-  return NextResponse.json({ ...resumen, campanas: campanas.data ?? [] });
+  const prog = (programadas.data ?? []).map((p) => ({
+    id: p.id, segmento: p.segmento, asunto: p.asunto, programado_para: p.programado_para,
+    destinatarios: Array.isArray(p.destinatarios) ? p.destinatarios.length : 0,
+  }));
+  return NextResponse.json({ ...resumen, campanas: campanas.data ?? [], programadas: prog });
 }

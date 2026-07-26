@@ -31,12 +31,17 @@ export default function EmailTool() {
   const [ctaOn, setCtaOn] = useState(false);
   const [ctaTexto, setCtaTexto] = useState("Reservar mi plaza");
   const [ctaUrl, setCtaUrl] = useState("https://reservas.andreacarriostudio.es/");
+  const [programadas, setProgramadas] = useState<{ id: string; segmento: string; asunto: string; programado_para: string; destinatarios: number }[]>([]);
+  const [modo, setModo] = useState<"ahora" | "programar">("ahora");
+  const [programarFecha, setProgramarFecha] = useState("");
+  const [programando, setProgramando] = useState(false);
 
   const cargar = () => {
     fetch("/api/admin/email-listas").then(r => r.json()).then(d => {
       setSegmentos(d.segmentos ?? []);
       setExcluidos(d.excluidos ?? 0);
       setCampanas(d.campanas ?? []);
+      setProgramadas(d.programadas ?? []);
       if (!sel && d.segmentos?.[0]) setSel(d.segmentos[0].id);
     }).catch(() => {});
   };
@@ -105,6 +110,30 @@ export default function EmailTool() {
     } catch {
       setError("Error de conexión.");
     } finally { setCargando(false); }
+  };
+
+  const programar = async () => {
+    if (programando) return;
+    if (!programarFecha) { setError("Elige la fecha y la hora del envío."); return; }
+    setProgramando(true); setMsg(""); setError("");
+    try {
+      const res = await fetch("/api/admin/email-programar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ segmento: sel, asunto, cuerpo, imagenUrl, cta: ctaOn ? { texto: ctaTexto, url: ctaUrl } : null, programadoPara: new Date(programarFecha).toISOString() }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error || "No se pudo programar."); return; }
+      setMsg(`✅ Programado para el ${new Date(programarFecha).toLocaleString("es-ES")} · ${d.destinatarios} destinatarias.`);
+      setAsunto(""); setCuerpo(""); setImagenUrl(""); setCtaOn(false); setProgramarFecha(""); setModo("ahora"); setConfirmar(false); cargar();
+    } catch {
+      setError("Error de conexión.");
+    } finally { setProgramando(false); }
+  };
+
+  const cancelarProgramada = async (id: string) => {
+    if (!window.confirm("¿Cancelar este envío programado?")) return;
+    const res = await fetch(`/api/admin/email-programar?id=${id}`, { method: "DELETE" });
+    if (res.ok) cargar();
   };
 
   const input = { border: `1.5px solid ${C.border}`, borderRadius: "12px", padding: "10px 14px", fontSize: "14px", color: C.dark, backgroundColor: "#fff", outline: "none", width: "100%" } as const;
@@ -201,7 +230,28 @@ export default function EmailTool() {
             </button>
           </div>
 
-          {!confirmar ? (
+          {/* Cuándo: enviar ahora o programar */}
+          <div className="flex gap-2">
+            {(["ahora", "programar"] as const).map(m => (
+              <button key={m} onClick={() => { setModo(m); setConfirmar(false); }}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold border"
+                style={{ borderColor: modo === m ? C.burgundy : C.border, backgroundColor: modo === m ? "#fff6f2" : "#fff", color: modo === m ? C.burgundy : C.muted }}>
+                {m === "ahora" ? "Enviar ahora" : "Programar"}
+              </button>
+            ))}
+          </div>
+
+          {modo === "programar" ? (
+            <div className="space-y-2">
+              <input type="datetime-local" value={programarFecha} onChange={e => setProgramarFecha(e.target.value)} style={input} />
+              <button onClick={programar} disabled={programando || !asunto || !cuerpo || !programarFecha}
+                className="w-full py-3 rounded-xl text-sm font-bold uppercase tracking-wider disabled:opacity-40"
+                style={{ backgroundColor: C.burgundy, color: C.cream }}>
+                {programando ? "Programando…" : `Programar envío · ${segActual.total} personas`}
+              </button>
+              <p className="text-[11px]" style={{ color: C.muted }}>Sale a la hora elegida (con un margen de unos minutos). Antes de enviarlo se vuelve a quitar a quien haya comprado o se haya dado de baja.</p>
+            </div>
+          ) : !confirmar ? (
             <button onClick={() => setConfirmar(true)} disabled={cargando || !asunto || !cuerpo}
               className="w-full py-3 rounded-xl text-sm font-bold uppercase tracking-wider disabled:opacity-40"
               style={{ backgroundColor: C.burgundy, color: C.cream }}>
@@ -223,6 +273,23 @@ export default function EmailTool() {
 
           {msg && <p className="text-sm" style={{ color: "#1f7a3d" }}>{msg}</p>}
           {error && <p className="text-sm" style={{ color: "#b71c1c" }}>{error}</p>}
+        </div>
+      )}
+
+      {programadas.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: C.muted }}>Programados</p>
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: C.border }}>
+            {programadas.map(p => (
+              <div key={p.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs border-b last:border-b-0" style={{ borderColor: "#f0e4de", backgroundColor: "#fff" }}>
+                <div className="min-w-0">
+                  <p className="font-semibold truncate" style={{ color: C.dark }}>{p.asunto}</p>
+                  <p style={{ color: C.muted }}>🕒 {new Date(p.programado_para).toLocaleString("es-ES")} · {p.destinatarios} destinatarias</p>
+                </div>
+                <button onClick={() => cancelarProgramada(p.id)} className="text-xs font-semibold shrink-0" style={{ color: "#b71c1c" }}>Cancelar</button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
