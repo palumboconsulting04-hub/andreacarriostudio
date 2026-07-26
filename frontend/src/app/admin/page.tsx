@@ -946,6 +946,7 @@ export default function AdminDashboard() {
   const [refMadrinas, setRefMadrinas] = useState<MadrinaRef[]>([]);
   const [refResumen, setRefResumen] = useState<ResumenRef | null>(null);
   const [refOtorgando, setRefOtorgando] = useState<string | null>(null); // `${codigo}:${tipo}` en curso
+  const [refDrill, setRefDrill] = useState<null | "amigas" | "madrinas">(null); // desglose al pulsar una tarjeta
   const cargarReferidos = () => {
     fetch(`/api/admin/referidos?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
@@ -5929,17 +5930,24 @@ export default function AdminDashboard() {
                       </button>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      {[
-                        { l: "Amigas traídas", v: `${refResumen.amigasTraidas}`, sub: `${refResumen.amigasBono} bono · ${refResumen.amigasMensualidad} cuota` },
+                      {([
+                        { l: "Amigas traídas", v: `${refResumen.amigasTraidas}`, sub: `${refResumen.amigasBono} bono · ${refResumen.amigasMensualidad} cuota`, drill: "amigas" as const },
                         { l: "Ingresos (bonos)", v: `${refResumen.ingresosBonos}€`, sub: "traídos por referidas" },
                         { l: "Premios pagados", v: `${refResumen.premiosPagados}€`, sub: "cuota / mes gratis" },
-                        { l: "Embajadoras", v: `${refResumen.embajadoras}`, sub: `${refResumen.madrinasActivas} madrinas activas` },
-                      ].map(k => (
-                        <div key={k.l} className="rounded-xl p-3 text-center" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
+                        { l: "Embajadoras", v: `${refResumen.embajadoras}`, sub: `${refResumen.madrinasActivas} madrinas activas`, drill: "madrinas" as const },
+                      ] as { l: string; v: string; sub: string; drill?: "amigas" | "madrinas" }[]).map(k => (
+                        <button
+                          key={k.l}
+                          type="button"
+                          onClick={k.drill ? () => { setRefDrill(k.drill!); setActiveSection("Referidos"); } : undefined}
+                          disabled={!k.drill}
+                          className="rounded-xl p-3 text-center disabled:cursor-default"
+                          style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9", cursor: k.drill ? "pointer" : "default" }}
+                        >
                           <p className="text-xl font-bold" style={{ color: "#7d2b13" }}>{k.v}</p>
-                          <p className="text-[11px] font-semibold" style={{ color: "#56423d" }}>{k.l}</p>
+                          <p className="text-[11px] font-semibold" style={{ color: "#56423d" }}>{k.l}{k.drill && <span style={{ color: "#bcb0ab" }}> ›</span>}</p>
                           <p className="text-[10px]" style={{ color: "#bcb0ab" }}>{k.sub}</p>
-                        </div>
+                        </button>
                       ))}
                     </div>
                     <div className="rounded-xl p-3 mt-2.5 flex items-center justify-center gap-2 flex-wrap text-center" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
@@ -6550,12 +6558,17 @@ export default function AdminDashboard() {
               if (n >= 5) return { l: "Embajadora", emoji: "👑", bg: "#fff8e1", fg: "#b8860b" };
               return { l: "Madrina", emoji: "🤎", bg: "#f3e9e4", fg: "#7d2b13" };
             };
-            const cards = refResumen ? [
+            const cards: { l: string; v: number; drill?: "amigas" | "madrinas" }[] = refResumen ? [
               { l: "Códigos emitidos", v: refResumen.codigosEmitidos },
-              { l: "Amigas traídas", v: refResumen.amigasTraidas },
-              { l: "Madrinas activas", v: refResumen.madrinasActivas },
+              { l: "Amigas traídas", v: refResumen.amigasTraidas, drill: "amigas" },
+              { l: "Madrinas activas", v: refResumen.madrinasActivas, drill: "madrinas" },
               { l: "Embajadoras", v: refResumen.embajadoras },
             ] : [];
+            // Listas para el desglose al pulsar una tarjeta.
+            const amigasFlat = refMadrinas
+              .flatMap((m) => m.amigas.map((a) => ({ ...a, madrina: m.nombre || m.email, codigo: m.codigo })))
+              .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+            const madrinasActivas = refMadrinas.filter((m) => m.total > 0);
             return (
               <section className="space-y-5">
                 <div>
@@ -6565,12 +6578,75 @@ export default function AdminDashboard() {
 
                 {cards.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {cards.map(k => (
-                      <div key={k.l} className="rounded-2xl p-4 text-center" style={{ backgroundColor: "#fff", border: "1px solid #dcc1b9" }}>
-                        <p className="text-2xl font-bold" style={{ color: "#7d2b13" }}>{k.v}</p>
-                        <p className="text-xs" style={{ color: "#89726c" }}>{k.l}</p>
+                    {cards.map(k => {
+                      const activa = k.drill && refDrill === k.drill;
+                      const clicable = !!k.drill;
+                      return (
+                        <button
+                          key={k.l}
+                          type="button"
+                          onClick={clicable ? () => setRefDrill(activa ? null : k.drill!) : undefined}
+                          disabled={!clicable}
+                          className="rounded-2xl p-4 text-center transition-shadow disabled:cursor-default"
+                          style={{ backgroundColor: activa ? "#fff2ec" : "#fff", border: `1px solid ${activa ? "#7d2b13" : "#dcc1b9"}`, cursor: clicable ? "pointer" : "default" }}
+                        >
+                          <p className="text-2xl font-bold" style={{ color: "#7d2b13" }}>{k.v}</p>
+                          <p className="text-xs" style={{ color: "#89726c" }}>{k.l}{clicable && <span className="ml-0.5" style={{ color: "#bcb0ab" }}>{activa ? " ▲" : " ▾"}</span>}</p>
+                          {clicable && <p className="text-[10px] mt-0.5" style={{ color: "#bcb0ab" }}>ver quién</p>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Desglose al pulsar "Amigas traídas" o "Madrinas activas" */}
+                {refDrill === "amigas" && (
+                  <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
+                    <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#fff2ec", borderBottom: "1px solid #dcc1b9" }}>
+                      <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#7d2b13" }}>Amigas traídas · {amigasFlat.length}</p>
+                      <button onClick={() => setRefDrill(null)} className="text-[11px] font-semibold" style={{ color: "#89726c" }}>Cerrar ✕</button>
+                    </div>
+                    {amigasFlat.length === 0 ? (
+                      <p className="px-4 py-4 text-sm" style={{ color: "#bcb0ab" }}>Aún no ha comprado ninguna amiga.</p>
+                    ) : amigasFlat.map((a, i) => (
+                      <div key={`${a.codigo}-${a.email}-${i}`} className="px-4 py-2.5 flex items-center justify-between gap-2" style={{ borderTop: i ? "1px solid #f7ece7" : "none", backgroundColor: i % 2 ? "#fffbf9" : "#fff" }}>
+                        <div className="min-w-0">
+                          <p className="text-sm truncate" style={{ color: "#25190f" }}>{a.nombre || a.email}</p>
+                          <p className="text-xs truncate" style={{ color: "#89726c" }}>{a.email}</p>
+                          <p className="text-[11px] truncate" style={{ color: "#bcb0ab" }}>traída por <strong style={{ color: "#7d2b13" }}>{a.madrina}</strong></p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: a.via === "bono" ? "#e8f5e9" : "#e3f2fd", color: a.via === "bono" ? "#2e7d32" : "#1565c0" }}>{a.via === "bono" ? "Bono" : "Mensualidad"}</span>
+                          <span className="text-[11px]" style={{ color: "#bcb0ab" }}>{fFecha(a.fecha)}</span>
+                        </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {refDrill === "madrinas" && (
+                  <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "#dcc1b9" }}>
+                    <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#fff2ec", borderBottom: "1px solid #dcc1b9" }}>
+                      <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#7d2b13" }}>Madrinas activas · {madrinasActivas.length}</p>
+                      <button onClick={() => setRefDrill(null)} className="text-[11px] font-semibold" style={{ color: "#89726c" }}>Cerrar ✕</button>
+                    </div>
+                    {madrinasActivas.length === 0 ? (
+                      <p className="px-4 py-4 text-sm" style={{ color: "#bcb0ab" }}>Todavía ninguna madrina ha traído amigas.</p>
+                    ) : madrinasActivas.map((m, i) => {
+                      const nv = nivel(m.total);
+                      return (
+                        <div key={m.codigo} className="px-4 py-2.5 flex items-center justify-between gap-2" style={{ borderTop: i ? "1px solid #f7ece7" : "none", backgroundColor: i % 2 ? "#fffbf9" : "#fff" }}>
+                          <div className="min-w-0">
+                            <p className="text-sm truncate" style={{ color: "#25190f" }}>{m.nombre || m.email}</p>
+                            <p className="text-xs truncate" style={{ color: "#89726c" }}>código <strong>{m.codigo}</strong>{m.email ? ` · ${m.email}` : ""}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-sm font-bold" style={{ color: "#7d2b13" }}>{m.total} {m.total === 1 ? "amiga" : "amigas"}</span>
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: nv.bg, color: nv.fg }}>{nv.emoji} {nv.l}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
