@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import type Stripe from "stripe";
-import { stripe, BONO_BILLING_ANCHOR, MATRICULA_PI_TIPO } from "@/lib/stripe";
+import { stripe, BONO_BILLING_ANCHOR, MATRICULA_PI_TIPO, ivaDe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { procesarBonoPagado, descuentoCuotaAmiga, premiarMadrina, esClienteNueva, revertirPremiosReferido } from "@/lib/bonos-server";
 import { getCodigoReferido } from "@/lib/referidos";
@@ -209,7 +209,7 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
 
   // Precio recurrente (Stripe) de cada plan inscrito + su cuota en € (para poder
   // cobrar el mes en curso, entero o a mitad, en altas a mitad de curso).
-  const items: { price: string }[] = [];
+  const items: { price: string; tax_rates: string[] }[] = [];
   let cuotaCent = 0;
   for (const r of rows) {
     const { data: plan } = await supabaseAdmin
@@ -221,7 +221,8 @@ async function crearSuscripcionTrasMatricula(pi: Stripe.PaymentIntent) {
     if (!plan?.stripe_price_id) {
       throw new Error(`Plan sin stripe_price_id: ${r.piano_id}/${r.disciplina_id}`);
     }
-    items.push({ price: plan.stripe_price_id });
+    // IVA por disciplina (21% adultas, exento niñas). Precio con IVA incluido.
+    items.push({ price: plan.stripe_price_id, tax_rates: [ivaDe(r.disciplina_id)] });
     cuotaCent += Math.round((plan.prezzo ?? 0) * 100);
   }
 

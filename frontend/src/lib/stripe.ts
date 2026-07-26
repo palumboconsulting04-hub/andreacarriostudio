@@ -18,3 +18,12 @@ export const MATRICULA_PI_TIPO = "matricula-bono";
 // se puede por API). El IVA se cuadra aparte con la asesora.
 export const FOOTER_FISCAL =
   "Andrea Carrió Caselles — NIF 53947178B\nC/ Motilla del Palancar 34 bajo, 46019 Valencia (España)";
+
+// IVA de las facturas (tipos creados en Stripe, precio con IVA incluido):
+//  - Barre / Pilates (adultas) → 21%.
+//  - Ballet niñas → exento.
+export const TAX_IVA_21 = "txr_1TxWOnC2EhICsmIsYXEKLmfH";
+export const TAX_IVA_EXENTO = "txr_1TxWOnC2EhICsmIslQfQcYmH";
+const DISCIPLINAS_NINAS = ["pre-ballet", "ballet-i", "ballet-ii"];
+export const ivaDe = (disciplinaId: string): string =>
+  DISCIPLINAS_NINAS.includes(disciplinaId) ? TAX_IVA_EXENTO : TAX_IVA_21;
