@@ -10,6 +10,7 @@ import Paso3Horarios from "@/components/inscripcion/Paso3Horarios";
 import Paso4Pago from "@/components/inscripcion/Paso4Pago";
 import Paso4CrossSell from "@/components/inscripcion/Paso4CrossSell";
 import Paso5Gracias from "@/components/inscripcion/Paso5Gracias";
+import CuentaAtras from "@/components/inscripcion/CuentaAtras";
 import FooterLegal from "@/components/FooterLegal";
 import type { InscripcionState, BozzaIscrizione, Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId } from "@/components/inscripcion/types";
 import { fetchDiscipline, fetchPiani, fetchOrari } from "@/lib/queries";
@@ -234,6 +235,12 @@ export default function Home() {
 
 
         <main className="flex-1 min-w-0 py-8">
+          {/* Reloj discreto en los pasos intermedios (no en pago ni gracias). */}
+          {!cargando && paso <= 4 && (
+            <div className="max-w-md mx-auto px-4 sm:px-0">
+              <CuentaAtras variant="barra" />
+            </div>
+          )}
           {cargando && (
             <div className="flex items-center justify-center h-64">
               <div

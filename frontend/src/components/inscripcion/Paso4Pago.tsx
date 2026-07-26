@@ -7,6 +7,8 @@ import { findCoupon, applyCoupon, couponAplicable, couponEtiqueta, type Coupon }
 import type { InscripcionState, MetodoPago, BozzaIscrizione } from "./types";
 import type { InscripcionEmailData } from "@/app/api/send-confirmation/route";
 import { fbTrack, getCookie } from "@/lib/meta";
+import CuentaAtras from "./CuentaAtras";
+import { MATRICULA_OFERTA_HASTA } from "@/lib/oferta";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -203,6 +205,8 @@ function StripePaymentFase({
 
           {error && <p className="text-xs text-red-600">{error}</p>}
 
+          {matriculaOferta && <div className="mb-1"><CuentaAtras variant="pago" /></div>}
+
           <button
             onClick={handlePagar}
             disabled={!stripe || !elements || pagando}
@@ -346,7 +350,6 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
   const bozzeNinas = bozze.map((b, i) => ({ bozza: b, idx: i })).filter(({ bozza }) => bozza.esNinas);
   const totalMensual = bozze.reduce((s, b) => s + b.planPrecio, 0);
 
-  const MATRICULA_OFERTA_HASTA = new Date("2026-07-31T23:59:59");
   const matriculaPrecio = new Date() <= MATRICULA_OFERTA_HASTA ? 35 : 50;
   const matriculaOferta = new Date() <= MATRICULA_OFERTA_HASTA;
 
@@ -755,6 +758,8 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
             </label>
 
             {error && <p className="text-xs text-red-600 text-center mb-3">{error}</p>}
+
+            {matriculaOferta && <div className="mb-3"><CuentaAtras variant="pago" /></div>}
 
             <button
               onClick={() => handleConfirmar()}
