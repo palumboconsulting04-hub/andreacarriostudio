@@ -16,14 +16,27 @@ async function isAdmin(): Promise<boolean> {
 
 const esc = (s: string) => s.replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]!));
 
+// Solo dejamos pasar URLs http(s) (evita javascript: y demás en imagen / CTA).
+const esUrlSegura = (u: string) => /^https?:\/\//i.test((u || "").trim());
+
+type ExtraEmail = { imagenUrl?: string; cta?: { texto: string; url: string } | null };
+
 // Monta el email con la identidad del estudio y el enlace de baja obligatorio.
-function plantilla(nombre: string, cuerpo: string, urlBaja: string) {
+function plantilla(nombre: string, cuerpo: string, urlBaja: string, extra: ExtraEmail = {}) {
   const saludo = nombre ? `¡Hola ${esc(nombre.split(" ")[0])}!` : "¡Hola!";
   const parrafos = cuerpo.split(/\n{2,}/).map(p => `<p style="margin:0 0 16px;line-height:1.65;">${esc(p).replace(/\n/g, "<br/>")}</p>`).join("");
+  const imagen = extra.imagenUrl && esUrlSegura(extra.imagenUrl)
+    ? `<img src="${extra.imagenUrl}" alt="" style="width:100%;max-width:512px;border-radius:14px;display:block;margin:0 0 22px;" />`
+    : "";
+  const cta = extra.cta && extra.cta.texto && esUrlSegura(extra.cta.url)
+    ? `<div style="text-align:center;margin:26px 0 4px;"><a href="${extra.cta.url}" style="display:inline-block;background:#7d2b13;color:#fff8f5;text-decoration:none;font-size:15px;font-weight:700;padding:14px 34px;border-radius:9999px;">${esc(extra.cta.texto)} →</a></div>`
+    : "";
   return `<div style="font-family:Arial,Helvetica,sans-serif;color:#25190f;max-width:560px;margin:0 auto;padding:28px 24px;background:#fff8f5;">
+  ${imagen}
   <p style="font-size:13px;letter-spacing:2px;color:#7d2b13;font-weight:700;margin:0 0 20px;">ANDREA CARRIÓ STUDIO</p>
   <p style="margin:0 0 16px;font-size:16px;font-weight:600;">${saludo}</p>
   <div style="font-size:15px;color:#3d2b23;">${parrafos}</div>
+  ${cta}
   <p style="margin:24px 0 0;font-size:15px;color:#3d2b23;line-height:1.6;">Un abrazo,<br/><strong style="color:#7d2b13;">Andrea</strong> 🤎</p>
   <div style="margin-top:28px;padding-top:18px;border-top:1px solid #dcc1b9;font-size:12px;color:#89726c;line-height:1.6;">
     Andrea Carrió Studio · Danza &amp; Pilates · C/ Motilla del Palancar 34 bajo, 46019 Valencia<br/>
@@ -44,6 +57,13 @@ export async function POST(req: NextRequest) {
   const prueba = !!body?.prueba;
   const emailPrueba = (body?.emailPrueba ?? "").toString().trim();
 
+  // Extras opcionales del cuerpo: imagen (URL de nuestro bucket) y botón CTA.
+  const imagenUrl = (body?.imagenUrl ?? "").toString().trim();
+  const ctaTexto = (body?.cta?.texto ?? "").toString().trim();
+  const ctaUrl = (body?.cta?.url ?? "").toString().trim();
+  const cta = ctaTexto && ctaUrl ? { texto: ctaTexto, url: ctaUrl } : null;
+  const extra = { imagenUrl, cta };
+
   if (!asunto || !cuerpo) return NextResponse.json({ error: "Falta el asunto o el texto." }, { status: 400 });
   if (!["adultas", "ninas", "madres-crosssell"].includes(segmento)) {
     return NextResponse.json({ error: "Segmento no válido." }, { status: 400 });
@@ -61,7 +81,7 @@ export async function POST(req: NextRequest) {
     if (!emailPrueba) return NextResponse.json({ error: "Escribe el email de prueba." }, { status: 400 });
     const { error } = await resend.emails.send({
       from, replyTo, to: emailPrueba, subject: `[PRUEBA] ${asunto}`,
-      html: plantilla("", cuerpo, enlaceBaja(emailPrueba, base)),
+      html: plantilla("", cuerpo, enlaceBaja(emailPrueba, base), extra),
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
     return NextResponse.json({ ok: true, prueba: true });
@@ -86,7 +106,7 @@ export async function POST(req: NextRequest) {
       try {
         const { error } = await resend.emails.send({
           from, replyTo, to: c.email, subject: asunto,
-          html: plantilla(c.nombre, cuerpo, enlaceBaja(c.email, base)),
+          html: plantilla(c.nombre, cuerpo, enlaceBaja(c.email, base), extra),
           headers: { "List-Unsubscribe": `<${enlaceBaja(c.email, base)}>` },
         });
         return { email: c.email, ok: !error, error: error?.message ?? null };

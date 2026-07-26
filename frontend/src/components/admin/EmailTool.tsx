@@ -26,6 +26,11 @@ export default function EmailTool() {
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
   const [confirmar, setConfirmar] = useState(false);
+  const [imagenUrl, setImagenUrl] = useState("");
+  const [subiendoImg, setSubiendoImg] = useState(false);
+  const [ctaOn, setCtaOn] = useState(false);
+  const [ctaTexto, setCtaTexto] = useState("Reservar mi plaza");
+  const [ctaUrl, setCtaUrl] = useState("https://reservas.andreacarriostudio.es/");
 
   const cargar = () => {
     fetch("/api/admin/email-listas").then(r => r.json()).then(d => {
@@ -46,20 +51,55 @@ export default function EmailTool() {
     setVerContactos(true);
   };
 
+  // Sube una imagen: la reescala en el navegador (máx. 900px, JPEG) para que el
+  // correo pese poco, y guarda la URL pública que devuelve el servidor.
+  const subirImagen = async (file: File) => {
+    if (!file || subiendoImg) return;
+    setSubiendoImg(true); setError("");
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => {
+          const img = new window.Image();
+          img.onload = () => {
+            const maxW = 900;
+            const scale = Math.min(1, maxW / img.width);
+            const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+            const c = document.createElement("canvas"); c.width = w; c.height = h;
+            c.getContext("2d")!.drawImage(img, 0, 0, w, h);
+            resolve(c.toDataURL("image/jpeg", 0.82));
+          };
+          img.onerror = () => reject(new Error("img"));
+          img.src = fr.result as string;
+        };
+        fr.onerror = () => reject(new Error("read"));
+        fr.readAsDataURL(file);
+      });
+      const r = await fetch("/api/admin/email-imagen", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imagen: dataUrl }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setError(d.error || "No se pudo subir la imagen."); return; }
+      setImagenUrl(d.url);
+    } catch { setError("No se pudo procesar la imagen."); }
+    finally { setSubiendoImg(false); }
+  };
+
   const enviar = async (prueba: boolean) => {
     if (cargando) return;
     setCargando(true); setMsg(""); setError("");
     try {
       const res = await fetch("/api/admin/email-enviar", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ segmento: sel, asunto, cuerpo, prueba, emailPrueba }),
+        body: JSON.stringify({ segmento: sel, asunto, cuerpo, prueba, emailPrueba, imagenUrl, cta: ctaOn ? { texto: ctaTexto, url: ctaUrl } : null }),
       });
       const d = await res.json();
       if (!res.ok) { setError(d.error || "No se pudo enviar."); return; }
       if (prueba) setMsg(`Prueba enviada a ${emailPrueba}. Míralo antes de mandarlo a todas.`);
       else {
         setMsg(`✅ Enviado a ${d.enviados} personas${d.fallidos ? ` · ${d.fallidos} fallidos` : ""}.`);
-        setAsunto(""); setCuerpo(""); cargar();
+        setAsunto(""); setCuerpo(""); setImagenUrl(""); setCtaOn(false); cargar();
       }
       setConfirmar(false);
     } catch {
@@ -116,6 +156,41 @@ export default function EmailTool() {
           <textarea value={cuerpo} onChange={e => setCuerpo(e.target.value)} rows={8}
             placeholder={"Escribe aquí tu mensaje.\n\nDeja una línea en blanco entre párrafos.\nSe añade solo el saludo con su nombre, tu firma y el enlace de baja."}
             style={{ ...input, resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }} />
+
+          {/* Imagen opcional (se muestra arriba del correo) */}
+          <div className="rounded-xl border p-3" style={{ borderColor: C.border }}>
+            {imagenUrl ? (
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imagenUrl} alt="" className="rounded-lg shrink-0" style={{ width: 56, height: 56, objectFit: "cover" }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: C.dark }}>Imagen añadida</p>
+                  <p className="text-xs" style={{ color: C.muted }}>Se verá arriba del correo.</p>
+                </div>
+                <button onClick={() => setImagenUrl("")} className="text-xs font-semibold shrink-0" style={{ color: "#b71c1c" }}>Quitar</button>
+              </div>
+            ) : (
+              <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold" style={{ color: C.burgundy }}>
+                <span>{subiendoImg ? "Subiendo imagen…" : "📷 Añadir una imagen"}</span>
+                <input type="file" accept="image/*" className="hidden" disabled={subiendoImg}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) subirImagen(f); e.currentTarget.value = ""; }} />
+              </label>
+            )}
+          </div>
+
+          {/* Botón para reservar (CTA opcional) */}
+          <div className="rounded-xl border p-3 space-y-2" style={{ borderColor: C.border }}>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold" style={{ color: C.dark }}>
+              <input type="checkbox" checked={ctaOn} onChange={e => setCtaOn(e.target.checked)} className="accent-[#7d2b13]" />
+              Añadir botón para reservar
+            </label>
+            {ctaOn && (
+              <div className="grid sm:grid-cols-2 gap-2">
+                <input value={ctaTexto} onChange={e => setCtaTexto(e.target.value)} placeholder="Texto del botón" style={input} />
+                <input value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} placeholder="https://reservas.andreacarriostudio.es/" style={input} />
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
             <input value={emailPrueba} onChange={e => setEmailPrueba(e.target.value)} placeholder="tu@email.com" style={{ ...input, maxWidth: 240 }} />
