@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, MATRICULA_PI_TIPO } from "@/lib/stripe";
+import { stripe, MATRICULA_PI_TIPO, FOOTER_FISCAL } from "@/lib/stripe";
 import { findCoupon, applyCoupon } from "@/lib/coupons";
 
 // Crea (o reutiliza) el cliente de Stripe y un PaymentIntent para cobrar la
@@ -34,10 +34,12 @@ export async function POST(req: NextRequest) {
     const coupon = couponCode ? findCoupon(couponCode) : null;
     const matriculaFinal = applyCoupon(matriculaEur, coupon);
 
-    // Reutiliza el cliente si ya existe con ese email; si no, créalo.
+    // Reutiliza el cliente si ya existe con ese email; si no, créalo. En ambos
+    // casos, deja el pie fiscal (NIF + dirección) para que salga en sus facturas.
     const existing = await stripe.customers.list({ email: emailNorm, limit: 1 });
     const customer = existing.data[0]
-      ?? (await stripe.customers.create({ email: emailNorm, name: nombre || undefined }));
+      ? await stripe.customers.update(existing.data[0].id, { invoice_settings: { footer: FOOTER_FISCAL } })
+      : await stripe.customers.create({ email: emailNorm, name: nombre || undefined, invoice_settings: { footer: FOOTER_FISCAL } });
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(matriculaFinal * 100),

@@ -12,3 +12,9 @@ export const BONO_BILLING_ANCHOR = Math.floor(
 // Marca en metadata para distinguir el pago de matrícula (que dispara la creación
 // de la suscripción) de cualquier otro PaymentIntent.
 export const MATRICULA_PI_TIPO = "matricula-bono";
+
+// Datos fiscales del emisor para el pie de las facturas de Stripe (los ajustes de
+// la cuenta solo se editan en el panel de Stripe; esto los pone por cliente y sí
+// se puede por API). El IVA se cuadra aparte con la asesora.
+export const FOOTER_FISCAL =
+  "Andrea Carrió Caselles — NIF 53947178B\nC/ Motilla del Palancar 34 bajo, 46019 Valencia (España)";
