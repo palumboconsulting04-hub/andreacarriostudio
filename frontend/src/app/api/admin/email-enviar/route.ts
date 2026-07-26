@@ -24,6 +24,7 @@ function plantilla(nombre: string, cuerpo: string, urlBaja: string) {
   <p style="font-size:13px;letter-spacing:2px;color:#7d2b13;font-weight:700;margin:0 0 20px;">ANDREA CARRIÓ STUDIO</p>
   <p style="margin:0 0 16px;font-size:16px;font-weight:600;">${saludo}</p>
   <div style="font-size:15px;color:#3d2b23;">${parrafos}</div>
+  <p style="margin:24px 0 0;font-size:15px;color:#3d2b23;line-height:1.6;">Un abrazo,<br/><strong style="color:#7d2b13;">Andrea</strong> 🤎</p>
   <div style="margin-top:28px;padding-top:18px;border-top:1px solid #dcc1b9;font-size:12px;color:#89726c;line-height:1.6;">
     Andrea Carrió Studio · Danza &amp; Pilates · C/ Motilla del Palancar 34 bajo, 46019 Valencia<br/>
     ¿No quieres recibir más correos? <a href="${urlBaja}" style="color:#7d2b13;">Darme de baja</a>
@@ -48,14 +49,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Segmento no válido." }, { status: 400 });
   }
 
-  const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
+  // Remitente con nombre visible ("Andrea Carrió Studio") y responder-a su Gmail,
+  // para que si una madre contesta, le llegue a Andrea (nada de "noreply" mudo).
+  const fromEmail = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
+  const from = fromEmail.includes("<") ? fromEmail : `Andrea Carrió Studio <${fromEmail}>`;
+  const replyTo = "andreacarriostudio@gmail.com";
   const base = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
 
   // Prueba: un solo correo, sin registrar campaña.
   if (prueba) {
     if (!emailPrueba) return NextResponse.json({ error: "Escribe el email de prueba." }, { status: 400 });
     const { error } = await resend.emails.send({
-      from, to: emailPrueba, subject: `[PRUEBA] ${asunto}`,
+      from, replyTo, to: emailPrueba, subject: `[PRUEBA] ${asunto}`,
       html: plantilla("", cuerpo, enlaceBaja(emailPrueba, base)),
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
@@ -80,7 +85,7 @@ export async function POST(req: NextRequest) {
     const res = await Promise.all(lote.map(async (c) => {
       try {
         const { error } = await resend.emails.send({
-          from, to: c.email, subject: asunto,
+          from, replyTo, to: c.email, subject: asunto,
           html: plantilla(c.nombre, cuerpo, enlaceBaja(c.email, base)),
           headers: { "List-Unsubscribe": `<${enlaceBaja(c.email, base)}>` },
         });
