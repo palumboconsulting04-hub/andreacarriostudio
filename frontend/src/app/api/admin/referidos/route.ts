@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { ESTADOS_AMIGA_PAGADA } from "@/lib/referidos";
 
 async function isAdmin(): Promise<boolean> {
   const session = (await cookies()).get("admin_session");
@@ -24,12 +25,16 @@ export async function GET() {
 
   const [codigosRes, bonosRes, iscrRes, mensualRes, premiosRes, visitasRes] = await Promise.all([
     supabaseAdmin.from("referidos_codigo").select("codigo, email, nombre"),
+    // Una amiga solo cuenta cuando COMPRA: bonos no reembolsados e inscripciones
+    // pagadas. Las inscripciones en "attesa" (llegó al pago y no pagó) no cuentan.
     supabaseAdmin.from("bonos")
       .select("nombre, email, referido_por, created_at, estado, precio_pagado")
-      .not("referido_por", "is", null),
+      .not("referido_por", "is", null)
+      .neq("estado", "reembolsado"),
     supabaseAdmin.from("iscrizioni")
       .select("nome, cognome, email, referido_por, created_at, stato")
-      .not("referido_por", "is", null),
+      .not("referido_por", "is", null)
+      .in("stato", ESTADOS_AMIGA_PAGADA),
     // Madrinas que pagan mensualidad (tienen suscripción/cliente en Stripe).
     supabaseAdmin.from("iscrizioni")
       .select("email, stripe_customer_id")

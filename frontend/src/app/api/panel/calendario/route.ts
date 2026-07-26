@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { emailDeSesion } from "@/lib/panel-auth";
 import { generarClases, clasesDeMensualidad } from "@/lib/calendario";
-import { getCodigoReferido } from "@/lib/referidos";
+import { getCodigoReferido, ESTADOS_AMIGA_PAGADA } from "@/lib/referidos";
 
 type BonoRow = { id: string; disciplina_id: string; nombre: string; creditos_restantes: number; creditos_totales: number; caduca: string; valido_desde: string | null; estado: string };
 
@@ -74,8 +74,9 @@ export async function GET() {
   if (codigo) {
     try {
       const [aB, aI, pr] = await Promise.all([
-        supabaseAdmin.from("bonos").select("email").eq("referido_por", codigo),
-        supabaseAdmin.from("iscrizioni").select("email").eq("referido_por", codigo),
+        // Solo compras reales: bonos no reembolsados e inscripciones pagadas.
+        supabaseAdmin.from("bonos").select("email").eq("referido_por", codigo).neq("estado", "reembolsado"),
+        supabaseAdmin.from("iscrizioni").select("email").eq("referido_por", codigo).in("stato", ESTADOS_AMIGA_PAGADA),
         supabaseAdmin.from("premios_referido").select("detalle").eq("madrina_codigo", codigo).neq("tipo", "aviso_embajadora"),
       ]);
       totalAmigas = new Set([

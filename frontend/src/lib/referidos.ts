@@ -3,6 +3,12 @@ import { crearToken } from "@/lib/panel-auth";
 
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://reservas.andreacarriostudio.es";
 
+// Una amiga SOLO cuenta para la madrina cuando su compra está pagada. Las
+// inscripciones se guardan en "attesa" antes de pagar, así que se excluyen del
+// recuento (tanto en el panel como en el admin). Compartir el enlace no suma nada:
+// solo suma cuando la amiga entra por el enlace y COMPRA.
+export const ESTADOS_AMIGA_PAGADA: string[] = ["pagato", "pagado", "activa", "matricula_pagada"];
+
 // Enlace mágico a /invita: abre el código de la alumna sin pedirle login (token
 // firmado del email, válido 1 año). Para meterlo en los emails.
 export function enlaceInvita(email: string): string {

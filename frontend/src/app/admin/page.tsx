@@ -6560,7 +6560,7 @@ export default function AdminDashboard() {
               <section className="space-y-5">
                 <div>
                   <h3 className="font-headline-md text-headline-md text-primary">Referidos · Trae a tu amiga</h3>
-                  <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Quién ha traído a quién y qué premio le toca a cada madrina.</p>
+                  <p className="text-sm mt-0.5" style={{ color: "#89726c" }}>Quién ha traído a quién y qué premio le toca a cada madrina. Una amiga cuenta <strong>solo cuando compra</strong> (bono o mensualidad pagada); compartir el enlace y las visitas <strong>no cuentan</strong>.</p>
                 </div>
 
                 {cards.length > 0 && (
