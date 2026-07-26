@@ -569,6 +569,11 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
         </button>
       </div>
 
+      {/* Reloj fino arriba, como en los pasos anteriores (no cerca del botón). */}
+      <div className="max-w-md mx-auto mb-6">
+        <CuentaAtras variant="barra" />
+      </div>
+
       {madrinaRef && (
         <div className="rounded-2xl px-4 py-3 mb-6 text-center max-w-md" style={{ backgroundColor: "#fff6f2", border: "1px solid #7d2b13" }}>
           <p className="text-sm font-semibold" style={{ color: "#7d2b13" }}>
@@ -758,8 +763,6 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
             </label>
 
             {error && <p className="text-xs text-red-600 text-center mb-3">{error}</p>}
-
-            {matriculaOferta && <div className="mb-3"><CuentaAtras variant="pago" /></div>}
 
             <button
               onClick={() => handleConfirmar()}
