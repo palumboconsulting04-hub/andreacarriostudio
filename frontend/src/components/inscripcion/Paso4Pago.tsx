@@ -187,6 +187,11 @@ function StripePaymentFase({
         </button>
       </div>
 
+      {/* Reloj fino arriba, como en los pasos anteriores (no cerca del botón). */}
+      <div className="max-w-md mx-auto mb-6">
+        <CuentaAtras variant="barra" />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Stripe form */}
         <div className="lg:col-span-3 space-y-6">
@@ -204,8 +209,6 @@ function StripePaymentFase({
           </div>
 
           {error && <p className="text-xs text-red-600">{error}</p>}
-
-          {matriculaOferta && <div className="mb-1"><CuentaAtras variant="pago" /></div>}
 
           <button
             onClick={handlePagar}
