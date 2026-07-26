@@ -24,6 +24,7 @@ if (!SUPA_URL || !SUPA_KEY || !RESEND_KEY) {
 const norm = (e) => (typeof e === 'string' ? e.trim().toLowerCase() : '');
 const esc = (s) => String(s ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 const esUrlSegura = (u) => /^https?:\/\//i.test((u || '').trim());
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Espejo de email-enviar/route.ts: quita un saludo escrito al principio.
 const RE_SALUDO_INICIAL = /^[\s¡!]*(?:hola+|holi+|hey|buenas(?:\s+tardes|\s+noches)?|buenos?\s+d[ií]as)\b[^\n,!:]{0,25}[,!:\n]+[ \t]*\n?/i;
 
@@ -98,17 +99,24 @@ async function procesar(camp, fuera) {
 
   let ok = 0, ko = 0;
   const registros = [];
-  for (let i = 0; i < lista.length; i += 20) {
-    const lote = lista.slice(i, i + 20);
-    const res = await Promise.all(lote.map(async (d) => {
+  // Resend limita a 10/seg → tandas de 8 con ~1,1s entre ellas, y un reintento.
+  const LOTE = 8;
+  const enviarUno = async (d) => {
+    for (let intento = 0; intento < 2; intento++) {
       try {
         await enviarResend(d.email, camp.asunto, plantilla(d.nombre, camp.cuerpo, d.baja || '', extra), d.baja || '');
         return { email: d.email, ok: true, error: null };
       } catch (e) {
+        if (intento === 0) { await sleep(1300); continue; }
         return { email: d.email, ok: false, error: String(e.message || e).slice(0, 300) };
       }
-    }));
+    }
+    return { email: d.email, ok: false, error: 'no enviado' };
+  };
+  for (let i = 0; i < lista.length; i += LOTE) {
+    const res = await Promise.all(lista.slice(i, i + LOTE).map(enviarUno));
     for (const r of res) { if (r.ok) ok++; else ko++; registros.push(r); }
+    if (i + LOTE < lista.length) await sleep(1100);
   }
 
   // Registro histórico (misma tabla que los envíos inmediatos).

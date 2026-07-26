@@ -21,6 +21,8 @@ const esc = (s: string) => s.replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;",
 // si es un saludo corto terminado en coma/exclamación/salto de línea.
 const RE_SALUDO_INICIAL = /^[\s¡!]*(?:hola+|holi+|hey|buenas(?:\s+tardes|\s+noches)?|buenos?\s+d[ií]as)\b[^\n,!:]{0,25}[,!:\n]+[ \t]*\n?/i;
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 // Solo dejamos pasar URLs http(s) (evita javascript: y demás en imagen / CTA).
 const esUrlSegura = (u: string) => /^https?:\/\//i.test((u || "").trim());
 
@@ -105,25 +107,34 @@ export async function POST(req: NextRequest) {
 
   let ok = 0, ko = 0;
   const registros: { campana_id: string; email: string; ok: boolean; error: string | null }[] = [];
-  // De 20 en 20 para no saturar el límite de Resend.
-  for (let i = 0; i < contactos.length; i += 20) {
-    const lote = contactos.slice(i, i + 20);
-    const res = await Promise.all(lote.map(async (c) => {
+  // Resend limita a 10 correos/seg → tandas de 8 con ~1,1s entre ellas, y un
+  // reintento si aún así rebota por límite. Así no se pierden envíos.
+  const LOTE = 8;
+  const enviarUno = async (c: { email: string; nombre: string }) => {
+    for (let intento = 0; intento < 2; intento++) {
       try {
         const { error } = await resend.emails.send({
           from, replyTo, to: c.email, subject: asunto,
           html: plantilla(c.nombre, cuerpo, enlaceBaja(c.email, base), extra),
           headers: { "List-Unsubscribe": `<${enlaceBaja(c.email, base)}>` },
         });
-        return { email: c.email, ok: !error, error: error?.message ?? null };
+        if (!error) return { email: c.email, ok: true, error: null as string | null };
+        if (intento === 0 && /too many|rate/i.test(error.message)) { await sleep(1300); continue; }
+        return { email: c.email, ok: false, error: error.message };
       } catch (e) {
+        if (intento === 0) { await sleep(1300); continue; }
         return { email: c.email, ok: false, error: e instanceof Error ? e.message : "error" };
       }
-    }));
+    }
+    return { email: c.email, ok: false, error: "no enviado" };
+  };
+  for (let i = 0; i < contactos.length; i += LOTE) {
+    const res = await Promise.all(contactos.slice(i, i + LOTE).map(enviarUno));
     for (const r of res) {
       if (r.ok) ok++; else ko++;
       registros.push({ campana_id: camp.id, email: r.email, ok: r.ok, error: r.error });
     }
+    if (i + LOTE < contactos.length) await sleep(1100);
   }
 
   await supabaseAdmin.from("email_envios").insert(registros);
