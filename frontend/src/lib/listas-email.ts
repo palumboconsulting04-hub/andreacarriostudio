@@ -35,6 +35,18 @@ const esEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
 export type Contacto = { email: string; nombre: string; fuente: string };
 
+// Correos que reciben SIEMPRE cada campaña (control interno): no se excluyen por
+// compra ni por baja, para poder ver el envío real tal como les llega.
+const SIEMPRE_INCLUIDOS: Contacto[] = [
+  { email: "gioacchinopalumbo38@gmail.com", nombre: "", fuente: "control" },
+];
+
+// Añade los correos de control al final de una lista ya limpia, sin duplicar.
+function conControl(limpia: Contacto[]): Contacto[] {
+  const ya = new Set(limpia.map((c) => c.email));
+  return [...limpia, ...SIEMPRE_INCLUIDOS.filter((c) => !ya.has(c.email))];
+}
+
 /** Emails que NO pueden recibir marketing: ya compraron o se dieron de baja. */
 async function excluidos(): Promise<Set<string>> {
   const [isc, bon, baj] = await Promise.all([
@@ -93,12 +105,13 @@ export async function contactosDe(segmento: SegmentoId): Promise<Contacto[]> {
   if (segmento === "adultas") base = [...adultas.values()];
   else if (segmento === "ninas") base = [...ninas.values()];
   else base = [...ninas.values()].filter(c => !adultas.has(c.email)); // madres que aún no hacen adultas
-  return base.filter(c => !fuera.has(c.email)).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  const limpia = base.filter(c => !fuera.has(c.email)).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  return conControl(limpia);
 }
 
 export async function resumenSegmentos() {
   const [{ adultas, ninas }, fuera] = await Promise.all([interesadas(), excluidos()]);
-  const limpio = (l: Contacto[]) => l.filter(c => !fuera.has(c.email)).length;
+  const limpio = (l: Contacto[]) => conControl(l.filter(c => !fuera.has(c.email))).length;
   return {
     segmentos: SEGMENTOS.map(s => ({
       ...s,
