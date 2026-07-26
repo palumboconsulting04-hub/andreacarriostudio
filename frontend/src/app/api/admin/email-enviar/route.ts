@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   const extra = { imagenUrl, cta };
 
   if (!asunto || !cuerpo) return NextResponse.json({ error: "Falta el asunto o el texto." }, { status: 400 });
-  if (!["adultas", "ninas", "madres-crosssell"].includes(segmento)) {
+  if (!["general", "adultas", "ninas", "madres-crosssell"].includes(segmento)) {
     return NextResponse.json({ error: "Segmento no válido." }, { status: 400 });
   }
 

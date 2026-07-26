@@ -9,9 +9,14 @@ import crypto from "crypto";
 //   LISTA = interesadas − compradoras − bajas
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type SegmentoId = "adultas" | "ninas" | "madres-crosssell";
+export type SegmentoId = "general" | "adultas" | "ninas" | "madres-crosssell";
 
 export const SEGMENTOS: { id: SegmentoId; nombre: string; descripcion: string }[] = [
+  {
+    id: "general",
+    nombre: "Todas · lista general",
+    descripcion: "Todas las interesadas juntas (adultas + familias de ballet). Para un mensaje a todo el mundo.",
+  },
   {
     id: "adultas",
     nombre: "Adultas · Barre y Pilates",
@@ -98,14 +103,27 @@ async function interesadas(): Promise<{ adultas: Map<string, Contacto>; ninas: M
   return { adultas, ninas };
 }
 
+// Lista general: todas las interesadas (adultas + niñas) sin duplicar por email.
+function todas(adultas: Map<string, Contacto>, ninas: Map<string, Contacto>): Contacto[] {
+  const m = new Map(adultas);
+  for (const [e, c] of ninas) if (!m.has(e)) m.set(e, c);
+  return [...m.values()];
+}
+
+// Base de un segmento (antes de excluir compradoras/bajas).
+function baseDe(segmento: SegmentoId, adultas: Map<string, Contacto>, ninas: Map<string, Contacto>): Contacto[] {
+  if (segmento === "general") return todas(adultas, ninas);
+  if (segmento === "adultas") return [...adultas.values()];
+  if (segmento === "ninas") return [...ninas.values()];
+  return [...ninas.values()].filter(c => !adultas.has(c.email)); // madres que aún no hacen adultas
+}
+
 /** Contactos de un segmento, ya limpio de compradoras y bajas. */
 export async function contactosDe(segmento: SegmentoId): Promise<Contacto[]> {
   const [{ adultas, ninas }, fuera] = await Promise.all([interesadas(), excluidos()]);
-  let base: Contacto[];
-  if (segmento === "adultas") base = [...adultas.values()];
-  else if (segmento === "ninas") base = [...ninas.values()];
-  else base = [...ninas.values()].filter(c => !adultas.has(c.email)); // madres que aún no hacen adultas
-  const limpia = base.filter(c => !fuera.has(c.email)).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  const limpia = baseDe(segmento, adultas, ninas)
+    .filter(c => !fuera.has(c.email))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   return conControl(limpia);
 }
 
@@ -113,13 +131,7 @@ export async function resumenSegmentos() {
   const [{ adultas, ninas }, fuera] = await Promise.all([interesadas(), excluidos()]);
   const limpio = (l: Contacto[]) => conControl(l.filter(c => !fuera.has(c.email))).length;
   return {
-    segmentos: SEGMENTOS.map(s => ({
-      ...s,
-      total:
-        s.id === "adultas" ? limpio([...adultas.values()])
-        : s.id === "ninas" ? limpio([...ninas.values()])
-        : limpio([...ninas.values()].filter(c => !adultas.has(c.email))),
-    })),
+    segmentos: SEGMENTOS.map(s => ({ ...s, total: limpio(baseDe(s.id, adultas, ninas)) })),
     excluidos: fuera.size,
   };
 }

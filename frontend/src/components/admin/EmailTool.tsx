@@ -120,7 +120,7 @@ export default function EmailTool() {
       </div>
 
       {/* Segmentos */}
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-2 gap-3">
         {segmentos.map(s => (
           <button key={s.id} onClick={() => { setSel(s.id); setVerContactos(false); }}
             className="text-left p-4 rounded-2xl border transition-shadow hover:shadow-md"
