@@ -46,7 +46,7 @@ export function plantilla(nombre: string, cuerpo: string, urlBaja: string, extra
 </div>`;
 }
 
-export type EnvioResultado = { email: string; ok: boolean; error: string | null };
+export type EnvioResultado = { email: string; ok: boolean; error: string | null; resend_id: string | null };
 
 // Envía a una lista respetando el límite de Resend (10/seg): tandas de 8 con
 // ~1,1s de pausa y un reintento si rebota. Devuelve un registro por destinataria.
@@ -62,20 +62,20 @@ export async function enviarLote(
   const enviarUno = async (c: { email: string; nombre: string }): Promise<EnvioResultado> => {
     for (let intento = 0; intento < 2; intento++) {
       try {
-        const { error } = await resend.emails.send({
+        const { data, error } = await resend.emails.send({
           from, replyTo: REPLY_TO, to: c.email, subject: asunto,
           html: plantilla(c.nombre, cuerpo, enlaceBaja(c.email, base), extra),
           headers: { "List-Unsubscribe": `<${enlaceBaja(c.email, base)}>` },
         });
-        if (!error) return { email: c.email, ok: true, error: null };
+        if (!error) return { email: c.email, ok: true, error: null, resend_id: data?.id ?? null };
         if (intento === 0 && /too many|rate/i.test(error.message)) { await sleep(1300); continue; }
-        return { email: c.email, ok: false, error: error.message };
+        return { email: c.email, ok: false, error: error.message, resend_id: null };
       } catch (e) {
         if (intento === 0) { await sleep(1300); continue; }
-        return { email: c.email, ok: false, error: e instanceof Error ? e.message : "error" };
+        return { email: c.email, ok: false, error: e instanceof Error ? e.message : "error", resend_id: null };
       }
     }
-    return { email: c.email, ok: false, error: "no enviado" };
+    return { email: c.email, ok: false, error: "no enviado", resend_id: null };
   };
 
   const registros: EnvioResultado[] = [];

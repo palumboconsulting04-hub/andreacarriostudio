@@ -79,6 +79,8 @@ async function enviarResend(to, subject, html, urlBaja) {
     body: JSON.stringify({ from: FROM, replyTo: REPLY_TO, to, subject, html, headers: { 'List-Unsubscribe': `<${urlBaja}>` } }),
   });
   if (!res.ok) throw new Error(await res.text());
+  const d = await res.json().catch(() => ({}));
+  return d.id || null; // id de Resend, para el tracking de aperturas/clics
 }
 
 async function excluidos() {
@@ -104,14 +106,14 @@ async function procesar(camp, fuera) {
   const enviarUno = async (d) => {
     for (let intento = 0; intento < 2; intento++) {
       try {
-        await enviarResend(d.email, camp.asunto, plantilla(d.nombre, camp.cuerpo, d.baja || '', extra), d.baja || '');
-        return { email: d.email, ok: true, error: null };
+        const id = await enviarResend(d.email, camp.asunto, plantilla(d.nombre, camp.cuerpo, d.baja || '', extra), d.baja || '');
+        return { email: d.email, ok: true, error: null, resend_id: id };
       } catch (e) {
         if (intento === 0) { await sleep(1300); continue; }
-        return { email: d.email, ok: false, error: String(e.message || e).slice(0, 300) };
+        return { email: d.email, ok: false, error: String(e.message || e).slice(0, 300), resend_id: null };
       }
     }
-    return { email: d.email, ok: false, error: 'no enviado' };
+    return { email: d.email, ok: false, error: 'no enviado', resend_id: null };
   };
   for (let i = 0; i < lista.length; i += LOTE) {
     const res = await Promise.all(lista.slice(i, i + LOTE).map(enviarUno));
@@ -130,7 +132,7 @@ async function procesar(camp, fuera) {
   if (campanaId && registros.length) {
     try {
       await sbWrite('email_envios', 'POST',
-        registros.map((r) => ({ campana_id: campanaId, email: r.email, ok: r.ok, error: r.error })), 'return=minimal');
+        registros.map((r) => ({ campana_id: campanaId, email: r.email, ok: r.ok, error: r.error, resend_id: r.resend_id })), 'return=minimal');
     } catch (e) { console.error('email_envios:', e.message); }
   }
 

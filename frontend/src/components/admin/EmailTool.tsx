@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 const C = { burgundy: "#7d2b13", cream: "#fff8f5", dark: "#25190f", brown: "#56423d", muted: "#89726c", border: "#dcc1b9" };
 
 type Segmento = { id: string; nombre: string; descripcion: string; total: number };
-type Campana = { id: string; created_at: string; segmento: string; asunto: string; enviados: number; fallidos: number };
+type Campana = { id: string; created_at: string; segmento: string; asunto: string; enviados: number; fallidos: number; abiertos: number; clics: number };
 type Contacto = { email: string; nombre: string; fuente: string };
 
 export default function EmailTool() {
@@ -325,6 +325,12 @@ export default function EmailTool() {
                   <span className="truncate" style={{ color: C.dark }}>{c.asunto}</span>
                   <span className="shrink-0" style={{ color: C.muted }}>{new Date(c.created_at).toLocaleDateString("es-ES")} · {c.enviados} enviados</span>
                 </div>
+                {c.enviados > 0 && (
+                  <div className="flex gap-3 mt-1" style={{ color: C.muted }}>
+                    <span>📬 <strong style={{ color: C.burgundy }}>{Math.round((c.abiertos / c.enviados) * 100)}%</strong> abiertos</span>
+                    <span>👆 <strong style={{ color: C.burgundy }}>{Math.round((c.clics / c.enviados) * 100)}%</strong> clics</span>
+                  </div>
+                )}
                 {c.fallidos > 0 && (
                   <div className="flex items-center justify-between gap-3 mt-1">
                     <span style={{ color: "#b71c1c" }}>⚠ {c.fallidos} sin recibir</span>

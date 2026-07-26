@@ -30,5 +30,21 @@ export async function GET(req: NextRequest) {
     id: p.id, segmento: p.segmento, asunto: p.asunto, programado_para: p.programado_para,
     destinatarios: Array.isArray(p.destinatarios) ? p.destinatarios.length : 0,
   }));
-  return NextResponse.json({ ...resumen, campanas: campanas.data ?? [], programadas: prog });
+
+  // Aperturas y clics por campaña (para open rate / click rate).
+  const ids = (campanas.data ?? []).map((c) => c.id);
+  const abiertos = new Map<string, number>();
+  const clics = new Map<string, number>();
+  if (ids.length) {
+    const { data: ev } = await supabaseAdmin
+      .from("email_envios").select("campana_id, abierto_at, clic_at").in("campana_id", ids);
+    for (const e of ev ?? []) {
+      if (e.abierto_at) abiertos.set(e.campana_id, (abiertos.get(e.campana_id) ?? 0) + 1);
+      if (e.clic_at) clics.set(e.campana_id, (clics.get(e.campana_id) ?? 0) + 1);
+    }
+  }
+  const camps = (campanas.data ?? []).map((c) => ({
+    ...c, abiertos: abiertos.get(c.id) ?? 0, clics: clics.get(c.id) ?? 0,
+  }));
+  return NextResponse.json({ ...resumen, campanas: camps, programadas: prog });
 }
