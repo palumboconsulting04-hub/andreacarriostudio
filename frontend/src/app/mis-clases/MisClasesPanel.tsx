@@ -104,6 +104,8 @@ export default function MisClasesPanel() {
   type Recibo = { id: string; fecha: string; concepto: string; importe: number; metodo: string };
   const [recibos, setRecibos] = useState<Recibo[]>([]);
   const [recibosLoading, setRecibosLoading] = useState(false);
+  type FacturaStripe = { id: string; fecha: string; concepto: string; importe: number; url: string; tipo: "factura" | "recibo" };
+  const [facturasStripe, setFacturasStripe] = useState<FacturaStripe[]>([]);
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
   const [bonos, setBonos] = useState<Bono[]>([]);
@@ -218,7 +220,7 @@ export default function MisClasesPanel() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  // Carga los recibos al abrir la sección Recibos.
+  // Carga los recibos (app) y las facturas oficiales de Stripe al abrir Recibos.
   useEffect(() => {
     if (preview || seccion !== "recibos") return;
     setRecibosLoading(true);
@@ -227,7 +229,11 @@ export default function MisClasesPanel() {
       .then(({ data }) => setRecibos((data ?? []) as Recibo[]))
       .catch(() => setRecibos([]))
       .finally(() => setRecibosLoading(false));
-  }, [seccion, preview]);
+    fetch("/api/panel/facturas-stripe", { cache: "no-store" })
+      .then(r => r.json())
+      .then(({ data }) => setFacturasStripe((data ?? []) as FacturaStripe[]))
+      .catch(() => setFacturasStripe([]));
+  }, [seccion, preview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const entrar = async () => {
     if (!/\S+@\S+\.\S+/.test(email.trim())) { setMsg("Escribe un email válido."); return; }
@@ -836,6 +842,25 @@ export default function MisClasesPanel() {
                     <a href={`/api/panel/recibo?id=${encodeURIComponent(r.id)}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: C.burgundy, color: C.cream, textDecoration: "none" }}>Recibo</a>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Facturas / recibos OFICIALES de Stripe (válidos para contabilidad). */}
+            {facturasStripe.length > 0 && (
+              <div className="mt-6">
+                <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: C.burgundy }}>Facturas oficiales</p>
+                <p className="text-xs mb-3 leading-relaxed" style={{ color: C.muted }}>Emitidas por Stripe (nuestra pasarela de pago). Son las válidas para tu contabilidad.</p>
+                <div className="flex flex-col gap-2">
+                  {facturasStripe.map(f => (
+                    <div key={f.id} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold" style={{ color: C.dark, fontFamily: fSans }}>{f.concepto}</p>
+                        <p className="text-xs" style={{ color: C.muted }}>{new Date(f.fecha + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })} · {f.importe.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
+                      </div>
+                      <a href={f.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" style={{ backgroundColor: "#fff", border: `1.5px solid ${C.burgundy}`, color: C.burgundy, textDecoration: "none" }}>{f.tipo === "factura" ? "Factura" : "Recibo oficial"}</a>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
