@@ -570,6 +570,8 @@ export default function AdminDashboard() {
   const [usuariosFiltroDisc, setUsuariosFiltroDisc] = useState("");
   const [usuariosFiltroStato, setUsuariosFiltroStato] = useState("");
   const [usuariosFiltroMetodo, setUsuariosFiltroMetodo] = useState("");
+  const [usuariosFiltroDesde, setUsuariosFiltroDesde] = useState("");
+  const [usuariosFiltroHasta, setUsuariosFiltroHasta] = useState("");
   const [copiedEmail, setCopiedEmail] = useState(false);
   // Asistencia / pasar lista
   const [asistenciaFecha, setAsistenciaFecha] = useState(() => new Date().toLocaleDateString("en-CA"));
@@ -4159,12 +4161,18 @@ export default function AdminDashboard() {
               if (usuariosFiltroDisc && u.disciplina_id !== usuariosFiltroDisc) return false;
               if (usuariosFiltroStato && u.stato !== usuariosFiltroStato) return false;
               if (usuariosFiltroMetodo && (u.metodo_pagamento || "") !== usuariosFiltroMetodo) return false;
+              if (usuariosFiltroDesde || usuariosFiltroHasta) {
+                // Fecha de inscripción en local (YYYY-MM-DD), para comparar con los date inputs.
+                const f = new Date(u.created_at).toLocaleDateString("en-CA");
+                if (usuariosFiltroDesde && f < usuariosFiltroDesde) return false;
+                if (usuariosFiltroHasta && f > usuariosFiltroHasta) return false;
+              }
               if (!q) return true;
               const nina = NINAS_IDS.has(u.disciplina_id) && u.nome_alumna ? `${u.nome_alumna} ${u.cognome_alumna ?? ""}`.toLowerCase() : "";
               const adulto = `${u.nome} ${u.cognome}`.toLowerCase();
               return nina.includes(q) || adulto.includes(q) || (u.discipline?.nome ?? "").toLowerCase().includes(q);
             });
-            const filtrosActivos = usuariosFiltroDisc !== "" || usuariosFiltroStato !== "" || usuariosFiltroMetodo !== "" || q !== "";
+            const filtrosActivos = usuariosFiltroDisc !== "" || usuariosFiltroStato !== "" || usuariosFiltroMetodo !== "" || usuariosFiltroDesde !== "" || usuariosFiltroHasta !== "" || q !== "";
             return (
               <section className="space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -4219,9 +4227,26 @@ export default function AdminDashboard() {
                     <option value="">Todos los métodos</option>
                     {metodoOptions.map(m => <option key={m} value={m}>{METODO_LABEL[m] ?? m}</option>)}
                   </select>
+                  {/* Filtro por fecha de inscripción (desde / hasta) */}
+                  <div className="inline-flex items-center gap-1.5">
+                    <span className="text-xs" style={{ color: "#89726c" }}>Inscritas del</span>
+                    <input
+                      type="date" value={usuariosFiltroDesde} max={usuariosFiltroHasta || undefined}
+                      onChange={e => setUsuariosFiltroDesde(e.target.value)}
+                      className="border rounded-full px-3 py-2 text-sm focus:outline-none cursor-pointer"
+                      style={{ borderColor: "#dcc1b9", color: usuariosFiltroDesde ? "#25190f" : "#89726c", backgroundColor: usuariosFiltroDesde ? "#fff3e0" : "#fff" }}
+                    />
+                    <span className="text-xs" style={{ color: "#89726c" }}>al</span>
+                    <input
+                      type="date" value={usuariosFiltroHasta} min={usuariosFiltroDesde || undefined}
+                      onChange={e => setUsuariosFiltroHasta(e.target.value)}
+                      className="border rounded-full px-3 py-2 text-sm focus:outline-none cursor-pointer"
+                      style={{ borderColor: "#dcc1b9", color: usuariosFiltroHasta ? "#25190f" : "#89726c", backgroundColor: usuariosFiltroHasta ? "#fff3e0" : "#fff" }}
+                    />
+                  </div>
                   {filtrosActivos && (
                     <button
-                      onClick={() => { setUsuariosSearch(""); setUsuariosFiltroDisc(""); setUsuariosFiltroStato(""); setUsuariosFiltroMetodo(""); }}
+                      onClick={() => { setUsuariosSearch(""); setUsuariosFiltroDisc(""); setUsuariosFiltroStato(""); setUsuariosFiltroMetodo(""); setUsuariosFiltroDesde(""); setUsuariosFiltroHasta(""); }}
                       className="inline-flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold"
                       style={{ color: "#7d2b13" }}
                     >
