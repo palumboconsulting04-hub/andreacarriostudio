@@ -24,6 +24,8 @@ if (!SUPA_URL || !SUPA_KEY || !RESEND_KEY) {
 const norm = (e) => (typeof e === 'string' ? e.trim().toLowerCase() : '');
 const esc = (s) => String(s ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 const esUrlSegura = (u) => /^https?:\/\//i.test((u || '').trim());
+// Espejo de email-enviar/route.ts: quita un saludo escrito al principio.
+const RE_SALUDO_INICIAL = /^[\s¡!]*(?:hola+|holi+|hey|buenas(?:\s+tardes|\s+noches)?|buenos?\s+d[ií]as)\b[^\n,!:]{0,25}[,!:\n]+[ \t]*\n?/i;
 
 async function sbGet(path) {
   const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, {
@@ -49,7 +51,7 @@ async function sbWrite(path, method, body, prefer = '') {
 
 function plantilla(nombre, cuerpo, urlBaja, extra = {}) {
   const saludo = nombre ? `¡Hola ${esc(String(nombre).split(' ')[0])}!` : '¡Hola!';
-  const parrafos = String(cuerpo).split(/\n{2,}/)
+  const parrafos = String(cuerpo).replace(RE_SALUDO_INICIAL, '').split(/\n{2,}/)
     .map((p) => `<p style="margin:0 0 16px;line-height:1.65;">${esc(p).replace(/\n/g, '<br/>')}</p>`).join('');
   const imagen = extra.imagenUrl && esUrlSegura(extra.imagenUrl)
     ? `<img src="${extra.imagenUrl}" alt="" style="width:100%;max-width:512px;border-radius:14px;display:block;margin:0 0 22px;" />` : '';

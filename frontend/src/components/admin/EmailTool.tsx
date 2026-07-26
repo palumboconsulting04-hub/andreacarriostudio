@@ -183,7 +183,7 @@ export default function EmailTool() {
 
           <input value={asunto} onChange={e => setAsunto(e.target.value)} placeholder="Asunto del correo" style={input} />
           <textarea value={cuerpo} onChange={e => setCuerpo(e.target.value)} rows={8}
-            placeholder={"Escribe aquí tu mensaje.\n\nDeja una línea en blanco entre párrafos.\nSe añade solo el saludo con su nombre, tu firma y el enlace de baja."}
+            placeholder={"Escribe aquí tu mensaje.\n\nNo hace falta poner «Hola»: lo añadimos solo con su nombre. También ponemos tu firma y el enlace de baja.\nDeja una línea en blanco entre párrafos."}
             style={{ ...input, resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }} />
 
           {/* Imagen opcional (se muestra arriba del correo) */}

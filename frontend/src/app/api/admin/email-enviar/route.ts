@@ -16,6 +16,11 @@ async function isAdmin(): Promise<boolean> {
 
 const esc = (s: string) => s.replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]!));
 
+// Quita un saludo escrito al principio del texto ("Hola…", "Buenos días…"), para
+// no duplicarlo con el "¡Hola [nombre]!" que pone la plantilla. Conservador: solo
+// si es un saludo corto terminado en coma/exclamación/salto de línea.
+const RE_SALUDO_INICIAL = /^[\s¡!]*(?:hola+|holi+|hey|buenas(?:\s+tardes|\s+noches)?|buenos?\s+d[ií]as)\b[^\n,!:]{0,25}[,!:\n]+[ \t]*\n?/i;
+
 // Solo dejamos pasar URLs http(s) (evita javascript: y demás en imagen / CTA).
 const esUrlSegura = (u: string) => /^https?:\/\//i.test((u || "").trim());
 
@@ -24,7 +29,8 @@ type ExtraEmail = { imagenUrl?: string; cta?: { texto: string; url: string } | n
 // Monta el email con la identidad del estudio y el enlace de baja obligatorio.
 function plantilla(nombre: string, cuerpo: string, urlBaja: string, extra: ExtraEmail = {}) {
   const saludo = nombre ? `¡Hola ${esc(nombre.split(" ")[0])}!` : "¡Hola!";
-  const parrafos = cuerpo.split(/\n{2,}/).map(p => `<p style="margin:0 0 16px;line-height:1.65;">${esc(p).replace(/\n/g, "<br/>")}</p>`).join("");
+  const cuerpoLimpio = cuerpo.replace(RE_SALUDO_INICIAL, "");
+  const parrafos = cuerpoLimpio.split(/\n{2,}/).map(p => `<p style="margin:0 0 16px;line-height:1.65;">${esc(p).replace(/\n/g, "<br/>")}</p>`).join("");
   const imagen = extra.imagenUrl && esUrlSegura(extra.imagenUrl)
     ? `<img src="${extra.imagenUrl}" alt="" style="width:100%;max-width:512px;border-radius:14px;display:block;margin:0 0 22px;" />`
     : "";
