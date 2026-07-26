@@ -775,8 +775,11 @@ export default function MisClasesPanel() {
 
         {!preview && seccion === "premios" && (codigo ? (
           <div className="rounded-2xl p-4" style={{ backgroundColor: "#fff6f2", border: `1px solid ${C.burgundy}` }}>
-            <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Invita a una amiga y ganáis las dos</p>
-            <p className="text-xs mb-3" style={{ color: C.brown }}>Solo cuenta cuando tu amiga entra por tu enlace y <strong>se apunta de verdad</strong> (paga su bono o su mensualidad). Compartir el enlace no suma por sí solo — suma su compra. Comparte tu código:</p>
+            <p className="text-sm font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSans }}>Invita a una amiga y ganáis las dos 🤎</p>
+            <p className="text-xs mb-1.5" style={{ color: C.brown }}>
+              Cada amiga que se apunte al estudio con tu código es un <strong>regalo para las dos</strong>: tú ganas <strong>{mensualidad.length > 0 ? "10€ en tu cuota" : "una clase gratis"}</strong> y ella empieza con un regalo de bienvenida. Y al llegar a <strong>5 amigas</strong>, te ganas un <strong>mes gratis</strong> 👑
+            </p>
+            <p className="text-[11px] mb-3" style={{ color: C.muted }}>Cuenta cuando tu amiga se apunta de verdad (saca su bono o su mensualidad). Comparte tu código:</p>
             <span className="block text-center text-sm font-bold tracking-widest py-2.5 rounded-xl mb-3" style={{ backgroundColor: "#fff", border: `1px dashed ${C.burgundy}`, color: C.burgundy }}>{codigo}</span>
             <CompartirCodigo codigo={codigo} />
 
