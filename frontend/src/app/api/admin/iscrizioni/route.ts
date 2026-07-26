@@ -10,7 +10,7 @@ async function isAdmin(): Promise<boolean> {
 
 // Columnas completas que necesita el admin (superset de todas las pantallas).
 const COLS =
-  "id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, prezzo, stripe_subscription_id, stripe_customer_id, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))";
+  "id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, matricula_pagada, prezzo, stripe_subscription_id, stripe_customer_id, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))";
 
 // GET → lista de inscripciones con service-role (solo admin).
 //  · ?id=        → una inscripción concreta

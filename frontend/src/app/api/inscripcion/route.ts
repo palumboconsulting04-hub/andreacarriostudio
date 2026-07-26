@@ -16,6 +16,7 @@ type InscripcionItem = {
   nome_alumna?: string | null;
   cognome_alumna?: string | null;
   matricula?: number;
+  matricula_pagada?: number;
   horarios?: string[];
 };
 
@@ -89,6 +90,7 @@ export async function POST(req: NextRequest) {
         nome_alumna: item.nome_alumna || null,
         cognome_alumna: item.cognome_alumna || null,
         matricula: item.matricula ?? 0,
+        matricula_pagada: item.matricula_pagada ?? item.matricula ?? 0,
         referido_por: referidoPor,
         stripe_payment_intent_id: body.stripePaymentIntentId || null,
         stripe_customer_id: body.stripeCustomerId || null,

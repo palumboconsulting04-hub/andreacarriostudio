@@ -282,6 +282,14 @@ function formatData(created_at: string): string {
   return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" }) + `, ${time}`;
 }
 
+// Matrícula REALMENTE cobrada: usa lo pagado (tras descuento) si existe; si no,
+// el precio de tarifa. Evita inflar la facturación cuando alguien pagó con cupón.
+function matReal(isc: Record<string, unknown>): number {
+  const mp = isc.matricula_pagada as number | null | undefined;
+  const m = isc.matricula as number | null | undefined;
+  return (mp ?? m) ?? 0;
+}
+
 function Icon({ name, className = "", style }: { name: string; className?: string; style?: React.CSSProperties }) {
   return <span className={`material-symbols-outlined ${className}`} style={style}>{name}</span>;
 }
@@ -1563,6 +1571,8 @@ export default function AdminDashboard() {
     const stripeRows: VentaRow[] = ((isc ?? []) as unknown as VentaRow[]).map(i => ({
       ...i,
       prezzo: i.prezzo ?? pm[`${i.piano_id}:${i.disciplina_id}`] ?? null,
+      // Matrícula realmente cobrada (tras descuento), no el precio de tarifa.
+      matricula: matReal(i as unknown as Record<string, unknown>),
       tipo: "stripe" as const,
     }));
     // Los grupos de renovación ("Pre-Ballet", "Ballet 1", "Ballet 2") corresponden a
@@ -2141,7 +2151,7 @@ export default function AdminDashboard() {
       let factMes = 0, factAnt = 0, pendAmt = 0;
       for (const isc of allIsc) {
         const prezzo = ((isc.prezzo as number | null) ?? pm[`${isc.piano_id}:${isc.disciplina_id}`]) ?? 0;
-        const mat = isc.matricula ?? 0;
+        const mat = matReal(isc);
         const mesIsc = isc.created_at.substring(0, 7);
         if (isc.stato === "attesa") {
           pendAmt += prezzo;
@@ -2207,7 +2217,7 @@ export default function AdminDashboard() {
       for (const isc of allIsc) {
         if ((isc.created_at as string).substring(0, 7) !== curMonthStr) continue;
         nuevasMensualidad.push({ nombre: nomIsc(isc), email: (isc.email as string) ?? "", detalle: nombreDisc(isc.disciplina_id) + (isc.stato === "attesa" ? " · sin pagar" : ""), importe: 0 });
-        const mat = (isc.matricula as number) ?? 0;
+        const mat = matReal(isc);
         if ((isPaid(isc.stato) || isc.stato === "matricula_pagada") && mat > 0) {
           factMatricula.push({ nombre: nomIsc(isc), email: (isc.email as string) ?? "", detalle: "Matrícula · " + nombreDisc(isc.disciplina_id), importe: mat });
         }
@@ -2272,7 +2282,7 @@ export default function AdminDashboard() {
         if (!INSCRITA_STATI_ARR.includes(isc.stato) || !esHoy(isc.created_at as string)) continue;
         const alumna = (isc.nome_alumna as string) || "";
         const nombre = alumna ? `${alumna} ${(isc.cognome_alumna as string) ?? ""}`.trim() : nomIsc(isc);
-        const mat = (isc.matricula as number) ?? 0;
+        const mat = matReal(isc);
         hoyItems.push({
           nombre,
           email: (isc.email as string) ?? "",

@@ -419,6 +419,9 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
     // persiste en el servidor (service-role), sin escribir con la clave pública.
     let adultCharged = false;
     const ninasCharged = new Set<string>();
+    // El descuento se aplica al total; lo repartimos entre las matrículas cobradas
+    // para guardar lo REALMENTE cobrado por inscripción (facturación correcta).
+    const factorPagado = totalMatricula > 0 ? matriculaFinal / totalMatricula : 1;
     const inscripciones = bozze.map((b, i) => {
       let thisMatricula = 0;
       if (b.esNinas) {
@@ -438,6 +441,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
         nome_alumna: b.esNinas ? (alumnas[i]?.nombre ?? "") : "",
         cognome_alumna: b.esNinas ? (alumnas[i]?.apellido ?? "") : "",
         matricula: thisMatricula,
+        matricula_pagada: Math.round(thisMatricula * factorPagado * 100) / 100,
         horarios: b.horarios,
       };
     });
