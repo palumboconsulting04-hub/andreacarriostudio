@@ -35,6 +35,8 @@ export default function EmailTool() {
   const [modo, setModo] = useState<"ahora" | "programar">("ahora");
   const [programarFecha, setProgramarFecha] = useState("");
   const [programando, setProgramando] = useState(false);
+  const [retryCamp, setRetryCamp] = useState<Campana | null>(null);
+  const [retryLoading, setRetryLoading] = useState(false);
 
   const cargar = () => {
     fetch("/api/admin/email-listas").then(r => r.json()).then(d => {
@@ -134,6 +136,26 @@ export default function EmailTool() {
     if (!window.confirm("¿Cancelar este envío programado?")) return;
     const res = await fetch(`/api/admin/email-programar?id=${id}`, { method: "DELETE" });
     if (res.ok) cargar();
+  };
+
+  // Abre el reenvío a los que fallaron: empieza limpio (imagen/botón no se guardan).
+  const abrirReintento = (c: Campana) => {
+    setRetryCamp(c); setImagenUrl(""); setCtaOn(false); setMsg(""); setError("");
+  };
+  const reintentar = async () => {
+    if (!retryCamp || retryLoading) return;
+    setRetryLoading(true); setError("");
+    try {
+      const res = await fetch("/api/admin/email-reintentar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campanaId: retryCamp.id, imagenUrl, cta: ctaOn ? { texto: ctaTexto, url: ctaUrl } : null }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error || "No se pudo reenviar."); return; }
+      setMsg(d.reenviados > 0 ? `✅ Reenviado a ${d.reenviados}. Quedan ${d.quedan} sin recibir.` : (d.mensaje || "No quedaba ninguna dirección fallida."));
+      setRetryCamp(null); setImagenUrl(""); setCtaOn(false); cargar();
+    } catch { setError("Error de conexión."); }
+    finally { setRetryLoading(false); }
   };
 
   const input = { border: `1.5px solid ${C.border}`, borderRadius: "12px", padding: "10px 14px", fontSize: "14px", color: C.dark, backgroundColor: "#fff", outline: "none", width: "100%" } as const;
@@ -298,11 +320,67 @@ export default function EmailTool() {
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: C.muted }}>Últimos envíos</p>
           <div className="rounded-2xl border overflow-hidden" style={{ borderColor: C.border }}>
             {campanas.map(c => (
-              <div key={c.id} className="flex justify-between gap-3 px-4 py-2.5 text-xs border-b last:border-b-0" style={{ borderColor: "#f0e4de", backgroundColor: "#fff" }}>
-                <span style={{ color: C.dark }}>{c.asunto}</span>
-                <span style={{ color: C.muted }}>{new Date(c.created_at).toLocaleDateString("es-ES")} · {c.enviados} enviados</span>
+              <div key={c.id} className="px-4 py-2.5 text-xs border-b last:border-b-0" style={{ borderColor: "#f0e4de", backgroundColor: "#fff" }}>
+                <div className="flex justify-between gap-3">
+                  <span className="truncate" style={{ color: C.dark }}>{c.asunto}</span>
+                  <span className="shrink-0" style={{ color: C.muted }}>{new Date(c.created_at).toLocaleDateString("es-ES")} · {c.enviados} enviados</span>
+                </div>
+                {c.fallidos > 0 && (
+                  <div className="flex items-center justify-between gap-3 mt-1">
+                    <span style={{ color: "#b71c1c" }}>⚠ {c.fallidos} sin recibir</span>
+                    <button onClick={() => abrirReintento(c)} className="font-semibold shrink-0" style={{ color: C.burgundy }}>Reenviar a los que fallaron →</button>
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: reenviar a los que fallaron (imagen/botón se vuelven a añadir) */}
+      {retryCamp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(37,25,15,0.5)" }} onClick={() => !retryLoading && setRetryCamp(null)}>
+          <div className="w-full max-w-md rounded-2xl p-5 space-y-3 max-h-[85vh] overflow-y-auto" style={{ backgroundColor: "#fff8f5" }} onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-bold" style={{ color: C.burgundy }}>Reenviar a los {retryCamp.fallidos} que fallaron</p>
+            <p className="text-xs" style={{ color: C.muted }}>De «{retryCamp.asunto}». Se reutiliza el asunto y el texto. Si este correo llevaba <strong>imagen o botón</strong>, vuelve a añadirlos (no se guardan):</p>
+
+            <div className="rounded-xl border p-3" style={{ borderColor: C.border }}>
+              {imagenUrl ? (
+                <div className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagenUrl} alt="" className="rounded-lg shrink-0" style={{ width: 48, height: 48, objectFit: "cover" }} />
+                  <p className="text-sm flex-1" style={{ color: C.dark }}>Imagen añadida</p>
+                  <button onClick={() => setImagenUrl("")} className="text-xs font-semibold" style={{ color: "#b71c1c" }}>Quitar</button>
+                </div>
+              ) : (
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold" style={{ color: C.burgundy }}>
+                  <span>{subiendoImg ? "Subiendo imagen…" : "📷 Añadir imagen"}</span>
+                  <input type="file" accept="image/*" className="hidden" disabled={subiendoImg}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) subirImagen(f); e.currentTarget.value = ""; }} />
+                </label>
+              )}
+            </div>
+
+            <div className="rounded-xl border p-3 space-y-2" style={{ borderColor: C.border }}>
+              <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold" style={{ color: C.dark }}>
+                <input type="checkbox" checked={ctaOn} onChange={e => setCtaOn(e.target.checked)} className="accent-[#7d2b13]" />
+                Añadir botón para reservar
+              </label>
+              {ctaOn && (
+                <div className="grid gap-2">
+                  <input value={ctaTexto} onChange={e => setCtaTexto(e.target.value)} placeholder="Texto del botón" style={input} />
+                  <input value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} placeholder="https://reservas.andreacarriostudio.es/" style={input} />
+                </div>
+              )}
+            </div>
+
+            {error && <p className="text-sm" style={{ color: "#b71c1c" }}>{error}</p>}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setRetryCamp(null)} disabled={retryLoading} className="flex-1 py-2.5 rounded-lg text-sm font-semibold border" style={{ borderColor: C.border, color: C.muted, backgroundColor: "#fff" }}>Cancelar</button>
+              <button onClick={reintentar} disabled={retryLoading} className="flex-1 py-2.5 rounded-lg text-sm font-bold" style={{ backgroundColor: C.burgundy, color: "#fff" }}>
+                {retryLoading ? "Reenviando…" : `Reenviar a ${retryCamp.fallidos}`}
+              </button>
+            </div>
           </div>
         </div>
       )}
