@@ -86,7 +86,7 @@ type IscrizioneDetalle = {
   piano_id: string;
   metodo_pagamento: string;
   discipline: { nome: string } | null;
-  iscrizione_orari: { orari: { giorno: string; ora_inizio: string; ora_fine: string } | null }[];
+  iscrizione_orari: { orario_id?: string; orari: { giorno: string; ora_inizio: string; ora_fine: string } | null }[];
   prezzo?: number | null;
   matricula?: number | null;
   stripe_subscription_id?: string | null;
@@ -594,7 +594,8 @@ export default function AdminDashboard() {
   // Edición directa del perfil de la alumna (estado, plan, matrícula, método).
   const [detallePiani, setDetallePiani] = useState<{ id: string; nome: string; prezzo: number }[]>([]);
   const [editando, setEditando] = useState(false);
-  const [editForm, setEditForm] = useState<{ stato: string; piano_id: string; matricula: string; metodo: string; cuota: string }>({ stato: "", piano_id: "", matricula: "", metodo: "", cuota: "" });
+  const [editForm, setEditForm] = useState<{ stato: string; piano_id: string; matricula: string; metodo: string; cuota: string; horarios: string[] }>({ stato: "", piano_id: "", matricula: "", metodo: "", cuota: "", horarios: [] });
+  const [editOrari, setEditOrari] = useState<{ id: string; giorno: string; ora_inizio: string; ora_fine: string }[]>([]);
   const [editError, setEditError] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   // Edición del contacto (email / teléfono) en la ficha de Clientas.
@@ -1929,7 +1930,7 @@ export default function AdminDashboard() {
     setUsuariosProfileLoading(false);
   };
 
-  const abrirEdicion = () => {
+  const abrirEdicion = async () => {
     if (!usuariosProfile) return;
     setEditForm({
       stato: usuariosProfile.stato,
@@ -1937,8 +1938,12 @@ export default function AdminDashboard() {
       matricula: String(usuariosProfile.matricula ?? 0),
       metodo: usuariosProfile.metodo_pagamento ?? "",
       cuota: usuariosProfile.prezzo != null ? String(usuariosProfile.prezzo) : "",
+      horarios: (usuariosProfile.iscrizione_orari ?? []).map(io => io.orario_id).filter((x): x is string => !!x),
     });
     setEditando(true);
+    // Horarios disponibles para la disciplina de la alumna (para poder cambiarlos al editar).
+    const { data: od } = await supabase.from("orari").select("id, giorno, ora_inizio, ora_fine").eq("disciplina_id", usuariosProfile.disciplina_id).eq("attivo", true).order("giorno");
+    setEditOrari((od ?? []) as { id: string; giorno: string; ora_inizio: string; ora_fine: string }[]);
   };
 
   const guardarEdicionAlumna = async () => {
@@ -1953,7 +1958,7 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/admin/iscrizioni", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: usuariosProfile.id, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo || undefined, prezzo: prezzoOverride }),
+        body: JSON.stringify({ id: usuariosProfile.id, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo || undefined, prezzo: prezzoOverride, horarios: editForm.horarios }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok) {
@@ -1961,7 +1966,11 @@ export default function AdminDashboard() {
         return;
       }
       const nuevoPrezzo = prezzoOverride ?? planPrice;
-      setUsuariosProfile(p => (p ? { ...p, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo, prezzo: nuevoPrezzo } : p));
+      const nuevosOrari = editForm.horarios.map(hid => {
+        const o = editOrari.find(x => x.id === hid);
+        return { orario_id: hid, orari: o ? { giorno: o.giorno, ora_inizio: o.ora_inizio, ora_fine: o.ora_fine } : null };
+      });
+      setUsuariosProfile(p => (p ? { ...p, stato: editForm.stato, piano_id: editForm.piano_id, matricula: mat, metodo_pagamento: editForm.metodo, prezzo: nuevoPrezzo, iscrizione_orari: nuevosOrari } : p));
       setUsuariosData(prev => prev.map(u => (u.id === usuariosProfile.id ? { ...u, stato: editForm.stato, piano_id: editForm.piano_id, metodo_pagamento: editForm.metodo, prezzo: nuevoPrezzo } : u)));
       setEditando(false);
     } catch {
@@ -8834,6 +8843,22 @@ export default function AdminDashboard() {
                             {detallePiani.map(p => <option key={p.id} value={p.id}>{PLAN_LABEL[p.id] ?? p.nome} — {p.prezzo}€/mes</option>)}
                           </select>
                         </label>
+                        {editOrari.length > 0 && (
+                          <div>
+                            <span className="text-xs" style={{ color: "#89726c" }}>Horario (marca los días de la alumna)</span>
+                            <div className="mt-1 space-y-2">
+                              {editOrari.map(o => {
+                                const checked = editForm.horarios.includes(o.id);
+                                return (
+                                  <label key={o.id} className="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer bg-white" style={{ borderColor: checked ? "#7d2b13" : "#dcc1b9" }}>
+                                    <input type="checkbox" checked={checked} onChange={() => setEditForm(f => ({ ...f, horarios: checked ? f.horarios.filter(id => id !== o.id) : [...f.horarios, o.id] }))} className="accent-[#7d2b13]" />
+                                    <span className="text-sm" style={{ color: "#25190f" }}>{o.giorno} · {o.ora_inizio.substring(0, 5)} – {o.ora_fine.substring(0, 5)}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         <label className="block">
                           <span className="text-xs" style={{ color: "#89726c" }}>Cuota mensual (€) — cámbiala para una cuota personalizada</span>
                           <input type="number" min="0" value={editForm.cuota} onChange={e => setEditForm(f => ({ ...f, cuota: e.target.value }))} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />

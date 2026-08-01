@@ -10,7 +10,7 @@ async function isAdmin(): Promise<boolean> {
 
 // Columnas completas que necesita el admin (superset de todas las pantallas).
 const COLS =
-  "id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, matricula_pagada, prezzo, stripe_subscription_id, stripe_customer_id, discipline(nome), iscrizione_orari(orari(giorno, ora_inizio, ora_fine))";
+  "id, nome, cognome, nome_alumna, cognome_alumna, email, telefono, stato, created_at, disciplina_id, piano_id, metodo_pagamento, matricula, matricula_pagada, prezzo, stripe_subscription_id, stripe_customer_id, discipline(nome), iscrizione_orari(orario_id, orari(giorno, ora_inizio, ora_fine))";
 
 // GET → lista de inscripciones con service-role (solo admin).
 //  · ?id=        → una inscripción concreta
@@ -78,9 +78,27 @@ export async function PATCH(req: NextRequest) {
   if (typeof body.metodo_pagamento === "string" && body.metodo_pagamento) patch.metodo_pagamento = body.metodo_pagamento;
   // Cuota personalizada (prezzo). null/"" = usar el precio del plan.
   if ("prezzo" in body) patch.prezzo = (body.prezzo === null || body.prezzo === "" || Number.isNaN(Number(body.prezzo))) ? null : Number(body.prezzo);
-  if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
+  const horariosProvided = Array.isArray(body.horarios);
+  if (Object.keys(patch).length === 0 && !horariosProvided) return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
 
-  const { data, error } = await supabaseAdmin.from("iscrizioni").update(patch).eq("id", id).select("id, email, telefono, stato, piano_id, matricula, metodo_pagamento, prezzo").single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Campos de la inscripción (estado, plan, matrícula, método, cuota).
+  let data: unknown = null;
+  if (Object.keys(patch).length > 0) {
+    const { data: d, error } = await supabaseAdmin.from("iscrizioni").update(patch).eq("id", id).select("id, email, telefono, stato, piano_id, matricula, metodo_pagamento, prezzo").single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    data = d;
+  }
+
+  // Horarios: reemplaza las asignaciones de iscrizione_orari por las nuevas (si se envían).
+  if (horariosProvided) {
+    const horarios = (body.horarios as unknown[]).filter((h): h is string => typeof h === "string");
+    const { error: delErr } = await supabaseAdmin.from("iscrizione_orari").delete().eq("iscrizione_id", id);
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
+    if (horarios.length > 0) {
+      const { error: insErr } = await supabaseAdmin.from("iscrizione_orari").insert(horarios.map((orario_id) => ({ iscrizione_id: id, orario_id })));
+      if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
+    }
+  }
+
   return NextResponse.json({ data });
 }
