@@ -2040,6 +2040,8 @@ export default function AdminDashboard() {
   // ── Borrado rápido desde tabla (Usuarios / Reservas Recientes) ──
   const [rowDeleteId, setRowDeleteId] = useState<string | null>(null);
   const [rowDeleting, setRowDeleting] = useState(false);
+  const [limpiandoPend, setLimpiandoPend] = useState(false);
+  const [confirmLimpiarPend, setConfirmLimpiarPend] = useState(false);
   const handleEliminarRow = async (id: string, stato: string, prezzo?: number | null, matricula?: number | null) => {
     setRowDeleting(true);
     const res = await fetch("/api/admin/delete-iscrizione", {
@@ -2063,6 +2065,25 @@ export default function AdminDashboard() {
     }
     setRowDeleting(false);
     setRowDeleteId(null);
+  };
+
+  // Borra en lote los "Pendiente" que ya pagaron (mismo nombre+apellido con un registro ya pagado).
+  const limpiarPendientesPagados = async (ids: string[]) => {
+    setLimpiandoPend(true);
+    for (const id of ids) {
+      const u = usuariosData.find(x => x.id === id);
+      try {
+        const res = await fetch("/api/admin/delete-iscrizione", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+        if (res.ok) {
+          setPendingCount(p => Math.max(0, p - 1));
+          setPendingAmount(p => Math.max(0, p - (u?.prezzo ?? 0)));
+          setUsuariosData(prev => prev.filter(x => x.id !== id));
+          setBookings(prev => prev.filter(b => b.id !== id));
+        }
+      } catch { /* continúa con los demás */ }
+    }
+    setLimpiandoPend(false);
+    setConfirmLimpiarPend(false);
   };
 
   // Listado de alumnas que contribuyen a la facturación del mes (matrícula y/o bono).
@@ -4191,6 +4212,11 @@ export default function AdminDashboard() {
               const adulto = `${u.nome} ${u.cognome}`.toLowerCase();
               return nina.includes(q) || adulto.includes(q) || (u.discipline?.nome ?? "").toLowerCase().includes(q);
             });
+            // Pendientes "fantasma": mismo nombre+apellido que un registro ya pagado (checkouts abandonados que luego pagaron).
+            const normId = (n?: string | null, c?: string | null) => `${(n || "").trim().toLowerCase()}|${(c || "").trim().toLowerCase()}`;
+            const nombresPagados = new Set(usuariosData.filter(u => u.stato !== "attesa" && u.stato !== "cancelada").map(u => normId(u.nome, u.cognome)).filter(k => k !== "|"));
+            const esFantasma = (u: KpiStudentRow) => u.stato === "attesa" && nombresPagados.has(normId(u.nome, u.cognome));
+            const fantasmas = usuariosData.filter(esFantasma);
             const filtrosActivos = usuariosFiltroDisc !== "" || usuariosFiltroStato !== "" || usuariosFiltroMetodo !== "" || usuariosFiltroDesde !== "" || usuariosFiltroHasta !== "" || q !== "";
             return (
               <section className="space-y-4">
@@ -4274,6 +4300,23 @@ export default function AdminDashboard() {
                   )}
                 </div>
 
+                {fantasmas.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-3 rounded-2xl px-4 py-3" style={{ backgroundColor: "#fff3e0", border: "1px solid #f0c9a0" }}>
+                    <Icon name="warning" className="text-base" style={{ color: "#b06a00" }} />
+                    <span className="text-sm flex-1" style={{ color: "#7a4a00" }}>
+                      <b>{fantasmas.length}</b> {fantasmas.length === 1 ? "pendiente que ya pagó" : "pendientes que ya pagaron"} (duplicados con el mismo nombre y apellido de una alumna ya registrada).
+                    </span>
+                    {!confirmLimpiarPend ? (
+                      <button onClick={() => setConfirmLimpiarPend(true)} className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-white whitespace-nowrap" style={{ backgroundColor: "#b71c1c" }}>Limpiar duplicados</button>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5">
+                        <button onClick={() => limpiarPendientesPagados(fantasmas.map(f => f.id))} disabled={limpiandoPend} className="px-3 py-1.5 rounded-full text-xs font-semibold text-white whitespace-nowrap" style={{ backgroundColor: "#b71c1c", opacity: limpiandoPend ? 0.6 : 1 }}>{limpiandoPend ? "Borrando…" : `Sí, borrar ${fantasmas.length}`}</button>
+                        <button onClick={() => setConfirmLimpiarPend(false)} className="px-3 py-1.5 rounded-full text-xs" style={{ backgroundColor: "#f0ddd5", color: "#56423d" }}>No</button>
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {usuariosLoading ? (
                   <div className="flex items-center justify-center h-40">
                     <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#7d2b13", borderTopColor: "transparent" }} />
@@ -4314,6 +4357,9 @@ export default function AdminDashboard() {
                                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap" style={{ backgroundColor: statoInfo(u.stato).bg, color: statoInfo(u.stato).color }}>
                                     {statoInfo(u.stato).label}
                                   </span>
+                                  {esFantasma(u) && (
+                                    <span className="inline-flex items-center ml-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap" style={{ backgroundColor: "#e7f1ea", color: "#3f7d54" }} title="Ya tiene un registro pagado con el mismo nombre y apellido">✓ ya pagó</span>
+                                  )}
                                 </td>
                                 <td className="py-3 px-4 text-xs whitespace-nowrap" style={{ color: "#89726c" }}>{u.metodo_pagamento ? (METODO_LABEL[u.metodo_pagamento] ?? u.metodo_pagamento) : "—"}</td>
                                 <td className="py-3 px-4 whitespace-nowrap text-xs" style={{ color: "#89726c" }}>
