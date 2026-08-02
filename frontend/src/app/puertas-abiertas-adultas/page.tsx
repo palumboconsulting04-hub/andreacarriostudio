@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import Script from "next/script";
 
-// Meta (Facebook) Pixel — solo en esta landing de Puertas Abiertas Adultas.
+// Meta (Facebook) Pixel — solo en esta landing de adultas.
 const FB_PIXEL_ID = "2024231855152441";
 
 declare global {
@@ -12,12 +12,6 @@ declare global {
     fbq?: (...args: unknown[]) => void;
   }
 }
-
-const DISCIPLINA_OPTIONS = [
-  { value: "barre", label: "Barre Fit", desc: "Tonificar, esculpir y energía" },
-  { value: "pilates", label: "Pilates Mat", desc: "Abdomen, postura y flexibilidad" },
-  { value: "ambas", label: "Tengo curiosidad, ¡quiero probar las dos!", desc: "" },
-];
 
 const C = {
   burgundy: "#7d2b13",
@@ -33,21 +27,6 @@ const C = {
 const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
 const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
 
-function inputStyle() {
-  return {
-    border: `1.5px solid ${C.border}`,
-    borderRadius: "12px",
-    padding: "12px 16px",
-    // 16px evita el auto-zoom de iOS Safari al enfocar el campo en móvil.
-    fontSize: "16px",
-    fontFamily: fSans,
-    color: C.dark,
-    backgroundColor: C.cream,
-    outline: "none",
-    width: "100%",
-  };
-}
-
 function Check() {
   return (
     <span
@@ -62,59 +41,6 @@ function Check() {
 }
 
 export default function PuertasAbiertasAdultas() {
-  const [nombre, setNombre] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [disciplina, setDisciplina] = useState("");
-  const [enviando, setEnviando] = useState(false);
-  const [enviado, setEnviado] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-
-  const formValido =
-    nombre.trim() !== "" &&
-    telefono.trim() !== "" &&
-    disciplina !== "";
-
-  // ── Evento de optimización de Meta ──
-  // Dispara ViewContent una sola vez cuando la persona llega al formulario.
-  const formRef = useRef<HTMLDivElement>(null);
-  const viewContentFired = useRef(false);
-  useEffect(() => {
-    const el = formRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting && !viewContentFired.current) {
-          viewContentFired.current = true;
-          window.fbq?.("track", "ViewContent", {
-            content_name: "Formulario Puertas Abiertas Adultas",
-          });
-          obs.disconnect();
-        }
-      },
-      { threshold: 0.4 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  const scrollToForm = () =>
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  // ── Lead de botón (FASE temporal de volumen para Meta) ──
-  // Dispara un Lead al pulsar cualquiera de los botones de reserva, etiquetado con
-  // content_name para distinguirlo del Lead real (envío del formulario) mediante
-  // una Conversión personalizada en Meta. Una vez por botón y visita. Sin CAPI.
-  // PARA QUITAR cuando haya estabilidad: borrar el track Lead y dejar scrollToForm.
-  const botonLeadFired = useRef<Set<string>>(new Set());
-  const handleReservaClick = (origen: string) => {
-    if (!botonLeadFired.current.has(origen)) {
-      botonLeadFired.current.add(origen);
-      window.fbq?.("track", "Lead", { content_name: `Click reserva: ${origen}` });
-    }
-    logFunnel("pa_click");
-    scrollToForm();
-  };
-
   // ── Atribución de origen ──
   const atrib = useRef<{
     origen: string;
@@ -149,7 +75,7 @@ export default function PuertasAbiertasAdultas() {
     atrib.current = { origen, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid };
   }, []);
 
-  // ── Embudo interno (anónimo): Visita → Pulsó reservar → Reserva ──
+  // ── Embudo interno (anónimo): Visita → Pulsó comprar ──
   const paSessionRef = useRef<string>("");
   const paLogged = useRef<Set<string>>(new Set());
   const logFunnel = (step: string) => {
@@ -178,101 +104,17 @@ export default function PuertasAbiertasAdultas() {
     logFunnel("pa_visita");
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSubmit = async () => {
-    if (!formValido || enviando) return;
-    setEnviando(true);
-    setErrorMsg("");
-    try {
-      const eventId = (typeof crypto !== "undefined" && crypto.randomUUID)
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const getCookie = (n: string) =>
-        document.cookie.split("; ").find(c => c.startsWith(n + "="))?.split("=")[1] || null;
-
-      const res = await fetch("/api/puertas-abiertas-adultas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre: nombre.trim(),
-          telefono: telefono.trim(),
-          email: "",
-          disciplina,
-          origen: atrib.current.origen,
-          utm_source: atrib.current.utm_source,
-          utm_medium: atrib.current.utm_medium,
-          utm_campaign: atrib.current.utm_campaign,
-          utm_content: atrib.current.utm_content,
-          utm_term: atrib.current.utm_term,
-          fbclid: atrib.current.fbclid,
-          eventId,
-          fbc: getCookie("_fbc"),
-          fbp: getCookie("_fbp"),
-        }),
-      });
-      if (!res.ok) throw new Error();
-      setEnviado(true);
-      logFunnel("pa_reserva");
-      // Conversión: ha reservado su clase de prueba. Mismo eventID que CAPI.
-      window.fbq?.("track", "Lead", {}, { eventID: eventId });
-    } catch {
-      setErrorMsg("Ha habido un problema al enviar. Inténtalo de nuevo.");
-    } finally {
-      setEnviando(false);
+  // ── Ir al proceso de compra (reserva de plaza) ──
+  // Registra el clic (Meta + embudo) y lleva a /reservar-plaza conservando las UTM.
+  const botonClickFired = useRef<Set<string>>(new Set());
+  const handleReservaClick = (origen: string) => {
+    if (!botonClickFired.current.has(origen)) {
+      botonClickFired.current.add(origen);
+      window.fbq?.("track", "InitiateCheckout", { content_name: `Click reservar: ${origen}` });
     }
+    logFunnel("pa_click");
+    window.location.href = "/reservar-plaza" + window.location.search;
   };
-
-  if (enviado) {
-    return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center px-6 py-16 text-center"
-        style={{ backgroundColor: C.bg }}
-      >
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-8"
-          style={{ backgroundColor: C.blush }}
-        >
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-            <path d="M7 18l8 8L29 10" stroke={C.burgundy} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <h2
-          className="text-4xl sm:text-5xl mb-5"
-          style={{ fontFamily: fSerif, color: C.burgundy }}
-        >
-          ¡Plaza reservada!
-        </h2>
-        <p className="text-base max-w-md leading-relaxed mb-8" style={{ color: C.brown }}>
-          Me alegra muchísimo que vengas a probar. He creado un grupo de WhatsApp donde voy compartiendo todos los detalles de la jornada. Únete para no perderte nada — y así te confirmo tu horario.
-        </p>
-
-        <a
-          href="https://chat.whatsapp.com/GvefZIztp0G5Wb3gif5f2g"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-3 px-7 py-4 rounded-2xl text-white font-semibold shadow-lg hover:opacity-90 transition-opacity mb-4"
-          style={{ backgroundColor: "#25D366", fontFamily: fSans }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.51 5.26l-.999 3.648 3.477-1.717zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/>
-          </svg>
-          Unirme al grupo de WhatsApp
-        </a>
-
-        <p className="text-sm max-w-md leading-relaxed mb-10" style={{ color: C.brown }}>
-          ¡Hasta el 24 de julio!<br />
-          <strong>Andrea</strong>
-        </p>
-
-        <a
-          href="https://andreacarriostudio.es"
-          className="text-sm uppercase tracking-widest hover:opacity-70 transition-opacity"
-          style={{ color: C.muted, fontFamily: fSans }}
-        >
-          Ir a la web de Andrea Carrió Studio
-        </a>
-      </div>
-    );
-  }
 
   return (
     <div style={{ backgroundColor: C.bg, minHeight: "100vh" }}>
@@ -330,7 +172,7 @@ export default function PuertasAbiertasAdultas() {
             className="text-xs uppercase tracking-[0.18em] mb-3"
             style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 600 }}
           >
-            Clase de prueba gratuita · 24 de julio · Valencia (Zona Alfahuir)
+            Pilates Mat · Barre Fit · Valencia (Zona Alfahuir)
           </p>
 
           <h1
@@ -350,7 +192,7 @@ export default function PuertasAbiertasAdultas() {
 
           <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6 space-y-3" style={{ color: C.dark }}>
             <p>Descubre dos de las disciplinas más eficaces para fortalecer el cuerpo, mejorar la movilidad y sentirte mejor en tu día a día.</p>
-            <p style={{ fontWeight: 600 }}>El 24 de julio podrás probar una clase real, conocer el estudio y resolver todas tus dudas antes de decidir.</p>
+            <p style={{ fontWeight: 600 }}>Reserva tu plaza y empieza a cuidarte en un estudio cercano, con grupos reducidos y atención personalizada.</p>
           </div>
 
           <button
@@ -358,7 +200,7 @@ export default function PuertasAbiertasAdultas() {
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Reservar mi clase gratis con Andrea
+            Reservar mi plaza
           </button>
 
           <p className="text-sm mt-4 font-semibold" style={{ color: C.burgundy }}>
@@ -367,7 +209,7 @@ export default function PuertasAbiertasAdultas() {
         </div>
       </div>
 
-      {/* ── Las 4 cosas que vienes a hacer ── */}
+      {/* ── Lo que te llevas al empezar ── */}
       <div className="px-4 py-12">
         <div
           className="max-w-2xl mx-auto rounded-3xl p-7 sm:p-10 shadow-sm"
@@ -377,16 +219,15 @@ export default function PuertasAbiertasAdultas() {
             className="text-2xl sm:text-3xl mb-7 text-center"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            ¿Qué vivirás durante la jornada?
+            ¿Qué te llevas al empezar?
           </h2>
 
           <ul className="space-y-4">
             {[
-              ["Una clase real de Pilates Mat o Barre Fit", "No es una demostración. Participarás en una clase adaptada a cualquier nivel para que descubras cómo se trabaja realmente en el estudio."],
-              ["Descubrir cuál disciplina encaja mejor contigo", "Conocerás los beneficios del Pilates Mat para la postura, la movilidad y el fortalecimiento del core, y del Barre Fit para la tonificación, el equilibrio y la resistencia muscular."],
-              ["Un ambiente cercano y grupos reducidos", "Podrás entrenar con tranquilidad, recibir atención personalizada y experimentar la diferencia de trabajar en grupos pequeños."],
-              ["Conoce el estudio y resuelve tus dudas", "Tendrás tiempo para conocer el espacio, hablar conmigo personalmente y descubrir qué opción se adapta mejor a tus objetivos."],
-              ["Sorpresa especial + picoteo", "Después de la clase compartiremos un pequeño aperitivo y una sorpresa preparada especialmente para las asistentes."],
+              ["Clases reales de Pilates Mat o Barre Fit", "Clases adaptadas a cualquier nivel para que trabajes de verdad tu cuerpo y descubras cómo entrenamos en el estudio."],
+              ["La disciplina que mejor encaja contigo", "Los beneficios del Pilates Mat para la postura, la movilidad y el core, y del Barre Fit para la tonificación, el equilibrio y la resistencia muscular."],
+              ["Un ambiente cercano y grupos reducidos", "Entrenas con tranquilidad, con atención personalizada y la diferencia de trabajar en grupos pequeños."],
+              ["Alguien que te mira y te cuida", "Estoy pendiente de cada movimiento para corregirte bien y que avances segura, sin lesionarte."],
             ].map(([t, d]) => (
               <li key={t} className="flex gap-3">
                 <Check />
@@ -403,12 +244,12 @@ export default function PuertasAbiertasAdultas() {
             className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Quiero reservar mi clase gratis
+            Quiero reservar mi plaza
           </button>
 
           <div className="mt-6 rounded-2xl p-4" style={{ backgroundColor: "#fff3e0" }}>
             <p className="text-sm leading-relaxed" style={{ color: "#8a4b1a" }}>
-              ⚠️ <strong>Un pequeño detalle:</strong> Trabajo siempre con grupos muy reducidos porque me gusta estar pendiente de cada una de vosotras y corregiros bien. Por eso, las plazas para este día son limitadas. Si te apetece venir, reserva tu hueco ahora para no quedarte sin tu horario.
+              ⚠️ <strong>Un pequeño detalle:</strong> Trabajo siempre con grupos muy reducidos porque me gusta estar pendiente de cada una de vosotras y corregiros bien. Por eso las plazas son limitadas. Si te apetece empezar, reserva tu hueco ahora para asegurar tu horario.
             </p>
           </div>
         </div>
@@ -461,119 +302,6 @@ export default function PuertasAbiertasAdultas() {
         </div>
       </div>
 
-      {/* ── Así será la jornada ── */}
-      <div className="px-4 pb-12">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl mb-7 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
-            Así será la jornada
-          </h2>
-          <div className="space-y-3">
-            {[
-              ["Bienvenida", "Os recibiré personalmente, os enseñaré el estudio y os explicaré cómo será la experiencia."],
-              ["Clase de prueba (30 min)", "Participarás en una clase real de Pilates Mat o Barre Fit, adaptada a cualquier nivel. Podrás moverte, activar tu cuerpo y descubrir si esta actividad encaja contigo."],
-              ["Sorpresa especial + picoteo (30 min)", "Tras la clase nos quedaremos un ratito para compartir, disfrutar de un pequeño aperitivo y descubrir una sorpresa que hemos preparado para las asistentes."],
-              ["Decide con tranquilidad", "Sin presiones ni compromiso. Podrás resolver todas tus dudas sobre horarios, niveles y funcionamiento del estudio. Si te gusta la experiencia, te explicaremos las opciones disponibles para empezar en septiembre."],
-            ].map(([t, d], i) => (
-              <div
-                key={t}
-                className="flex gap-4 items-start rounded-2xl p-4"
-                style={{ backgroundColor: "#ffffff", border: `1px solid ${C.border}` }}
-              >
-                <span
-                  className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                  style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans }}
-                >
-                  {i + 1}
-                </span>
-                <span>
-                  <strong style={{ color: C.dark, fontFamily: fSans, fontSize: "0.95rem" }}>{t}.</strong>{" "}
-                  <span className="text-sm" style={{ color: C.brown }}>{d}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Formulario ── */}
-      <div ref={formRef} className="px-4 pb-12 scroll-mt-4">
-        <div
-          className="max-w-xl mx-auto rounded-3xl p-7 sm:p-10 shadow-lg"
-          style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}
-        >
-          <h2 className="text-2xl sm:text-3xl mb-1 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
-            Reserva tu plaza en 20 segundos
-          </h2>
-          <p className="text-sm text-center mb-7" style={{ color: C.brown }}>
-            Rellena este mini formulario y te escribiré yo misma por WhatsApp para confirmar tu hora de clase. No te preocupes, odio el spam tanto como tú; no te mandaré publicidad pesada.
-          </p>
-
-          <div className="space-y-4">
-            <input
-              style={inputStyle()}
-              placeholder="Nombre"
-              value={nombre}
-              onChange={e => setNombre(e.target.value)}
-            />
-            <input
-              style={inputStyle()}
-              placeholder="WhatsApp"
-              type="tel"
-              value={telefono}
-              onChange={e => setTelefono(e.target.value)}
-            />
-
-            <div>
-              <p className="text-sm font-semibold mb-2.5" style={{ color: C.brown, fontFamily: fSans }}>
-                ¿Qué te apetece probar en tu sesión de 60 minutos?
-              </p>
-              <div className="flex flex-col gap-2.5">
-                {DISCIPLINA_OPTIONS.map(o => {
-                  const sel = disciplina === o.value;
-                  return (
-                    <button
-                      key={o.value}
-                      onClick={() => setDisciplina(o.value)}
-                      className="w-full text-left rounded-2xl px-4 py-3 transition-all"
-                      style={{
-                        border: `2px solid ${sel ? C.burgundy : C.border}`,
-                        backgroundColor: sel ? C.blush : C.cream,
-                        outline: "none",
-                      }}
-                    >
-                      <span className="block text-sm font-semibold" style={{ color: sel ? C.burgundy : C.dark, fontFamily: fSans }}>
-                        {o.label}
-                      </span>
-                      {o.desc && (
-                        <span className="block text-xs mt-0.5" style={{ color: C.muted }}>{o.desc}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
-
-            <button
-              onClick={handleSubmit}
-              disabled={!formValido || enviando}
-              className="w-full py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest transition-all"
-              style={{
-                backgroundColor: formValido ? C.burgundy : C.border,
-                color: "#fff8f5",
-                fontFamily: fSans,
-                letterSpacing: "0.08em",
-                cursor: formValido ? "pointer" : "not-allowed",
-                opacity: enviando ? 0.7 : 1,
-              }}
-            >
-              {enviando ? "Reservando..." : "Quiero reservar mi plaza"}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* ── FAQ ── */}
       <div className="px-4 pb-12">
         <div className="max-w-2xl mx-auto">
@@ -585,12 +313,11 @@ export default function PuertasAbiertasAdultas() {
           </p>
           <div className="space-y-3">
             {[
-              ["¿De verdad es gratis? ¿Dónde está el truco?", "Es 100% gratis. Vienes, pruebas la sesión de 60 minutos, ves el estudio y te vas a casa con un buen entrenamiento encima. El único «truco» es que confío tanto en mis clases que sé que a muchas os encantará el ambiente y os apetecerá quedaros, pero la decisión es completamente tuya."],
-              ["¿Y si nunca he hecho Pilates o Barre?", "Mejor todavía. La jornada está pensada justo para eso, para tener una primera toma de contacto muy suave. Yo te iré guiando paso a paso en cada movimiento, así que no te vas a sentir perdida en ningún momento."],
+              ["¿Y si nunca he hecho Pilates o Barre?", "Mejor todavía. Las clases están pensadas para todos los niveles y yo te iré guiando paso a paso en cada movimiento, así que no te vas a sentir perdida en ningún momento."],
               ["¿Qué es el Barre Fit exactamente?", "Es súper divertido. Mezcla la precisión del Pilates, la elegancia del ballet y el entrenamiento fitness usando la barra de danza como apoyo. Es muy dinámico, con música, y va de lujo para tonificar rápido el tren inferior y el abdomen sin machacar las articulaciones."],
               ["¿Las clases de Pilates son con máquinas?", "No, es Pilates Mat (en suelo con colchoneta). Usamos el propio peso del cuerpo y accesorios como aros, bandas elásticas o pelotas. Es lo más efectivo para corregir la postura y fortalecer el core de verdad."],
-              ["¿Qué tengo que llevar?", "Solo ropa cómoda con la que te muevas bien y ganas de probar algo nuevo. Todo el material que necesitas lo tengo yo listo en el estudio."],
-              ["¿Me vais a obligar a apuntarme al terminar?", "Para nada. Odio las tácticas de venta pesadas. Vienes, pruebas, y si te encanta, me pides los horarios y los precios. Si ves que no es para ti, tan amigas. Así de simple."],
+              ["¿Qué tengo que llevar?", "Solo ropa cómoda con la que te muevas bien. Todo el material que necesitas lo tengo yo listo en el estudio."],
+              ["¿Cómo reservo mi plaza?", "Muy fácil: pulsa cualquier botón de «Reservar mi plaza», eliges disciplina y horario y completas tu reserva en unos minutos. Cualquier duda, me tienes a mí al otro lado."],
               ["¿Dónde estás exactamente?", "En Carrer de Motilla del Palancar 34, en la zona de Alfahuir (Valencia). Estamos a solo 5 minutos andando del Centro Comercial Arena. Si vives por el barrio o cerquita, te pillará perfecto para venir a entrenar a un paso de casa."],
             ].map(([q, a]) => (
               <details
@@ -619,17 +346,17 @@ export default function PuertasAbiertasAdultas() {
           style={{ backgroundColor: C.burgundy }}
         >
           <h2 className="text-2xl sm:text-3xl mb-3" style={{ fontFamily: fSerif, color: C.cream }}>
-            ¿Te apuntas a probar?
+            ¿Te apuntas?
           </h2>
           <p className="text-sm sm:text-base mb-7 max-w-md mx-auto" style={{ color: C.blush }}>
-            Si estás leyendo esto, aún quedan plazas libres para el 24 de julio. Reserva la tuya gratis ahora y ven a conocer el estudio sin ningún compromiso.
+            Si estás leyendo esto, aún quedan plazas libres. Reserva la tuya ahora y empieza a cuidarte en un estudio cercano y de confianza.
           </p>
           <button
             onClick={() => handleReservaClick("cta_final")}
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.cream, color: C.burgundy, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Reservar mi clase gratis
+            Reservar mi plaza
           </button>
         </div>
       </div>

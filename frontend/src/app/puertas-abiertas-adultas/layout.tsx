@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Clase de prueba gratis para adultas — Andrea Carrió Studio",
-  description: "Barre Fit y Pilates Mat en Valencia. Reserva tu clase de prueba gratis en la jornada de puertas abiertas, sin compromiso.",
+  title: "Pilates Mat y Barre Fit para adultas en Valencia — Andrea Carrió Studio",
+  description: "Tonifica tu cuerpo, mejora tu postura y desconecta con Pilates Mat y Barre Fit en Valencia (Zona Alfahuir). Grupos reducidos y atención personalizada. Reserva tu plaza.",
   openGraph: {
-    title: "Clase de prueba gratis para adultas — Andrea Carrió Studio",
-    description: "Barre Fit y Pilates Mat en Valencia. Reserva tu clase de prueba gratis en la jornada de puertas abiertas, sin compromiso.",
+    title: "Pilates Mat y Barre Fit para adultas en Valencia — Andrea Carrió Studio",
+    description: "Tonifica tu cuerpo, mejora tu postura y desconecta con Pilates Mat y Barre Fit en Valencia (Zona Alfahuir). Grupos reducidos y atención personalizada. Reserva tu plaza.",
   },
 };
 
