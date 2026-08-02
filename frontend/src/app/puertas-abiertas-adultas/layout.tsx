@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Pilates Mat y Barre Fit para adultas en Valencia — Andrea Carrió Studio",
-  description: "Tonifica tu cuerpo, mejora tu postura y desconecta con Pilates Mat y Barre Fit en Valencia (Zona Alfahuir). Grupos reducidos y atención personalizada. Reserva tu plaza.",
+  title: "Ponte en forma este septiembre — Pilates Mat y Barre Fit en Valencia",
+  description: "¿Vuelves del verano con ganas de retomar la rutina? Tonifica y recupera tu cuerpo con Pilates Mat y Barre Fit en Valencia (Alfahuir). Grupos reducidos, trato cercano. Reserva tu plaza de septiembre.",
   openGraph: {
-    title: "Pilates Mat y Barre Fit para adultas en Valencia — Andrea Carrió Studio",
-    description: "Tonifica tu cuerpo, mejora tu postura y desconecta con Pilates Mat y Barre Fit en Valencia (Zona Alfahuir). Grupos reducidos y atención personalizada. Reserva tu plaza.",
+    title: "Ponte en forma este septiembre — Pilates Mat y Barre Fit en Valencia",
+    description: "¿Vuelves del verano con ganas de retomar la rutina? Tonifica y recupera tu cuerpo con Pilates Mat y Barre Fit en Valencia (Alfahuir). Grupos reducidos, trato cercano. Reserva tu plaza de septiembre.",
   },
 };
 

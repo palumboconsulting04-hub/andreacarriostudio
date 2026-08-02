@@ -242,14 +242,14 @@ export default function PuertasAbiertasAdultas() {
             className="text-xs uppercase tracking-[0.18em] mb-3"
             style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 600 }}
           >
-            Pilates Mat · Barre Fit · Valencia (Zona Alfahuir)
+            Empieza en septiembre · Pilates Mat & Barre Fit · Valencia (Alfahuir)
           </p>
 
           <h1
             className="text-[1.7rem] sm:text-5xl mb-4 leading-[1.15]"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            Tonifica tu cuerpo, libera tensiones y regálate 60 minutos de desconexión real
+            Después de un verano de disfrutar, septiembre es tu momento de volver a ponerte en forma
           </h1>
 
           {/* Disciplinas destacadas — visibles al entrar (coherencia anuncio/landing) */}
@@ -261,8 +261,8 @@ export default function PuertasAbiertasAdultas() {
           </p>
 
           <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6 space-y-3" style={{ color: C.dark }}>
-            <p>Descubre dos de las disciplinas más eficaces para fortalecer el cuerpo, mejorar la movilidad y sentirte mejor en tu día a día.</p>
-            <p style={{ fontWeight: 600 }}>Reserva tu plaza y empieza a cuidarte en un estudio cercano, con grupos reducidos y atención personalizada.</p>
+            <p>Vacaciones, comidas, cañas y la rutina por los suelos… y ahora te notas con menos tono y con ganas de volver a cuidarte. Es normal — y septiembre es el momento perfecto para arrancar.</p>
+            <p style={{ fontWeight: 600 }}>Te ayudo a retomarlo con Pilates Mat y Barre Fit: tonificas, recuperas la postura y vuelves a sentirte bien en tu cuerpo, en un estudio pequeño y cercano de Valencia donde estoy pendiente de ti — no eres una más.</p>
           </div>
 
           <button
@@ -270,11 +270,11 @@ export default function PuertasAbiertasAdultas() {
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Reservar mi plaza
+            Reservar mi plaza de septiembre
           </button>
 
           <p className="text-sm mt-4 font-semibold" style={{ color: C.burgundy }}>
-            ⚠ Grupos muy reducidos · Las plazas suelen completarse rápido.
+            ⚠ Solo 12 plazas por clase · Los grupos de septiembre se llenan rápido.
           </p>
         </div>
       </div>
@@ -458,10 +458,10 @@ export default function PuertasAbiertasAdultas() {
           style={{ backgroundColor: C.burgundy }}
         >
           <h2 className="text-2xl sm:text-3xl mb-3" style={{ fontFamily: fSerif, color: C.cream }}>
-            ¿Te apuntas?
+            ¿Vuelves en forma este septiembre?
           </h2>
           <p className="text-sm sm:text-base mb-7 max-w-md mx-auto" style={{ color: C.blush }}>
-            Si estás leyendo esto, aún quedan plazas libres. Reserva la tuya ahora y empieza a cuidarte en un estudio cercano y de confianza.
+            El curso empieza en septiembre y las plazas se llenan. Reserva la tuya ahora y empieza a cuidarte en un estudio cercano y de confianza.
           </p>
           <button
             onClick={scrollToForm}
