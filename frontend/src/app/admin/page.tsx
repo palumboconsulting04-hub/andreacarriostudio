@@ -563,6 +563,9 @@ export default function AdminDashboard() {
   const [nuevasInscripcionesMes, setNuevasInscripcionesMes] = useState(0);
   const [nuevasInscripcionesHoy, setNuevasInscripcionesHoy] = useState(0);
   const [avgPricePerStudent, setAvgPricePerStudent] = useState(0);
+  const [objAlumnasManual, setObjAlumnasManual] = useState<string>("");
+  const [objAlumnasLoaded, setObjAlumnasLoaded] = useState(false);
+  const [editObjAlumnas, setEditObjAlumnas] = useState(false);
   const [bonosMesResumen, setBonosMesResumen] = useState({ count: 0, ingresos: 0, hoy: 0 });
 
   // Sofia chat
@@ -1484,6 +1487,9 @@ export default function AdminDashboard() {
   // Impuestos: recuerda la config y carga los datos del año al abrir el sub-apartado.
   useEffect(() => { try { const s = localStorage.getItem("acs_imp_cfg"); if (s) setImpCfg(c => ({ ...c, ...JSON.parse(s) })); } catch {} }, []);
   useEffect(() => { try { localStorage.setItem("acs_imp_cfg", JSON.stringify(impCfg)); } catch {} }, [impCfg]);
+  // Objetivo de alumnas del mes (editable; por defecto 60). "" = usar el cálculo automático (costes + margen).
+  useEffect(() => { try { setObjAlumnasManual(localStorage.getItem("acs_obj_alumnas") ?? "60"); } catch { setObjAlumnasManual("60"); } setObjAlumnasLoaded(true); }, []);
+  useEffect(() => { if (objAlumnasLoaded) { try { localStorage.setItem("acs_obj_alumnas", objAlumnasManual); } catch {} } }, [objAlumnasManual, objAlumnasLoaded]);
   useEffect(() => {
     if (activeSection !== "Finanzas" || finTab !== "impuestos") return;
     fetch(`/api/admin/impuestos?anio=${new Date().getFullYear()}`).then(r => r.json()).then(setImpData).catch(() => setImpData(null));
@@ -2433,7 +2439,9 @@ export default function AdminDashboard() {
   const targetMargin = 0.15 + (schoolYearMes - 1) * 0.025;
   const objetivoFacturacion = finanzasCosteMensual > 0 ? Math.round(finanzasCosteMensual * (1 + targetMargin)) : 0;
   const objetivoProgress = objetivoFacturacion > 0 ? Math.min(100, Math.round((facturacionMes / objetivoFacturacion) * 100)) : 0;
-  const objetivoAlumnos = avgPricePerStudent > 0 ? Math.ceil(objetivoFacturacion / avgPricePerStudent) : 0;
+  const objetivoAlumnasManualNum = parseInt(objAlumnasManual, 10);
+  const objetivoAlumnasEsManual = !Number.isNaN(objetivoAlumnasManualNum) && objetivoAlumnasManualNum > 0;
+  const objetivoAlumnos = objetivoAlumnasEsManual ? objetivoAlumnasManualNum : (avgPricePerStudent > 0 ? Math.ceil(objetivoFacturacion / avgPricePerStudent) : 0);
   const objetivoAlumnosProgress = objetivoAlumnos > 0 ? Math.min(100, Math.round((iscrittiCount / objetivoAlumnos) * 100)) : 0;
 
   // ── Discipline disponibili (da orari) ──
@@ -3028,13 +3036,21 @@ export default function AdminDashboard() {
                 <div className="bg-surface-container-lowest rounded-[24px] p-5 shadow-sm border border-surface-container-high flex flex-col justify-between min-h-[140px]">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Objetivo Alumnos <InfoTip text="Número de alumnas que necesitas para cubrir costes y el margen objetivo de este mes del curso." /></p>
-                      <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>Mes {schoolYearMes} del curso</p>
+                      <p className="text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5" style={{ color: "#89726c" }}>Objetivo Alumnos <InfoTip text="Alumnas objetivo del mes. Editable: fíjalo a mano (p. ej. 60) o déjalo en automático (cubrir costes + margen)." /></p>
+                      <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{objetivoAlumnasEsManual ? "Fijado a mano" : `Mes ${schoolYearMes} del curso · automático`}</p>
                     </div>
-                    <div className="p-2 bg-secondary-container rounded-full text-on-secondary-container">
-                      <Icon name="group_add" className="text-base" />
-                    </div>
+                    <button onClick={() => setEditObjAlumnas(e => !e)} className="p-2 bg-secondary-container rounded-full text-on-secondary-container" title="Editar objetivo">
+                      <Icon name={editObjAlumnas ? "close" : "edit"} className="text-base" />
+                    </button>
                   </div>
+                  {editObjAlumnas && (
+                    <div className="mb-3 flex items-center gap-2 flex-wrap">
+                      <input type="number" min="0" value={objAlumnasManual} onChange={e => setObjAlumnasManual(e.target.value)} placeholder="60" className="w-20 border rounded-lg px-3 py-1.5 text-sm bg-white" style={{ borderColor: "#dcc1b9", color: "#25190f" }} />
+                      <span className="text-xs" style={{ color: "#89726c" }}>alumnas</span>
+                      <button onClick={() => setObjAlumnasManual("")} className="text-xs underline" style={{ color: "#7d2b13" }}>Automático</button>
+                      <button onClick={() => setEditObjAlumnas(false)} className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ backgroundColor: "#7d2b13" }}>Hecho</button>
+                    </div>
+                  )}
                   <div className="flex items-end justify-between gap-2">
                     <p className="text-3xl font-bold" style={{ color: "#7d2b13" }}>
                       {loading || objetivoAlumnos === 0 ? "—" : objetivoAlumnos}
