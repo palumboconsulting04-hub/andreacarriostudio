@@ -104,8 +104,9 @@ export default function PuertasAbiertasAdultas() {
     logFunnel("pa_visita");
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Ir al proceso de compra (reserva de plaza) ──
-  // Registra el clic (Meta + embudo) y lleva a /reservar-plaza conservando las UTM.
+  // ── Ir al proceso de compra ──
+  // Registra el clic (Meta + embudo) y lleva a la home "/" (flujo de inscripción y
+  // pago real, con el Purchase deduplicado navegador + CAPI), conservando las UTM.
   const botonClickFired = useRef<Set<string>>(new Set());
   const handleReservaClick = (origen: string) => {
     if (!botonClickFired.current.has(origen)) {
@@ -113,7 +114,7 @@ export default function PuertasAbiertasAdultas() {
       window.fbq?.("track", "InitiateCheckout", { content_name: `Click reservar: ${origen}` });
     }
     logFunnel("pa_click");
-    window.location.href = "/reservar-plaza" + window.location.search;
+    window.location.href = "/" + window.location.search;
   };
 
   return (
