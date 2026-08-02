@@ -72,6 +72,19 @@ export default function Home() {
     }
     sessionIdRef.current = sid;
 
+    // Prerrelleno desde la landing 1 (contacto capturado antes de llegar al checkout).
+    try {
+      const pf = JSON.parse(sessionStorage.getItem("acs_prefill") || "null");
+      if (pf && (pf.nombre || pf.email || pf.telefono)) {
+        setEstado(e => ({
+          ...e,
+          nombre: pf.nombre || e.nombre,
+          email: pf.email || e.email,
+          telefono: pf.telefono || e.telefono,
+        }));
+      }
+    } catch {}
+
     // Origen: anuncios de Meta (fbclid o UTM de pago) vs. tráfico directo.
     const p = new URLSearchParams(window.location.search);
     const src = (p.get("utm_source") || "").toLowerCase();

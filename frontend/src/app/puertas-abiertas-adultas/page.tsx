@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Script from "next/script";
 
@@ -27,6 +27,21 @@ const C = {
 const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
 const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
 
+function inputStyle() {
+  return {
+    border: `1.5px solid ${C.border}`,
+    borderRadius: "12px",
+    padding: "12px 16px",
+    // 16px evita el auto-zoom de iOS Safari al enfocar el campo en móvil.
+    fontSize: "16px",
+    fontFamily: fSans,
+    color: C.dark,
+    backgroundColor: C.cream,
+    outline: "none",
+    width: "100%",
+  };
+}
+
 function Check() {
   return (
     <span
@@ -41,6 +56,18 @@ function Check() {
 }
 
 export default function PuertasAbiertasAdultas() {
+  const [nombre, setNombre] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [email, setEmail] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const formRef = useRef<HTMLDivElement>(null);
+
+  const formValido =
+    nombre.trim() !== "" &&
+    telefono.trim() !== "" &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   // ── Atribución de origen ──
   const atrib = useRef<{
     origen: string;
@@ -75,7 +102,7 @@ export default function PuertasAbiertasAdultas() {
     atrib.current = { origen, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid };
   }, []);
 
-  // ── Embudo interno (anónimo): Visita → Pulsó comprar ──
+  // ── Embudo interno (anónimo): Visita → Pulsó → Dejó datos ──
   const paSessionRef = useRef<string>("");
   const paLogged = useRef<Set<string>>(new Set());
   const logFunnel = (step: string) => {
@@ -104,17 +131,59 @@ export default function PuertasAbiertasAdultas() {
     logFunnel("pa_visita");
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Ir al proceso de compra ──
-  // Registra el clic (Meta + embudo) y lleva a la home "/" (flujo de inscripción y
-  // pago real, con el Purchase deduplicado navegador + CAPI), conservando las UTM.
-  const botonClickFired = useRef<Set<string>>(new Set());
-  const handleReservaClick = (origen: string) => {
-    if (!botonClickFired.current.has(origen)) {
-      botonClickFired.current.add(origen);
-      window.fbq?.("track", "InitiateCheckout", { content_name: `Click reservar: ${origen}` });
-    }
+  // Los botones llevan al formulario (no directo al pago).
+  const scrollToForm = () => {
     logFunnel("pa_click");
-    window.location.href = "/" + window.location.search;
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // Guarda el contacto (lead en BD + Lead a Meta) y va al checkout "/" con los
+  // datos prerrellenados (sessionStorage compartido, mismo origen), con las UTM.
+  const handleSubmit = async () => {
+    if (!formValido || enviando) return;
+    setEnviando(true);
+    setErrorMsg("");
+    const eventId = (typeof crypto !== "undefined" && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const getCookie = (n: string) =>
+      document.cookie.split("; ").find(c => c.startsWith(n + "="))?.split("=")[1] || null;
+    try {
+      // keepalive: la petición se completa aunque naveguemos fuera.
+      fetch("/api/puertas-abiertas-adultas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          telefono: telefono.trim(),
+          email: email.trim(),
+          origen: atrib.current.origen,
+          utm_source: atrib.current.utm_source,
+          utm_medium: atrib.current.utm_medium,
+          utm_campaign: atrib.current.utm_campaign,
+          utm_content: atrib.current.utm_content,
+          utm_term: atrib.current.utm_term,
+          fbclid: atrib.current.fbclid,
+          eventId,
+          fbc: getCookie("_fbc"),
+          fbp: getCookie("_fbp"),
+        }),
+      }).catch(() => {});
+      // Lead del navegador, deduplicado con el del servidor por eventID.
+      window.fbq?.("track", "Lead", {}, { eventID: eventId });
+      // Datos para prerrellenar el checkout.
+      sessionStorage.setItem("acs_prefill", JSON.stringify({
+        nombre: nombre.trim(),
+        email: email.trim(),
+        telefono: telefono.trim(),
+      }));
+      logFunnel("pa_reserva");
+      window.location.href = "/" + window.location.search;
+    } catch {
+      setErrorMsg("Ha habido un problema. Inténtalo de nuevo.");
+      setEnviando(false);
+    }
   };
 
   return (
@@ -197,7 +266,7 @@ export default function PuertasAbiertasAdultas() {
           </div>
 
           <button
-            onClick={() => handleReservaClick("hero")}
+            onClick={scrollToForm}
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
@@ -241,7 +310,7 @@ export default function PuertasAbiertasAdultas() {
           </ul>
 
           <button
-            onClick={() => handleReservaClick("value")}
+            onClick={scrollToForm}
             className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
@@ -251,6 +320,48 @@ export default function PuertasAbiertasAdultas() {
           <div className="mt-6 rounded-2xl p-4" style={{ backgroundColor: "#fff3e0" }}>
             <p className="text-sm leading-relaxed" style={{ color: "#8a4b1a" }}>
               ⚠️ <strong>Un pequeño detalle:</strong> Trabajo siempre con grupos muy reducidos porque me gusta estar pendiente de cada una de vosotras y corregiros bien. Por eso las plazas son limitadas. Si te apetece empezar, reserva tu hueco ahora para asegurar tu horario.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Formulario: datos para continuar al pago ── */}
+      <div ref={formRef} className="px-4 pb-12 scroll-mt-4">
+        <div
+          className="max-w-xl mx-auto rounded-3xl p-7 sm:p-10 shadow-lg"
+          style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}
+        >
+          <h2 className="text-2xl sm:text-3xl mb-1 text-center" style={{ fontFamily: fSerif, color: C.burgundy }}>
+            Reserva tu plaza en 30 segundos
+          </h2>
+          <p className="text-sm text-center mb-7" style={{ color: C.brown }}>
+            Déjame tus datos y sigues al pago con todo ya rellenado. Odio el spam tanto como tú; te escribo yo misma por WhatsApp solo para lo importante.
+          </p>
+
+          <div className="space-y-4">
+            <input style={inputStyle()} placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} />
+            <input style={inputStyle()} placeholder="WhatsApp" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
+            <input style={inputStyle()} placeholder="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+
+            {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
+
+            <button
+              onClick={handleSubmit}
+              disabled={!formValido || enviando}
+              className="w-full py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest transition-all"
+              style={{
+                backgroundColor: formValido ? C.burgundy : C.border,
+                color: "#fff8f5",
+                fontFamily: fSans,
+                letterSpacing: "0.08em",
+                cursor: formValido ? "pointer" : "not-allowed",
+                opacity: enviando ? 0.7 : 1,
+              }}
+            >
+              {enviando ? "Un momento..." : "Continuar a la reserva"}
+            </button>
+            <p className="text-xs text-center" style={{ color: C.muted }}>
+              Al continuar, eliges disciplina, horario y completas tu reserva.
             </p>
           </div>
         </div>
@@ -318,7 +429,7 @@ export default function PuertasAbiertasAdultas() {
               ["¿Qué es el Barre Fit exactamente?", "Es súper divertido. Mezcla la precisión del Pilates, la elegancia del ballet y el entrenamiento fitness usando la barra de danza como apoyo. Es muy dinámico, con música, y va de lujo para tonificar rápido el tren inferior y el abdomen sin machacar las articulaciones."],
               ["¿Las clases de Pilates son con máquinas?", "No, es Pilates Mat (en suelo con colchoneta). Usamos el propio peso del cuerpo y accesorios como aros, bandas elásticas o pelotas. Es lo más efectivo para corregir la postura y fortalecer el core de verdad."],
               ["¿Qué tengo que llevar?", "Solo ropa cómoda con la que te muevas bien. Todo el material que necesitas lo tengo yo listo en el estudio."],
-              ["¿Cómo reservo mi plaza?", "Muy fácil: pulsa cualquier botón de «Reservar mi plaza», eliges disciplina y horario y completas tu reserva en unos minutos. Cualquier duda, me tienes a mí al otro lado."],
+              ["¿Cómo reservo mi plaza?", "Muy fácil: déjame tus datos en el formulario de arriba y sigues al pago con todo rellenado. Eliges disciplina y horario y completas tu reserva en unos minutos. Cualquier duda, me tienes a mí al otro lado."],
               ["¿Dónde estás exactamente?", "En Carrer de Motilla del Palancar 34, en la zona de Alfahuir (Valencia). Estamos a solo 5 minutos andando del Centro Comercial Arena. Si vives por el barrio o cerquita, te pillará perfecto para venir a entrenar a un paso de casa."],
             ].map(([q, a]) => (
               <details
@@ -353,7 +464,7 @@ export default function PuertasAbiertasAdultas() {
             Si estás leyendo esto, aún quedan plazas libres. Reserva la tuya ahora y empieza a cuidarte en un estudio cercano y de confianza.
           </p>
           <button
-            onClick={() => handleReservaClick("cta_final")}
+            onClick={scrollToForm}
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.cream, color: C.burgundy, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
