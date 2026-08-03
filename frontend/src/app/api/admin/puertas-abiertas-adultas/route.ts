@@ -37,11 +37,42 @@ export async function GET() {
     (contatti ?? []).map(c => normTel(c.telefono)).filter(Boolean),
   );
 
+  // Fase del embudo (dónde quedó cada lead): se cruza con iscrizioni.
+  //  · solo_datos      → no hay inscripción: dejó datos en la landing pero no
+  //                      llegó a darle a pagar en el checkout.
+  //  · pago_incompleto → inscripción en attesa/impago: empezó el pago, no acabó.
+  //  · compro          → inscripción pagada: es clienta.
+  const { data: iscr } = await supabaseAdmin.from("iscrizioni").select("email, telefono, stato");
+  const PAID = new Set(["pagato", "pagado", "activa", "matricula_pagada"]);
+  const paidEmails = new Set<string>();
+  const paidPhones = new Set<string>();
+  const openEmails = new Set<string>();
+  const openPhones = new Set<string>();
+  for (const it of iscr ?? []) {
+    const e = (it.email || "").toLowerCase().trim();
+    const p = normTel(it.telefono);
+    if (PAID.has(it.stato)) {
+      if (e) paidEmails.add(e);
+      if (p) paidPhones.add(p);
+    } else {
+      if (e) openEmails.add(e);
+      if (p) openPhones.add(p);
+    }
+  }
+  const faseDe = (r: { email?: string | null; telefono?: string | null }): string => {
+    const e = (r.email || "").toLowerCase().trim();
+    const p = normTel(r.telefono);
+    if ((e && paidEmails.has(e)) || (p && paidPhones.has(p))) return "compro";
+    if ((e && openEmails.has(e)) || (p && openPhones.has(p))) return "pago_incompleto";
+    return "solo_datos";
+  };
+
   const enriched = (data ?? []).map(r => ({
     ...r,
     ya_inscrita:
       (!!r.email && emails.has(r.email.toLowerCase().trim())) ||
       (!!r.telefono && phones.has(normTel(r.telefono))),
+    fase: faseDe(r),
   }));
 
   return NextResponse.json({ data: enriched });

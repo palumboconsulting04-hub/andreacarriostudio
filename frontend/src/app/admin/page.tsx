@@ -766,6 +766,7 @@ export default function AdminDashboard() {
     llamada: string;
     confirmacion: string;
     ya_inscrita?: boolean;
+    fase?: string;
     utm_source: string | null;
     utm_medium: string | null;
     utm_campaign: string | null;
@@ -5219,7 +5220,7 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Nombre", "Contacto", "Quiere probar", "Origen", "Llamada", "Confirmación", "Notas Andrea", "Fecha", ""].map((h, hi) => (
+                            {["Nombre", "Contacto", "Quiere probar", "¿Dónde quedó?", "Origen", "Llamada", "Confirmación", "Notas Andrea", "Fecha", ""].map((h, hi) => (
                               <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
@@ -5261,6 +5262,25 @@ export default function AdminDashboard() {
                                     {DISC_ADULTA_LABEL[r.disciplina] ?? r.disciplina}
                                   </span>
                                 ) : <span style={{ color: "#89726c" }}>—</span>}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {(() => {
+                                  const fases: Record<string, { bg: string; fg: string; label: string; tip: string }> = {
+                                    compro: { bg: "#e7f7ec", fg: "#1f7a3d", label: "Compró", tip: "Completó el pago de la inscripción: es clienta." },
+                                    pago_incompleto: { bg: "#fff1d6", fg: "#9a6b00", label: "Empezó el pago", tip: "Rellenó el checkout y le dio a pagar, pero no completó el cobro. Recupérala." },
+                                    solo_datos: { bg: "#f0eae6", fg: "#6b5a52", label: "Solo dejó datos", tip: "Dejó su contacto en la landing pero no llegó a iniciar el pago." },
+                                  };
+                                  const f = fases[r.fase ?? "solo_datos"] ?? fases.solo_datos;
+                                  return (
+                                    <span
+                                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold cursor-help"
+                                      style={{ backgroundColor: f.bg, color: f.fg }}
+                                      title={f.tip}
+                                    >
+                                      {f.label}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
                                 {(() => {
