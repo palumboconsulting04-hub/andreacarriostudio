@@ -34,7 +34,10 @@ export async function POST(req: NextRequest) {
   if (!session_id || !STEPS.has(step)) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
+  // Variante del A/B de titulares (0,1,2…) — solo aplica al funnel de adultas.
+  const v = Number(body?.variante);
+  const variante = Number.isInteger(v) && v >= 0 && v < 100 ? v : null;
   // Inserta vía service-role (la tabla está cerrada a la clave pública).
-  await supabaseAdmin.from("funnel_eventos").insert({ session_id, step, origen, funnel });
+  await supabaseAdmin.from("funnel_eventos").insert({ session_id, step, origen, funnel, variante });
   return NextResponse.json({ ok: true });
 }

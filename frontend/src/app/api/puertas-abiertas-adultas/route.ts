@@ -66,18 +66,20 @@ const DISCIPLINAS = new Set(["pilates", "barre", "ambas"]);
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nombre, telefono, email, disciplina, origen, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, eventId, fbc, fbp } = body;
+    const { nombre, telefono, email, disciplina, origen, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, eventId, fbc, fbp, variante } = body;
 
     // El formulario corto pide nombre + teléfono + qué quiere probar.
     if (!nombre || !telefono) {
       return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
     }
 
+    const vNum = Number(variante);
     const row = {
       nombre,
       telefono,
       email: email || null,
       disciplina: DISCIPLINAS.has(disciplina) ? disciplina : null,
+      variante: Number.isInteger(vNum) && vNum >= 0 && vNum < 100 ? vNum : null,
       origen: origen || "directo",
       utm_source: utm_source || null,
       utm_medium: utm_medium || null,

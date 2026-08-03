@@ -27,6 +27,35 @@ const C = {
 const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
 const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
 
+// Versiones del hero para el A/B por rotación. Cada visita muestra la siguiente
+// (cíclico) y se etiqueta impresión + lead con su índice (0,1,2) para el admin.
+const VARIANTES = [
+  {
+    headline: "Este septiembre los peques vuelven al cole. ¿Y si tú también empiezas algo tuyo?",
+    body: [
+      "Imagina llegar a octubre firme, con la postura recta y la energía de vuelta.",
+      "Con Pilates Mat y Barre Fit tonificas de bajo impacto, recuperas suelo pélvico y postura, y despejas la cabeza en cada sesión.",
+      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos, donde te conozco por tu nombre: aquí no eres una más.",
+    ],
+  },
+  {
+    headline: "Este septiembre, empieza a cuidarte con Pilates Mat y Barre Fit.",
+    body: [
+      "No lo dejes para «cuando tenga tiempo»: empieza desde el primer día.",
+      "Recuperas tono, postura y cabeza, de bajo impacto y sin castigarte.",
+      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos y yo pendiente de ti: aquí no eres una más.",
+    ],
+  },
+  {
+    headline: "Un verano de chiringuito y el tono por los suelos. Suena, ¿verdad?",
+    body: [
+      "Imagina llegar a octubre con los brazos, el abdomen y las piernas firmes otra vez.",
+      "Con Pilates Mat y Barre Fit esculpes el músculo con movimientos pequeños y controlados: firmeza real de bajo impacto, sin castigar las articulaciones.",
+      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos, donde te conozco por tu nombre: aquí no eres una más.",
+    ],
+  },
+];
+
 function inputStyle() {
   return {
     border: `1.5px solid ${C.border}`,
@@ -62,6 +91,8 @@ export default function PuertasAbiertasAdultas() {
   const [enviando, setEnviando] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const formRef = useRef<HTMLDivElement>(null);
+  const [varIdx, setVarIdx] = useState(0);
+  const varIdxRef = useRef(0);
 
   const formValido =
     nombre.trim() !== "" &&
@@ -116,10 +147,22 @@ export default function PuertasAbiertasAdultas() {
         step,
         origen: atrib.current.origen === "ads" ? "ads" : "directo",
         funnel: "adultas",
+        variante: varIdxRef.current,
       }),
     }).catch(() => {});
   };
   useEffect(() => {
+    // Rotación del titular: cada visita muestra la siguiente versión (cíclico).
+    let idx = 0;
+    try {
+      const raw = localStorage.getItem("acs_pa_titular_idx");
+      idx = raw != null ? (((parseInt(raw, 10) % VARIANTES.length) + VARIANTES.length) % VARIANTES.length) : 0;
+      if (Number.isNaN(idx)) idx = 0;
+      localStorage.setItem("acs_pa_titular_idx", String((idx + 1) % VARIANTES.length));
+    } catch {}
+    varIdxRef.current = idx;
+    setVarIdx(idx);
+
     let sid = sessionStorage.getItem("acs_pa_adultas_fsid");
     if (!sid) {
       sid = (typeof crypto !== "undefined" && crypto.randomUUID)
@@ -168,6 +211,7 @@ export default function PuertasAbiertasAdultas() {
           eventId,
           fbc: getCookie("_fbc"),
           fbp: getCookie("_fbp"),
+          variante: varIdxRef.current,
         }),
       }).catch(() => {});
       // Lead del navegador, deduplicado con el del servidor por eventID.
@@ -249,7 +293,7 @@ export default function PuertasAbiertasAdultas() {
             className="text-[1.7rem] sm:text-5xl mb-4 leading-[1.15]"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            Después de un verano de disfrutar, septiembre es tu momento de volver a ponerte en forma
+            {VARIANTES[varIdx].headline}
           </h1>
 
           {/* Disciplinas destacadas — visibles al entrar (coherencia anuncio/landing) */}
@@ -261,8 +305,9 @@ export default function PuertasAbiertasAdultas() {
           </p>
 
           <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6 space-y-3" style={{ color: C.dark }}>
-            <p>Vacaciones, comidas, cañas y la rutina por los suelos… y ahora te notas con menos tono y con ganas de volver a cuidarte. Es normal — y septiembre es el momento perfecto para arrancar.</p>
-            <p style={{ fontWeight: 600 }}>Te ayudo a retomarlo con Pilates Mat y Barre Fit: tonificas, recuperas la postura y vuelves a sentirte bien en tu cuerpo, en un estudio pequeño y cercano de Valencia donde estoy pendiente de ti — no eres una más.</p>
+            {VARIANTES[varIdx].body.map((t, i) => (
+              <p key={i} style={i === 1 ? { fontWeight: 600 } : undefined}>{t}</p>
+            ))}
           </div>
 
           <button

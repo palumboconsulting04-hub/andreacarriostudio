@@ -774,6 +774,7 @@ export default function AdminDashboard() {
     fbclid: string | null;
   };
   const [adultasData, setAdultasData] = useState<PuertaAdultaRow[]>([]);
+  const [abData, setAbData] = useState<{ impresiones: number[]; leads: number[] } | null>(null);
   const [adultasLoading, setAdultasLoading] = useState(false);
   const [adultasSearch, setAdultasSearch] = useState("");
   const [adultasFiltroDisc, setAdultasFiltroDisc] = useState("");
@@ -1341,6 +1342,10 @@ export default function AdminDashboard() {
       .then(({ data }) => setAdultasData((data ?? []) as PuertaAdultaRow[]))
       .catch(() => setAdultasData([]))
       .finally(() => setAdultasLoading(false));
+    fetch("/api/admin/ab-titulares")
+      .then(r => r.json())
+      .then(d => setAbData(d && Array.isArray(d.impresiones) ? d : null))
+      .catch(() => setAbData(null));
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -5052,6 +5057,80 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 </div>
+
+                {/* A/B de titulares — cuál convierte más */}
+                {(() => {
+                  const AB = [
+                    { label: "El turno para ti", desc: "«…¿y si tú también empiezas algo tuyo?»" },
+                    { label: "El propósito de septiembre", desc: "«Empieza a cuidarte con Pilates y Barre Fit.»" },
+                    { label: "El pain point del tono", desc: "«El chiringuito del verano y el tono por los suelos.»" },
+                  ];
+                  const imp = abData?.impresiones ?? [];
+                  const lea = abData?.leads ?? [];
+                  const filas = AB.map((v, i) => {
+                    const impresiones = imp[i] ?? 0;
+                    const leads = lea[i] ?? 0;
+                    const conv = impresiones > 0 ? (leads / impresiones) * 100 : null;
+                    return { ...v, i, impresiones, leads, conv };
+                  });
+                  const totalImp = filas.reduce((a, f) => a + f.impresiones, 0);
+                  // Solo declaramos "ganador" con datos suficientes (≥30 visitas y ≥1 lead en la mejor).
+                  const conFiables = filas.filter(f => f.impresiones >= 30 && f.conv !== null);
+                  const ganador = conFiables.length > 0
+                    ? conFiables.reduce((best, f) => (f.conv! > best.conv! ? f : best))
+                    : null;
+                  return (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>
+                        A/B de titulares · cuál convierte más
+                      </p>
+                      <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr style={{ backgroundColor: "#fff0eb" }}>
+                              {["Titular", "Visitas", "Leads", "Conversión"].map((h, hi) => (
+                                <th key={hi} className={`px-4 py-2.5 text-xs font-semibold uppercase tracking-widest ${hi === 0 ? "text-left" : "text-center"}`} style={{ color: "#89726c" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filas.map((f, i) => {
+                              const esGanador = ganador?.i === f.i;
+                              return (
+                                <tr key={f.i} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: esGanador ? "#f3faf0" : i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold shrink-0" style={{ backgroundColor: "#fff0eb", color: "#7d2b13" }}>{f.i + 1}</span>
+                                      <div>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="font-semibold" style={{ color: "#7d2b13" }}>{f.label}</span>
+                                          {esGanador && (
+                                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#dcefce", color: "#3f6b1e" }}>Va ganando</span>
+                                          )}
+                                        </div>
+                                        <p className="text-xs mt-0.5" style={{ color: "#89726c" }}>{f.desc}</p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center tabular-nums" style={{ color: "#7d2b13" }}>{f.impresiones}</td>
+                                  <td className="px-4 py-2.5 text-center tabular-nums font-semibold" style={{ color: "#7d2b13" }}>{f.leads}</td>
+                                  <td className="px-4 py-2.5 text-center tabular-nums font-semibold" style={{ color: esGanador ? "#3f6b1e" : "#7d2b13" }}>
+                                    {f.conv === null ? "—" : `${f.conv.toFixed(1)}%`}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-xs mt-2" style={{ color: "#89726c" }}>
+                        {totalImp < 90
+                          ? "Datos aún insuficientes: cada visitante ve los 3 titulares rotando. Espera a tener más visitas para fiarte del ganador."
+                          : "Cada visitante ve los 3 titulares rotando. El lead se atribuye al titular que veía al enviar el formulario."}
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {/* Reservas por anuncio / campaña de Meta */}
                 <div>
