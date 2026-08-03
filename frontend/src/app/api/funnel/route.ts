@@ -37,7 +37,9 @@ export async function POST(req: NextRequest) {
   // Variante del A/B de titulares (0,1,2…) — solo aplica al funnel de adultas.
   const v = Number(body?.variante);
   const variante = Number.isInteger(v) && v >= 0 && v < 100 ? v : null;
+  // Referencia del lead (enlaza el recorrido del checkout con la persona de la landing).
+  const lead_ref = typeof body?.lead_ref === "string" ? body.lead_ref.slice(0, 64) : null;
   // Inserta vía service-role (la tabla está cerrada a la clave pública).
-  await supabaseAdmin.from("funnel_eventos").insert({ session_id, step, origen, funnel, variante });
+  await supabaseAdmin.from("funnel_eventos").insert({ session_id, step, origen, funnel, variante, lead_ref });
   return NextResponse.json({ ok: true });
 }

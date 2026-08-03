@@ -189,6 +189,10 @@ export default function PuertasAbiertasAdultas() {
     const eventId = (typeof crypto !== "undefined" && crypto.randomUUID)
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    // Referencia del lead: enlaza a esta persona con su recorrido en el checkout.
+    const leadRef = (typeof crypto !== "undefined" && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const getCookie = (n: string) =>
       document.cookie.split("; ").find(c => c.startsWith(n + "="))?.split("=")[1] || null;
     try {
@@ -212,6 +216,7 @@ export default function PuertasAbiertasAdultas() {
           fbc: getCookie("_fbc"),
           fbp: getCookie("_fbp"),
           variante: varIdxRef.current,
+          ref: leadRef,
         }),
       }).catch(() => {});
       // Lead del navegador, deduplicado con el del servidor por eventID.
@@ -221,6 +226,7 @@ export default function PuertasAbiertasAdultas() {
         nombre: nombre.trim(),
         email: email.trim(),
         telefono: telefono.trim(),
+        lead_ref: leadRef,
       }));
       logFunnel("pa_reserva");
       window.location.href = "/" + window.location.search;

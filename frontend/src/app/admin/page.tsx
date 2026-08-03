@@ -5266,9 +5266,14 @@ export default function AdminDashboard() {
                               <td className="px-4 py-3 whitespace-nowrap">
                                 {(() => {
                                   const fases: Record<string, { bg: string; fg: string; label: string; tip: string }> = {
+                                    solo_datos: { bg: "#f0eae6", fg: "#6b5a52", label: "Solo dejó datos", tip: "Dejó su contacto en la landing pero no llegó a entrar al checkout." },
+                                    p1: { bg: "#e6efff", fg: "#1b4f9c", label: "Entró al checkout", tip: "Entró al checkout (paso de disciplina) pero no avanzó." },
+                                    p2: { bg: "#e6efff", fg: "#1b4f9c", label: "Eligió disciplina", tip: "Eligió disciplina y llegó al paso del plan." },
+                                    p3: { bg: "#e6efff", fg: "#1b4f9c", label: "Eligió plan", tip: "Eligió el plan y llegó al paso del horario." },
+                                    p4: { bg: "#e6efff", fg: "#1b4f9c", label: "Eligió horario", tip: "Eligió el horario y llegó al paso de extras." },
+                                    p5: { bg: "#fff1d6", fg: "#9a6b00", label: "Llegó al pago", tip: "Llegó a la pantalla de datos y pago, pero no le dio a pagar." },
+                                    pago_incompleto: { bg: "#ffe1cc", fg: "#b45309", label: "Empezó el pago", tip: "Le dio a pagar pero no completó el cobro. Recupérala, está a un paso." },
                                     compro: { bg: "#e7f7ec", fg: "#1f7a3d", label: "Compró", tip: "Completó el pago de la inscripción: es clienta." },
-                                    pago_incompleto: { bg: "#fff1d6", fg: "#9a6b00", label: "Empezó el pago", tip: "Rellenó el checkout y le dio a pagar, pero no completó el cobro. Recupérala." },
-                                    solo_datos: { bg: "#f0eae6", fg: "#6b5a52", label: "Solo dejó datos", tip: "Dejó su contacto en la landing pero no llegó a iniciar el pago." },
                                   };
                                   const f = fases[r.fase ?? "solo_datos"] ?? fases.solo_datos;
                                   return (

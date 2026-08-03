@@ -62,6 +62,8 @@ export default function Home() {
   const sessionIdRef = useRef<string>("");
   const origenRef = useRef<"ads" | "directo">("directo");
   const funnelLogged = useRef<Set<string>>(new Set());
+  // Referencia del lead que venía de la landing (para el embudo por persona).
+  const leadRefRef = useRef<string | null>(null);
   useEffect(() => {
     let sid = sessionStorage.getItem("acs_fsid");
     if (!sid) {
@@ -75,6 +77,7 @@ export default function Home() {
     // Prerrelleno desde la landing 1 (contacto capturado antes de llegar al checkout).
     try {
       const pf = JSON.parse(sessionStorage.getItem("acs_prefill") || "null");
+      if (pf && pf.lead_ref) leadRefRef.current = String(pf.lead_ref);
       if (pf && (pf.nombre || pf.email || pf.telefono)) {
         // La landing captura el nombre completo en un solo campo. Separamos la
         // primera palabra (nombre) del resto (apellido) para que no tenga que
@@ -136,7 +139,7 @@ export default function Home() {
     fetch("/api/funnel", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionIdRef.current, step, origen: origenRef.current }),
+      body: JSON.stringify({ session_id: sessionIdRef.current, step, origen: origenRef.current, lead_ref: leadRefRef.current }),
     }).catch(() => {});
   }, [paso]);
 

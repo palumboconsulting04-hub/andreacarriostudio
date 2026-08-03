@@ -66,7 +66,7 @@ const DISCIPLINAS = new Set(["pilates", "barre", "ambas"]);
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nombre, telefono, email, disciplina, origen, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, eventId, fbc, fbp, variante } = body;
+    const { nombre, telefono, email, disciplina, origen, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, eventId, fbc, fbp, variante, ref } = body;
 
     // El formulario corto pide nombre + teléfono + qué quiere probar.
     if (!nombre || !telefono) {
@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
       email: email || null,
       disciplina: DISCIPLINAS.has(disciplina) ? disciplina : null,
       variante: Number.isInteger(vNum) && vNum >= 0 && vNum < 100 ? vNum : null,
+      ref: typeof ref === "string" ? ref.slice(0, 64) : null,
       origen: origen || "directo",
       utm_source: utm_source || null,
       utm_medium: utm_medium || null,

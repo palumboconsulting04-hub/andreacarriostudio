@@ -37,11 +37,28 @@ export async function GET() {
     (contatti ?? []).map(c => normTel(c.telefono)).filter(Boolean),
   );
 
-  // Fase del embudo (dónde quedó cada lead): se cruza con iscrizioni.
-  //  · solo_datos      → no hay inscripción: dejó datos en la landing pero no
-  //                      llegó a darle a pagar en el checkout.
-  //  · pago_incompleto → inscripción en attesa/impago: empezó el pago, no acabó.
-  //  · compro          → inscripción pagada: es clienta.
+  // Fase del embudo por persona (paso exacto, estilo embudo). Se combinan dos fuentes:
+  //  1) el recorrido del checkout (funnel_eventos), enlazado a la persona por lead_ref;
+  //  2) la inscripción (iscrizioni): attesa/impago = empezó el pago; pagada = compró.
+  // Se toma el paso MÁS AVANZADO de ambas. Ranking:
+  //  0 solo datos · 1 entró al checkout · 2 eligió disciplina · 3 eligió plan
+  //  4 eligió horario · 5 llegó al pago · 6 empezó el pago · 7 compró
+  const { data: fev } = await supabaseAdmin
+    .from("funnel_eventos")
+    .select("lead_ref, step")
+    .eq("funnel", "inscripcion")
+    .not("lead_ref", "is", null);
+  const STEP_RANK: Record<string, number> = {
+    paso1_disciplina: 1, paso2_plan: 2, paso3_horarios: 3, paso4_crosssell: 4, paso5_pago: 5, compra: 7,
+  };
+  const checkoutRank = new Map<string, number>();
+  for (const e of fev ?? []) {
+    const ref = e.lead_ref as string | null;
+    if (!ref) continue;
+    const rk = STEP_RANK[e.step as string] ?? 0;
+    if (rk > (checkoutRank.get(ref) ?? 0)) checkoutRank.set(ref, rk);
+  }
+
   const { data: iscr } = await supabaseAdmin.from("iscrizioni").select("email, telefono, stato");
   const PAID = new Set(["pagato", "pagado", "activa", "matricula_pagada"]);
   const paidEmails = new Set<string>();
@@ -59,12 +76,17 @@ export async function GET() {
       if (p) openPhones.add(p);
     }
   }
-  const faseDe = (r: { email?: string | null; telefono?: string | null }): string => {
+
+  const RANK_FASE: Record<number, string> = {
+    0: "solo_datos", 1: "p1", 2: "p2", 3: "p3", 4: "p4", 5: "p5", 6: "pago_incompleto", 7: "compro",
+  };
+  const faseDe = (r: { email?: string | null; telefono?: string | null; ref?: string | null }): string => {
     const e = (r.email || "").toLowerCase().trim();
     const p = normTel(r.telefono);
-    if ((e && paidEmails.has(e)) || (p && paidPhones.has(p))) return "compro";
-    if ((e && openEmails.has(e)) || (p && openPhones.has(p))) return "pago_incompleto";
-    return "solo_datos";
+    let rank = r.ref ? (checkoutRank.get(r.ref) ?? 0) : 0;
+    if ((e && paidEmails.has(e)) || (p && paidPhones.has(p))) rank = Math.max(rank, 7);
+    else if ((e && openEmails.has(e)) || (p && openPhones.has(p))) rank = Math.max(rank, 6);
+    return RANK_FASE[rank] ?? "solo_datos";
   };
 
   const enriched = (data ?? []).map(r => ({
