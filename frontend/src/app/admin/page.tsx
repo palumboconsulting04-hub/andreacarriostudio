@@ -774,7 +774,7 @@ export default function AdminDashboard() {
     fbclid: string | null;
   };
   const [adultasData, setAdultasData] = useState<PuertaAdultaRow[]>([]);
-  const [abData, setAbData] = useState<{ impresiones: number[]; leads: number[] } | null>(null);
+  const [abData, setAbData] = useState<{ impresiones: number[]; leads: number[]; ventas: number[] } | null>(null);
   const [adultasLoading, setAdultasLoading] = useState(false);
   const [adultasSearch, setAdultasSearch] = useState("");
   const [adultasFiltroDisc, setAdultasFiltroDisc] = useState("");
@@ -5067,11 +5067,14 @@ export default function AdminDashboard() {
                   ];
                   const imp = abData?.impresiones ?? [];
                   const lea = abData?.leads ?? [];
+                  const ven = abData?.ventas ?? [];
                   const filas = AB.map((v, i) => {
                     const impresiones = imp[i] ?? 0;
                     const leads = lea[i] ?? 0;
+                    const ventas = ven[i] ?? 0;
                     const conv = impresiones > 0 ? (leads / impresiones) * 100 : null;
-                    return { ...v, i, impresiones, leads, conv };
+                    const ventaRate = leads > 0 ? (ventas / leads) * 100 : null;
+                    return { ...v, i, impresiones, leads, ventas, conv, ventaRate };
                   });
                   const totalImp = filas.reduce((a, f) => a + f.impresiones, 0);
                   // Solo declaramos "ganador" con datos suficientes (≥30 visitas y ≥1 lead en la mejor).
@@ -5088,7 +5091,7 @@ export default function AdminDashboard() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr style={{ backgroundColor: "#fff0eb" }}>
-                              {["Titular", "Visitas", "Leads", "Conversión"].map((h, hi) => (
+                              {["Titular", "Visitas", "Leads", "Conversión", "Ventas", "% venta"].map((h, hi) => (
                                 <th key={hi} className={`px-4 py-2.5 text-xs font-semibold uppercase tracking-widest ${hi === 0 ? "text-left" : "text-center"}`} style={{ color: "#89726c" }}>{h}</th>
                               ))}
                             </tr>
@@ -5117,16 +5120,21 @@ export default function AdminDashboard() {
                                   <td className="px-4 py-2.5 text-center tabular-nums font-semibold" style={{ color: esGanador ? "#3f6b1e" : "#7d2b13" }}>
                                     {f.conv === null ? "—" : `${f.conv.toFixed(1)}%`}
                                   </td>
+                                  <td className="px-4 py-2.5 text-center tabular-nums font-semibold" style={{ color: "#7d2b13" }}>{f.ventas}</td>
+                                  <td className="px-4 py-2.5 text-center tabular-nums font-semibold" style={{ color: "#7d2b13" }}>
+                                    {f.ventaRate === null ? "—" : `${f.ventaRate.toFixed(0)}%`}
+                                  </td>
                                 </tr>
                               );
                             })}
                           </tbody>
                         </table>
                       </div>
-                      <p className="text-xs mt-2" style={{ color: "#89726c" }}>
+                      <p className="text-xs mt-2 leading-relaxed" style={{ color: "#89726c" }}>
                         {totalImp < 90
                           ? "Datos aún insuficientes: cada visitante ve los 3 titulares rotando. Espera a tener más visitas para fiarte del ganador."
-                          : "Cada visitante ve los 3 titulares rotando. El lead se atribuye al titular que veía al enviar el formulario."}
+                          : "Cada visitante ve los 3 titulares rotando; cada lead y cada venta se atribuyen al último titular que vio esa persona."}
+                        {" "}<b>«Va ganando»</b> se decide por conversión de visita a lead (llega antes). <b>Ventas</b> = leads que acabaron pagando la inscripción: es la verdad final, pero necesita más volumen para ser fiable.
                       </p>
                     </div>
                   );
