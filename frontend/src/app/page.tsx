@@ -76,9 +76,17 @@ export default function Home() {
     try {
       const pf = JSON.parse(sessionStorage.getItem("acs_prefill") || "null");
       if (pf && (pf.nombre || pf.email || pf.telefono)) {
+        // La landing captura el nombre completo en un solo campo. Separamos la
+        // primera palabra (nombre) del resto (apellido) para que no tenga que
+        // reescribirlo en el checkout y pueda pagar directamente.
+        const full = String(pf.nombre || "").trim().replace(/\s+/g, " ");
+        const sp = full.indexOf(" ");
+        const nombreOnly = pf.apellido ? full : sp === -1 ? full : full.slice(0, sp);
+        const apellidoOnly = pf.apellido ? String(pf.apellido) : sp === -1 ? "" : full.slice(sp + 1);
         setEstado(e => ({
           ...e,
-          nombre: pf.nombre || e.nombre,
+          nombre: nombreOnly || e.nombre,
+          apellido: apellidoOnly || e.apellido,
           email: pf.email || e.email,
           telefono: pf.telefono || e.telefono,
         }));

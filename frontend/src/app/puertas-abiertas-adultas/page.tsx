@@ -415,7 +415,7 @@ export default function PuertasAbiertasAdultas() {
           </p>
 
           <div className="space-y-4">
-            <input style={inputStyle()} placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} />
+            <input style={inputStyle()} placeholder="Nombre y apellido" value={nombre} onChange={e => setNombre(e.target.value)} />
             <input style={inputStyle()} placeholder="WhatsApp" type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} />
             <input style={inputStyle()} placeholder="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
 
