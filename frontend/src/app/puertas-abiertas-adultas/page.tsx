@@ -325,6 +325,37 @@ export default function PuertasAbiertasAdultas() {
         </div>
       </div>
 
+      {/* ── Social proof: fotos reales de las clases ── */}
+      <div className="px-4 pb-12">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-2xl sm:text-3xl mb-2" style={{ fontFamily: fSerif, color: C.burgundy }}>
+            Así son nuestras clases
+          </h2>
+          <p className="text-sm mb-6" style={{ color: C.brown }}>
+            Grupos reducidos, ambiente cercano y gente de todas las edades. Únete a las que ya se cuidan aquí.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              "https://andreacarriostudio.es/wp-content/uploads/2026/08/DSC5073.jpg",
+              "https://andreacarriostudio.es/wp-content/uploads/2026/08/DSC5201.jpg",
+              "https://andreacarriostudio.es/wp-content/uploads/2026/08/DSC5227.jpg",
+            ].map((src) => (
+              <div key={src} className="rounded-2xl overflow-hidden shadow-sm" style={{ border: `1px solid ${C.border}` }}>
+                <Image
+                  src={src}
+                  alt="Clase de Pilates Mat y Barre Fit en Andrea Carrió Studio (Valencia)"
+                  width={1024}
+                  height={683}
+                  sizes="(max-width: 640px) 100vw, 300px"
+                  className="w-full h-full object-cover block"
+                  style={{ aspectRatio: "3 / 2" }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* ── Formulario: datos para continuar al pago ── */}
       <div ref={formRef} className="px-4 pb-12 scroll-mt-4">
         <div
