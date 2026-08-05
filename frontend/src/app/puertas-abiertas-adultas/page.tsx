@@ -39,10 +39,10 @@ const VARIANTES = [
     ],
   },
   {
-    headline: "Este septiembre, empieza a cuidarte con Pilates Mat y Barre Fit.",
+    headline: "Este septiembre, empieza a cuidarte y tonificarte con Pilates Mat y Barre Fit.",
     body: [
       "No lo dejes para «cuando tenga tiempo»: empieza desde el primer día.",
-      "Recuperas tono, postura y cabeza, de bajo impacto y sin castigarte.",
+      "Gana fuerza, postura y ligereza. Clase tras clase.",
       "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos y yo pendiente de ti: aquí no eres una más.",
     ],
   },
@@ -292,7 +292,7 @@ export default function PuertasAbiertasAdultas() {
             className="text-xs uppercase tracking-[0.18em] mb-3"
             style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 600 }}
           >
-            Empieza en septiembre · Pilates Mat & Barre Fit · Valencia (Alfahuir)
+            Nueva apertura · Estudio de Pilates Mat y Barre Fit · Valencia, Zona Alfahuir
           </p>
 
           <h1
