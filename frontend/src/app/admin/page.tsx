@@ -767,6 +767,7 @@ export default function AdminDashboard() {
     confirmacion: string;
     ya_inscrita?: boolean;
     fase?: string;
+    asistencia?: string;
     utm_source: string | null;
     utm_medium: string | null;
     utm_campaign: string | null;
@@ -780,6 +781,7 @@ export default function AdminDashboard() {
   const [adultasSearch, setAdultasSearch] = useState("");
   const [adultasFiltroDisc, setAdultasFiltroDisc] = useState("");
   const [adultasFiltroEstado, setAdultasFiltroEstado] = useState("");
+  const [adultasFiltroAsist, setAdultasFiltroAsist] = useState("");
   const [adultasDeleteId, setAdultasDeleteId] = useState<string | null>(null);
   const [adultasNotasDraft, setAdultasNotasDraft] = useState<Record<string, string>>({});
   const [adultasNotasSaved, setAdultasNotasSaved] = useState<string | null>(null);
@@ -4945,8 +4947,6 @@ export default function AdminDashboard() {
             const CONFIRM_OPT: { value: string; label: string; bg: string; fg: string }[] = [
               { value: "pendiente",         label: "Pendiente",           bg: "#f0eae6", fg: "#6b5a52" },
               { value: "quiere_septiembre", label: "Quiere probar sept.", bg: "#e7f7ec", fg: "#1f7a3d" },
-              { value: "vino",              label: "Vino a probar",       bg: "#e6efff", fg: "#1b4f9c" },
-              { value: "no_vino",           label: "Apuntada, no vino",   bg: "#fff3e0", fg: "#e65100" },
               { value: "baja",              label: "Pide baja",           bg: "#fde7e7", fg: "#b71c1c" },
             ];
             const llamadaInfo = (v: string) => LLAMADA_OPT.find(o => o.value === v) ?? LLAMADA_OPT[0];
@@ -4990,7 +4990,8 @@ export default function AdminDashboard() {
                 r.nombre.toLowerCase().includes(q) ||
                 (r.telefono || "").includes(q)) &&
               (!adultasFiltroDisc || r.disciplina === adultasFiltroDisc) &&
-              (!adultasFiltroEstado || r.confirmacion === adultasFiltroEstado)
+              (!adultasFiltroEstado || r.confirmacion === adultasFiltroEstado) &&
+              (!adultasFiltroAsist || (adultasFiltroAsist === "ninguna" ? !r.asistencia : r.asistencia === adultasFiltroAsist))
             );
             const porLlamar = adultasData.filter(r => r.llamada === "sin_llamar").length;
             const confirmadas = adultasData.filter(r => r.confirmacion === "confirma").length;
@@ -5210,10 +5211,15 @@ export default function AdminDashboard() {
                   <select value={adultasFiltroEstado} onChange={e => setAdultasFiltroEstado(e.target.value)} className="px-3 py-2.5 rounded-xl border text-sm cursor-pointer" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}>
                     <option value="">Todos los estados</option>
                     <option value="quiere_septiembre">Quiere probar sept.</option>
-                    <option value="vino">Vino a probar</option>
-                    <option value="no_vino">Apuntada, no vino</option>
                     <option value="pendiente">Pendiente</option>
                     <option value="baja">Pide baja</option>
+                  </select>
+                  <select value={adultasFiltroAsist} onChange={e => setAdultasFiltroAsist(e.target.value)} className="px-3 py-2.5 rounded-xl border text-sm cursor-pointer" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}>
+                    <option value="">Toda la asistencia</option>
+                    <option value="vino">Vino a la jornada</option>
+                    <option value="no_vino">Reservó, no vino</option>
+                    <option value="reservo">Reservó</option>
+                    <option value="ninguna">No reservó jornada</option>
                   </select>
                 </div>
 
@@ -5233,7 +5239,7 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Nombre", "Contacto", "Quiere probar", "¿Dónde quedó?", "Origen", "Llamada", "Estado", "Notas Andrea", "Fecha", ""].map((h, hi) => (
+                            {["Nombre", "Contacto", "Quiere probar", "¿Dónde quedó?", "Origen", "Llamada", "Estado", "Asistencia", "Notas Andrea", "Fecha", ""].map((h, hi) => (
                               <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
@@ -5372,6 +5378,19 @@ export default function AdminDashboard() {
                                       {CONFIRM_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                   );
+                                })()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {(() => {
+                                  const A: Record<string, { bg: string; fg: string; label: string; tip: string }> = {
+                                    vino:    { bg: "#e7f7ec", fg: "#1f7a3d", label: "Vino",            tip: "Vino a las puertas abiertas (jornada)." },
+                                    no_vino: { bg: "#fff3e0", fg: "#e65100", label: "Reservó, no vino", tip: "Reservó plaza en la jornada pero no asistió." },
+                                    reservo: { bg: "#e6efff", fg: "#1b4f9c", label: "Reservó",         tip: "Reservó plaza en la jornada (asistencia sin marcar)." },
+                                  };
+                                  const a = r.asistencia ? A[r.asistencia] : null;
+                                  return a ? (
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold cursor-help" style={{ backgroundColor: a.bg, color: a.fg }} title={a.tip}>{a.label}</span>
+                                  ) : <span style={{ color: "#89726c" }} title="No reservó la jornada de puertas abiertas">—</span>;
                                 })()}
                               </td>
                               <td className="px-4 py-3 align-top">

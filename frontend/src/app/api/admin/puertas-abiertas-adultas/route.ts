@@ -89,19 +89,47 @@ export async function GET() {
     return RANK_FASE[rank] ?? "solo_datos";
   };
 
+  // Asistencia a las puertas abiertas (jornada, bloque adultas): AUTOMÁTICA, cruzando
+  // por teléfono/email con reservas_jornada.asistio. vino(2) > no vino(1) > reservó(0).
+  const { data: rj } = await supabaseAdmin
+    .from("reservas_jornada")
+    .select("email, telefono, asistio")
+    .eq("bloque", "adultas");
+  const rankAsist = (a: boolean | null) => (a === true ? 2 : a === false ? 1 : 0);
+  const asistPhone = new Map<string, number>();
+  const asistEmail = new Map<string, number>();
+  for (const r of rj ?? []) {
+    const ph = normTel(r.telefono as string | null);
+    const em = ((r.email as string | null) || "").toLowerCase().trim();
+    const rk = rankAsist(r.asistio as boolean | null);
+    if (ph) asistPhone.set(ph, Math.max(rk, asistPhone.get(ph) ?? -1));
+    if (em) asistEmail.set(em, Math.max(rk, asistEmail.get(em) ?? -1));
+  }
+  const asistenciaDe = (r: { email?: string | null; telefono?: string | null }): string | null => {
+    const ph = normTel(r.telefono);
+    const em = (r.email || "").toLowerCase().trim();
+    const ranks: number[] = [];
+    if (ph && asistPhone.has(ph)) ranks.push(asistPhone.get(ph)!);
+    if (em && asistEmail.has(em)) ranks.push(asistEmail.get(em)!);
+    if (ranks.length === 0) return null; // no reservó la jornada
+    const best = Math.max(...ranks);
+    return best === 2 ? "vino" : best === 1 ? "no_vino" : "reservo";
+  };
+
   const enriched = (data ?? []).map(r => ({
     ...r,
     ya_inscrita:
       (!!r.email && emails.has(r.email.toLowerCase().trim())) ||
       (!!r.telefono && phones.has(normTel(r.telefono))),
     fase: faseDe(r),
+    asistencia: asistenciaDe(r),
   }));
 
   return NextResponse.json({ data: enriched });
 }
 
 const LLAMADA_VALIDA = new Set(["sin_llamar", "realizada", "no_contesta", "no_disponible"]);
-const CONFIRMACION_VALIDA = new Set(["pendiente", "quiere_septiembre", "vino", "no_vino", "baja"]);
+const CONFIRMACION_VALIDA = new Set(["pendiente", "quiere_septiembre", "baja"]);
 
 // Actualiza una reserva (origen, notas, llamada, confirmación). Solo admin.
 export async function PATCH(req: NextRequest) {
