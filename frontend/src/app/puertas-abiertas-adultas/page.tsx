@@ -34,7 +34,7 @@ const VARIANTES = [
     headline: "Este septiembre los peques vuelven al cole. ¿Y si tú también empiezas algo tuyo?",
     body: [
       "Imagina llegar a octubre firme, con la postura recta y la energía de vuelta.",
-      "Con Pilates Mat y Barre Fit tonificas de bajo impacto, recuperas suelo pélvico y postura, y despejas la cabeza en cada sesión.",
+      "Gana fuerza, postura y ligereza. Clase tras clase.",
       "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos por la mañana y por la tarde: haz nuevas amigas y disfruta haciendo ejercicio. Para principiantes y para avanzadas.",
     ],
   },
