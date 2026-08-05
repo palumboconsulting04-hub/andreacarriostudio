@@ -50,7 +50,7 @@ const VARIANTES = [
     headline: "Un verano de chiringuito, cañas y cero ejercicio. Toca volver a sentirte firme y con energía.",
     body: [
       "Imagina llegar a octubre con los brazos, el abdomen y las piernas firmes otra vez.",
-      "Con Pilates Mat y Barre Fit esculpes el músculo con movimientos pequeños y controlados: firmeza real de bajo impacto, sin castigar las articulaciones.",
+      "Gana fuerza, postura y ligereza. Clase tras clase.",
       "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos por la mañana y por la tarde: haz nuevas amigas y disfruta haciendo ejercicio. Para principiantes y para avanzadas.",
     ],
   },
