@@ -5261,6 +5261,11 @@ export default function AdminDashboard() {
                               </td>
                               <td className="px-4 py-3">
                                 <p className="text-xs" style={{ color: "#89726c" }}>{r.telefono}</p>
+                                {r.confirmacion === "baja" ? (
+                                  <span className="inline-flex items-center mt-2 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "#fde7e7", color: "#b71c1c" }}>
+                                    Dada de baja · no escribir
+                                  </span>
+                                ) : (
                                 <a
                                   href={waLink(r)}
                                   target="_blank"
@@ -5274,6 +5279,7 @@ export default function AdminDashboard() {
                                   </svg>
                                   WhatsApp
                                 </a>
+                                )}
                               </td>
                               <td className="px-4 py-3">
                                 {r.disciplina ? (
