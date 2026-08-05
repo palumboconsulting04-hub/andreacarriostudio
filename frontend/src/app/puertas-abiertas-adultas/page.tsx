@@ -35,7 +35,7 @@ const VARIANTES = [
     body: [
       "Imagina llegar a octubre firme, con la postura recta y la energía de vuelta.",
       "Con Pilates Mat y Barre Fit tonificas de bajo impacto, recuperas suelo pélvico y postura, y despejas la cabeza en cada sesión.",
-      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos, donde te conozco por tu nombre: aquí no eres una más.",
+      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos por la mañana y por la tarde: haz nuevas amigas y disfruta haciendo ejercicio. Para principiantes y para avanzadas.",
     ],
   },
   {
@@ -43,7 +43,7 @@ const VARIANTES = [
     body: [
       "No lo dejes para «cuando tenga tiempo»: empieza desde el primer día.",
       "Gana fuerza, postura y ligereza. Clase tras clase.",
-      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos y yo pendiente de ti: aquí no eres una más.",
+      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos por la mañana y por la tarde: haz nuevas amigas y disfruta haciendo ejercicio. Para principiantes y para avanzadas.",
     ],
   },
   {
@@ -51,7 +51,7 @@ const VARIANTES = [
     body: [
       "Imagina llegar a octubre con los brazos, el abdomen y las piernas firmes otra vez.",
       "Con Pilates Mat y Barre Fit esculpes el músculo con movimientos pequeños y controlados: firmeza real de bajo impacto, sin castigar las articulaciones.",
-      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos, donde te conozco por tu nombre: aquí no eres una más.",
+      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos por la mañana y por la tarde: haz nuevas amigas y disfruta haciendo ejercicio. Para principiantes y para avanzadas.",
     ],
   },
 ];
