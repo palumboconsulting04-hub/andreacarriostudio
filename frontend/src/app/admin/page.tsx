@@ -4954,7 +4954,7 @@ export default function AdminDashboard() {
               if (tel.length === 9) tel = "34" + tel;
               const nombre = (r.nombre || "").trim().split(/\s+/)[0] || "";
               const msg =
-                `Hola ${nombre}, soy Andrea de Andrea Carrió Studio, danza y pilates 🌸 Perdona que te moleste. ` +
+                `Hola ${nombre}, soy Andrea de Andrea Carrió Studio, danza y pilates 🤎 Perdona que te moleste. ` +
                 `Te apuntaste a las puertas abiertas del estudio para probar Barre Fit o Pilates y me quedé con ganas de saber si al final quieres empezar.\n\n` +
                 `Empezamos en septiembre, en menos de un mes, y estoy cerrando horarios y grupos. ¿Te sigue apeteciendo probar Pilates o Barre? ¿O prefieres que te borre de la lista?`;
               return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
