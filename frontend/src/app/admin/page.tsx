@@ -779,6 +779,7 @@ export default function AdminDashboard() {
   const [adultasLoading, setAdultasLoading] = useState(false);
   const [adultasSearch, setAdultasSearch] = useState("");
   const [adultasFiltroDisc, setAdultasFiltroDisc] = useState("");
+  const [adultasFiltroEstado, setAdultasFiltroEstado] = useState("");
   const [adultasDeleteId, setAdultasDeleteId] = useState<string | null>(null);
   const [adultasNotasDraft, setAdultasNotasDraft] = useState<Record<string, string>>({});
   const [adultasNotasSaved, setAdultasNotasSaved] = useState<string | null>(null);
@@ -4942,9 +4943,11 @@ export default function AdminDashboard() {
               { value: "no_disponible", label: "No disponible",     bg: "#fde7e7", fg: "#b71c1c" },
             ];
             const CONFIRM_OPT: { value: string; label: string; bg: string; fg: string }[] = [
-              { value: "pendiente", label: "Pendiente",           bg: "#f0eae6", fg: "#6b5a52" },
-              { value: "confirma",  label: "Confirma asistencia", bg: "#e7f7ec", fg: "#1f7a3d" },
-              { value: "no_viene",  label: "No viene",            bg: "#fde7e7", fg: "#b71c1c" },
+              { value: "pendiente",         label: "Pendiente",           bg: "#f0eae6", fg: "#6b5a52" },
+              { value: "quiere_septiembre", label: "Quiere probar sept.", bg: "#e7f7ec", fg: "#1f7a3d" },
+              { value: "vino",              label: "Vino a probar",       bg: "#e6efff", fg: "#1b4f9c" },
+              { value: "no_vino",           label: "Apuntada, no vino",   bg: "#fff3e0", fg: "#e65100" },
+              { value: "baja",              label: "Pide baja",           bg: "#fde7e7", fg: "#b71c1c" },
             ];
             const llamadaInfo = (v: string) => LLAMADA_OPT.find(o => o.value === v) ?? LLAMADA_OPT[0];
             const confirmInfo = (v: string) => CONFIRM_OPT.find(o => o.value === v) ?? CONFIRM_OPT[0];
@@ -4986,7 +4989,8 @@ export default function AdminDashboard() {
               (!q ||
                 r.nombre.toLowerCase().includes(q) ||
                 (r.telefono || "").includes(q)) &&
-              (!adultasFiltroDisc || r.disciplina === adultasFiltroDisc)
+              (!adultasFiltroDisc || r.disciplina === adultasFiltroDisc) &&
+              (!adultasFiltroEstado || r.confirmacion === adultasFiltroEstado)
             );
             const porLlamar = adultasData.filter(r => r.llamada === "sin_llamar").length;
             const confirmadas = adultasData.filter(r => r.confirmacion === "confirma").length;
@@ -5203,6 +5207,14 @@ export default function AdminDashboard() {
                     <option value="barre">Barre Fit</option>
                     <option value="ambas">Las dos</option>
                   </select>
+                  <select value={adultasFiltroEstado} onChange={e => setAdultasFiltroEstado(e.target.value)} className="px-3 py-2.5 rounded-xl border text-sm cursor-pointer" style={{ borderColor: "#dcc1b9", backgroundColor: "#fff8f5", color: "#25190f" }}>
+                    <option value="">Todos los estados</option>
+                    <option value="quiere_septiembre">Quiere probar sept.</option>
+                    <option value="vino">Vino a probar</option>
+                    <option value="no_vino">Apuntada, no vino</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="baja">Pide baja</option>
+                  </select>
                 </div>
 
                 {/* Tabla */}
@@ -5221,7 +5233,7 @@ export default function AdminDashboard() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr style={{ backgroundColor: "#fff0eb" }}>
-                            {["Nombre", "Contacto", "Quiere probar", "¿Dónde quedó?", "Origen", "Llamada", "Confirmación", "Notas Andrea", "Fecha", ""].map((h, hi) => (
+                            {["Nombre", "Contacto", "Quiere probar", "¿Dónde quedó?", "Origen", "Llamada", "Estado", "Notas Andrea", "Fecha", ""].map((h, hi) => (
                               <th key={hi} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "#89726c" }}>{h}</th>
                             ))}
                           </tr>
@@ -5348,10 +5360,14 @@ export default function AdminDashboard() {
                                   return (
                                     <select
                                       value={c.value}
-                                      onChange={e => updateAdultaSeguimiento(r.id, "confirmacion", e.target.value)}
+                                      onChange={e => {
+                                        const v = e.target.value;
+                                        if (v === "baja" && !window.confirm(`Vas a dar de baja a ${r.nombre}: se saldrá de todas las listas de email para siempre. ¿Seguro?`)) return;
+                                        updateAdultaSeguimiento(r.id, "confirmacion", v);
+                                      }}
                                       className="text-xs font-semibold rounded-full px-2.5 py-1 cursor-pointer outline-none border-0 appearance-none"
                                       style={{ backgroundColor: c.bg, color: c.fg }}
-                                      title="¿Viene a la jornada?"
+                                      title="Estado del contacto"
                                     >
                                       {CONFIRM_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>

@@ -101,7 +101,7 @@ export async function GET() {
 }
 
 const LLAMADA_VALIDA = new Set(["sin_llamar", "realizada", "no_contesta", "no_disponible"]);
-const CONFIRMACION_VALIDA = new Set(["pendiente", "confirma", "no_viene"]);
+const CONFIRMACION_VALIDA = new Set(["pendiente", "quiere_septiembre", "vino", "no_vino", "baja"]);
 
 // Actualiza una reserva (origen, notas, llamada, confirmación). Solo admin.
 export async function PATCH(req: NextRequest) {
@@ -121,10 +121,27 @@ export async function PATCH(req: NextRequest) {
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
   }
-  const { error } = await supabaseAdmin.from("puertas_abiertas_adultas").update(updates).eq("id", id);
+  const { data: updated, error } = await supabaseAdmin
+    .from("puertas_abiertas_adultas")
+    .update(updates)
+    .eq("id", id)
+    .select("email")
+    .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Baja: la sacamos de TODAS las listas de email añadiéndola a email_bajas.
+  // La exclusión es por email, así deja de recibir cualquier campaña para siempre
+  // (aunque su correo esté también en otra fuente: jornada, lista de espera, etc.).
+  if (updates.confirmacion === "baja") {
+    const email = (updated?.email || "").trim().toLowerCase();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      const { data: ya } = await supabaseAdmin.from("email_bajas").select("email").eq("email", email).maybeSingle();
+      if (!ya) await supabaseAdmin.from("email_bajas").insert({ email, origen: "panel-adultas" });
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
 
