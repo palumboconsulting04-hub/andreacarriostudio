@@ -4953,15 +4953,10 @@ export default function AdminDashboard() {
               if (tel.startsWith("00")) tel = tel.slice(2);
               if (tel.length === 9) tel = "34" + tel;
               const nombre = (r.nombre || "").trim().split(/\s+/)[0] || "";
-              const disc =
-                r.disciplina === "pilates" ? "Pilates Mat"
-                : r.disciplina === "barre" ? "Barre Fit"
-                : "Pilates Mat y Barre Fit";
               const msg =
-                `¡Hola ${nombre}! Soy Andrea, de Andrea Carrió Studio 🌸 ` +
-                `Te escribo porque dejaste tus datos interesada en ${disc}. ` +
-                `En septiembre arranco los grupos y me encantaría que empezaras conmigo. ` +
-                `¿Te apetece que te cuente los horarios y te guarde tu sitio? 😊`;
+                `Hola ${nombre}, soy Andrea de Andrea Carrió Studio, danza y pilates 🌸 Perdona que te moleste. ` +
+                `Te apuntaste a las puertas abiertas del estudio para probar Barre Fit o Pilates y me quedé con ganas de saber si al final quieres empezar.\n\n` +
+                `Empezamos en septiembre, en menos de un mes, y estoy cerrando horarios y grupos. ¿Te sigue apeteciendo probar Pilates o Barre? ¿O prefieres que te borre de la lista?`;
               return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
             };
             // Extrae el nombre legible de la campaña/anuncio de Meta.
