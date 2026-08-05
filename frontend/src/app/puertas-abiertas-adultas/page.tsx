@@ -325,7 +325,7 @@ export default function PuertasAbiertasAdultas() {
           </button>
 
           <p className="text-sm mt-4 font-semibold" style={{ color: C.burgundy }}>
-            ⚠ Solo 12 plazas por clase · Los grupos de septiembre se llenan rápido.
+            🔒 Reserva online en solo 4 min, con cualquier tarjeta de débito. Tu clase, asegurada para septiembre.
           </p>
         </div>
       </div>
