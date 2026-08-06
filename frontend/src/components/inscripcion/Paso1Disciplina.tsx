@@ -82,8 +82,8 @@ export default function Paso1Disciplina({ disciplinas, value, onSelect }: Props)
               {d.id === "mixta" && (
                 <div className="absolute top-4 left-4">
                   <span
-                    className="text-xs font-semibold tracking-widest uppercase px-3 py-1 rounded-full"
-                    style={{ backgroundColor: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", color: "#ffffff" }}
+                    className="text-xs font-semibold tracking-widest uppercase px-3 py-1 rounded-full shadow-md"
+                    style={{ backgroundColor: "#7d2b13", color: "#ffffff" }}
                   >
                     Barre + Pilates
                   </span>
