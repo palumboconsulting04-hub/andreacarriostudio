@@ -13,7 +13,7 @@ import Paso5Gracias from "@/components/inscripcion/Paso5Gracias";
 import CuentaAtras from "@/components/inscripcion/CuentaAtras";
 import FooterLegal from "@/components/FooterLegal";
 import type { InscripcionState, BozzaIscrizione, Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId } from "@/components/inscripcion/types";
-import { fetchDiscipline, fetchPiani, fetchOrari } from "@/lib/queries";
+import { fetchDiscipline, fetchPiani, fetchOrari, fetchOrariMixta } from "@/lib/queries";
 
 const DISCIPLINAS_NINAS = new Set<DisciplinaId>(["pre-ballet", "ballet-i", "ballet-ii"]);
 // Barre y Pilates ofrecen también bonos (créditos) además de la mensualidad.
@@ -170,7 +170,7 @@ export default function Home() {
       horarios: [...estado.horarios],
       horariosLabels: estado.horarios.map(id => {
         const s = slots.find(sl => sl.id === id);
-        return s ? `${s.dia} ${s.hora}–${s.horaFin}` : "";
+        return s ? `${s.dia} ${s.hora}–${s.horaFin}${s.disciplinaNombre ? ` · ${s.disciplinaNombre}` : ""}` : "";
       }).filter(Boolean),
       esNinas: DISCIPLINAS_NINAS.has(estado.disciplina),
     };
@@ -202,7 +202,7 @@ export default function Home() {
     try {
       const [newPlanes, newSlots] = await Promise.all([
         fetchPiani(id),
-        fetchOrari(id),
+        id === "mixta" ? fetchOrariMixta() : fetchOrari(id),
       ]);
       setPlanes(newPlanes);
       setSlots(newSlots);

@@ -144,6 +144,8 @@ export const horariosPorDisciplina: Record<DisciplinaId, HorarioSlot[]> = {
     { dia: "Jueves",    hora: "09:00", horaFin: "10:00", disponibles: 8,  total: 12 },
     { dia: "Viernes",   hora: "10:15", horaFin: "11:15", disponibles: 11, total: 12 },
   ]),
+  // Mixta no usa esta tabla estática: junta Barre + Pilates desde la BD (fetchOrariMixta).
+  "mixta": [],
   "pre-ballet": slots("pb", [
     { dia: "Lunes",     hora: "17:45", horaFin: "18:45", disponibles: 5,  total: 8 },
     { dia: "Miércoles", hora: "17:45", horaFin: "18:45", disponibles: 3,  total: 8 },

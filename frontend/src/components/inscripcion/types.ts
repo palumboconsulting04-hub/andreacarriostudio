@@ -1,6 +1,7 @@
 export type DisciplinaId =
   | "pilates-mat"
   | "barre-fit"
+  | "mixta"
   | "pre-ballet"
   | "ballet-i"
   | "ballet-ii"
@@ -36,6 +37,9 @@ export interface HorarioSlot {
   horaFin: string;
   disponibles: number;
   total: number;
+  // Solo en Mixta: a qué disciplina pertenece la clase (para etiquetarla).
+  disciplina?: DisciplinaId;
+  disciplinaNombre?: string;
 }
 
 export interface BozzaIscrizione {

@@ -5,6 +5,7 @@ import type { Disciplina, Plan, HorarioSlot, DisciplinaId, PlanId } from "@/comp
 const DESCRIPCIONES: Record<string, string> = {
   "pilates-mat": "Core, postura y flexibilidad. Bajo impacto, resultados reales.",
   "barre-fit": "Ballet y fuerza en una sola clase. Piernas, glúteos y técnica.",
+  "mixta": "Barre Fit + Pilates Mat. Combina las dos por el mismo precio.",
   "pre-ballet": "Ritmo y conciencia corporal desde los 3 años.",
   "ballet-i": "Danza clásica con método y exámenes RAD.",
   "ballet-ii": "Mayor exigencia técnica con metodología RAD.",
@@ -13,7 +14,7 @@ const DESCRIPCIONES: Record<string, string> = {
 
 const SOLO_INTENSIVO = new Set(["ballet-ii"]);
 
-const DISCIPLINA_ORDER = ["barre-fit", "pilates-mat", "ballet-adultos", "pre-ballet", "ballet-i", "ballet-ii"];
+const DISCIPLINA_ORDER = ["barre-fit", "pilates-mat", "mixta", "ballet-adultos", "pre-ballet", "ballet-i", "ballet-ii"];
 
 const DIA_ORDER = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
@@ -92,6 +93,21 @@ export async function fetchOrari(disciplinaId: string): Promise<HorarioSlot[]> {
   }));
 
   return slots.sort((a, b) => {
+    const dA = DIA_ORDER.indexOf(a.dia);
+    const dB = DIA_ORDER.indexOf(b.dia);
+    if (dA !== dB) return dA - dB;
+    return a.hora.localeCompare(b.hora);
+  });
+}
+
+// Mixta: no tiene horarios propios. Junta los de Barre + Pilates y etiqueta cada
+// clase con su disciplina, para que se vea de un vistazo cuál es cuál.
+export async function fetchOrariMixta(): Promise<HorarioSlot[]> {
+  const [barre, pilates] = await Promise.all([fetchOrari("barre-fit"), fetchOrari("pilates-mat")]);
+  const tag = (arr: HorarioSlot[], id: DisciplinaId, nombre: string): HorarioSlot[] =>
+    arr.map((s) => ({ ...s, disciplina: id, disciplinaNombre: nombre }));
+  const all = [...tag(barre, "barre-fit", "Barre Fit"), ...tag(pilates, "pilates-mat", "Pilates Mat")];
+  return all.sort((a, b) => {
     const dA = DIA_ORDER.indexOf(a.dia);
     const dB = DIA_ORDER.indexOf(b.dia);
     if (dA !== dB) return dA - dB;

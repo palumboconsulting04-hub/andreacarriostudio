@@ -141,6 +141,14 @@ export default function Paso3Horarios({
                           <span className={`font-body font-semibold text-sm ${lleno ? "text-red-400" : "text-texto"}`}>
                             {slot.hora} – {slot.horaFin}
                           </span>
+                          {slot.disciplinaNombre && (
+                            <span
+                              className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold align-middle"
+                              style={slot.disciplina === "barre-fit" ? { backgroundColor: "#ffdbd1", color: "#7d2b13" } : { backgroundColor: "#e0efe4", color: "#2f6b46" }}
+                            >
+                              {slot.disciplinaNombre}
+                            </span>
+                          )}
                           {seleccionado && (
                             <span className="ml-2 text-xs font-body font-semibold text-siena tracking-wider uppercase">
                               Seleccionado
