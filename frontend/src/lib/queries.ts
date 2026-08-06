@@ -23,9 +23,14 @@ function buildPrecioClase(prezzo: number, classi: number): string {
   return `Menos de ${Math.ceil(perClass)}€ por clase`;
 }
 
-function buildFeatures(id: string, classi: number, durata: number): string[] {
+function buildFeatures(id: string, classi: number, durata: number, disciplinaId?: string): string[] {
   const durStr = durata === 90 ? " de hora y media" : "";
   const line1 = `${classi} clase${classi > 1 ? "s" : ""}${durStr} fija${classi > 1 ? "s" : ""} a la semana`;
+  // Mixta: combina Barre + Pilates, la clienta elige libremente de las dos.
+  if (disciplinaId === "mixta") {
+    if (id === "avanzado") return [line1, "Combina Barre Fit y Pilates Mat", "Eliges tú de las dos disciplinas", "La frecuencia perfecta para ver resultados"];
+    return [line1, "Combina Barre Fit y Pilates Mat", "Máxima transformación en las dos", "Resultados más rápidos"];
+  }
   if (id === "basico") return [line1, "Elige tu disciplina", "Grupo reducido y cercano", "Para quien quiere empezar y no tiene tiempo"];
   if (id === "avanzado") return [line1, "Misma disciplina, doble progreso", "Grupo reducido y cercano", "La frecuencia perfecta para ver resultados"];
   return [line1, "Máxima transformación", "Resultados más rápidos", "Grupo reducido y cercano"];
@@ -70,7 +75,7 @@ export async function fetchPiani(disciplinaId: string): Promise<Plan[]> {
     sesionesMes: p.classi_settimana * 4,
     destacado: p.popolare ?? false,
     precioClase: buildPrecioClase(p.prezzo, p.classi_settimana),
-    features: buildFeatures(p.id, p.classi_settimana, p.durata_minuti),
+    features: buildFeatures(p.id, p.classi_settimana, p.durata_minuti, disciplinaId),
   }));
 }
 
