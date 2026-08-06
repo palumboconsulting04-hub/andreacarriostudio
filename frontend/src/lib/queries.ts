@@ -27,9 +27,11 @@ function buildFeatures(id: string, classi: number, durata: number, disciplinaId?
   const durStr = durata === 90 ? " de hora y media" : "";
   const line1 = `${classi} clase${classi > 1 ? "s" : ""}${durStr} fija${classi > 1 ? "s" : ""} a la semana`;
   // Mixta: combina Barre + Pilates, la clienta elige libremente de las dos.
+  // El Intensivo (90€) es el estrella: se resalta el valor de la 3ª clase.
   if (disciplinaId === "mixta") {
-    if (id === "avanzado") return [line1, "Combina Barre Fit y Pilates Mat", "Eliges tú de las dos disciplinas", "La frecuencia perfecta para ver resultados"];
-    return [line1, "Combina Barre Fit y Pilates Mat", "Máxima transformación en las dos", "Resultados más rápidos"];
+    if (id === "avanzado")
+      return [line1, "Una de Barre y una de Pilates", "Perfecto para empezar con las dos", "Grupo reducido y cercano"];
+    return [line1, "Barre y Pilates, la combinación completa", "Solo 20€ más: la 3ª clase te sale a 5€", "El ritmo para transformar tu cuerpo de verdad"];
   }
   if (id === "basico") return [line1, "Elige tu disciplina", "Grupo reducido y cercano", "Para quien quiere empezar y no tiene tiempo"];
   if (id === "avanzado") return [line1, "Misma disciplina, doble progreso", "Grupo reducido y cercano", "La frecuencia perfecta para ver resultados"];

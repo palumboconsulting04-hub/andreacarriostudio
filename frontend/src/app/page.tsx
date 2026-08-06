@@ -374,6 +374,7 @@ export default function Home() {
               bozzeExistentes={bozze}
               onContinuar={handleCrossSellContinuar}
               onAgregarOtra={handleCrossSellAgregar}
+              onBack={() => setPaso(3)}
             />
           )}
 

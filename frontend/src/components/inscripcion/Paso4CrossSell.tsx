@@ -2,7 +2,7 @@
 
 import type { DisciplinaId, BozzaIscrizione } from "./types";
 
-const ADULTAS = new Set<DisciplinaId>(["pilates-mat", "barre-fit", "ballet-adultos"]);
+const ADULTAS = new Set<DisciplinaId>(["pilates-mat", "barre-fit", "mixta", "ballet-adultos"]);
 
 interface Props {
   disciplinaId: DisciplinaId;
@@ -12,6 +12,7 @@ interface Props {
   bozzeExistentes: BozzaIscrizione[];
   onContinuar: () => void;
   onAgregarOtra: () => void;
+  onBack: () => void;
 }
 
 export default function Paso4CrossSell({
@@ -22,6 +23,7 @@ export default function Paso4CrossSell({
   bozzeExistentes,
   onContinuar,
   onAgregarOtra,
+  onBack,
 }: Props) {
   const esAdulta = ADULTAS.has(disciplinaId);
 
@@ -31,6 +33,18 @@ export default function Paso4CrossSell({
 
   return (
     <div className="max-w-xl mx-auto px-8 py-12">
+      <div className="mb-6">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
+          style={{ color: "#89726c", fontFamily: "var(--font-montserrat), 'Montserrat', sans-serif" }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M13 8H3M7 4L3 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Volver
+        </button>
+      </div>
       <div className="mb-8 text-center">
         <h2
           className="text-4xl mb-2"
