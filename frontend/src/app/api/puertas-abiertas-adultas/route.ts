@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { Resend } from "resend";
 import { supabase } from "@/lib/supabase";
+import { plantilla, remitente, REPLY_TO } from "@/lib/email-envio";
+import { enlaceBaja } from "@/lib/listas-email";
 
 const FB_PIXEL_ID = "2024231855152441";
 
@@ -63,13 +66,40 @@ async function sendCapiLead(opts: {
 
 const DISCIPLINAS = new Set(["pilates", "barre", "ambas"]);
 
+const resend = new Resend(process.env.RESEND_API_KEY);
+const ESCUELA_WA = "34614679291";
+
+// Email automático a la clienta: la invita a escribirnos por WhatsApp. Así la
+// conversación entra en el móvil de Andrea (614679291) y ella toma el control.
+async function sendLeadEmail(nombre: string, email: string, base: string) {
+  if (!process.env.RESEND_API_KEY) return;
+  const waMsg = "¡Hola Andrea! Me interesan las clases de Pilates y Barre 🤎 ¿me cuentas?";
+  const waUrl = `https://wa.me/${ESCUELA_WA}?text=${encodeURIComponent(waMsg)}`;
+  const cuerpo =
+    "Vi que dejaste tus datos interesada en probar Pilates o Barre Fit, y me encantaría ayudarte a empezar.\n\n" +
+    "Lo más fácil es que hablemos por WhatsApp: dale al botón, me escribes y te contesto yo misma — te cuento los horarios, los precios y te guardo tu plaza.";
+  try {
+    await resend.emails.send({
+      from: remitente(),
+      replyTo: REPLY_TO,
+      to: email,
+      subject: `¿Empezamos? 🤎`,
+      html: plantilla(nombre, cuerpo, enlaceBaja(email, base), { cta: { texto: "Escribirme por WhatsApp", url: waUrl } }),
+    });
+  } catch (e) {
+    console.error("lead email adultas error:", e);
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { nombre, telefono, email, disciplina, origen, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, eventId, fbc, fbp, variante, ref } = body;
 
-    // El formulario corto pide nombre + teléfono + qué quiere probar.
-    if (!nombre || !telefono) {
+    // Nombre + teléfono + email: los tres obligatorios.
+    const emailNorm = (email || "").trim().toLowerCase();
+    const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm);
+    if (!nombre || !telefono || !emailValido) {
       return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
     }
 
@@ -77,7 +107,7 @@ export async function POST(req: NextRequest) {
     const row = {
       nombre,
       telefono,
-      email: email || null,
+      email: emailNorm,
       disciplina: DISCIPLINAS.has(disciplina) ? disciplina : null,
       variante: Number.isInteger(vNum) && vNum >= 0 && vNum < 100 ? vNum : null,
       ref: typeof ref === "string" ? ref.slice(0, 64) : null,
@@ -108,6 +138,10 @@ export async function POST(req: NextRequest) {
       clientIp,
       userAgent: req.headers.get("user-agent"),
     });
+
+    // Email automático a la clienta con el botón de WhatsApp. No bloquea si falla.
+    const base = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
+    await sendLeadEmail(nombre, emailNorm, base);
 
     return NextResponse.json({ ok: true });
   } catch (e) {
