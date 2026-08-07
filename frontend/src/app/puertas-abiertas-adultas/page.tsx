@@ -27,11 +27,13 @@ const C = {
 const fSerif = "var(--font-playfair), 'Playfair Display', Georgia, serif";
 const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
 
-// Versiones del hero para el A/B por rotación. Cada visita muestra la siguiente
-// (cíclico) y se etiqueta impresión + lead con su índice (0,1,2) para el admin.
+// Titular del hero según la disciplina del anuncio (message match), no A/B al azar:
+// 0 = directo/combinado · 1 = barre · 2 = pilates. Se etiqueta impresión + lead
+// con ese índice (variante) para ver el rendimiento por disciplina en el admin.
 const VARIANTES = [
   {
-    headline: "Este septiembre los peques vuelven al cole. ¿Y si tú también empiezas algo tuyo?",
+    headline: "Ponte en forma este septiembre con Pilates Mat y Barre Fit.",
+    subtitle: "Pilates Mat · Barre Fit",
     body: [
       "Imagina llegar a octubre firme, con la postura recta y la energía de vuelta.",
       "Gana fuerza, postura y ligereza. Clase tras clase.",
@@ -39,17 +41,19 @@ const VARIANTES = [
     ],
   },
   {
-    headline: "Este septiembre, empieza a cuidarte y tonificarte con Pilates Mat y Barre Fit.",
+    headline: "Este septiembre, tonifica y recupera un cuerpo firme con Barre Fit.",
+    subtitle: "Barre Fit · tonificación de bajo impacto",
     body: [
-      "No lo dejes para «cuando tenga tiempo»: empieza desde el primer día.",
+      "Imagina llegar a octubre con las piernas, los glúteos y el abdomen firmes otra vez.",
       "Gana fuerza, postura y ligereza. Clase tras clase.",
       "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos por la mañana y por la tarde: haz nuevas amigas y disfruta haciendo ejercicio. Para principiantes y para avanzadas.",
     ],
   },
   {
-    headline: "Un verano de chiringuito, cañas y cero ejercicio. Toca volver a sentirte firme y con energía.",
+    headline: "Este septiembre, cuida tu postura y tu espalda con Pilates Mat.",
+    subtitle: "Pilates Mat · postura y core",
     body: [
-      "Imagina llegar a octubre con los brazos, el abdomen y las piernas firmes otra vez.",
+      "Imagina llegar a octubre con la espalda sin molestias, el core fuerte y la postura recta.",
       "Gana fuerza, postura y ligereza. Clase tras clase.",
       "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos por la mañana y por la tarde: haz nuevas amigas y disfruta haciendo ejercicio. Para principiantes y para avanzadas.",
     ],
@@ -152,13 +156,14 @@ export default function PuertasAbiertasAdultas() {
     }).catch(() => {});
   };
   useEffect(() => {
-    // Rotación del titular: cada visita muestra la siguiente versión (cíclico).
+    // Titular según la disciplina del anuncio (message match): 0=combinado, 1=barre, 2=pilates.
+    // Detecta "barre"/"pilates" en el parámetro ?d= o en cualquier UTM del enlace del anuncio.
     let idx = 0;
     try {
-      const raw = localStorage.getItem("acs_pa_titular_idx");
-      idx = raw != null ? (((parseInt(raw, 10) % VARIANTES.length) + VARIANTES.length) % VARIANTES.length) : 0;
-      if (Number.isNaN(idx)) idx = 0;
-      localStorage.setItem("acs_pa_titular_idx", String((idx + 1) % VARIANTES.length));
+      const p = new URLSearchParams(window.location.search);
+      const campos = `${p.get("d") || ""} ${p.get("utm_content") || ""} ${p.get("utm_campaign") || ""} ${p.get("utm_term") || ""} ${p.get("utm_medium") || ""} ${p.get("utm_source") || ""}`.toLowerCase();
+      if (campos.includes("barre")) idx = 1;
+      else if (campos.includes("pilates")) idx = 2;
     } catch {}
     varIdxRef.current = idx;
     setVarIdx(idx);
@@ -307,7 +312,7 @@ export default function PuertasAbiertasAdultas() {
             className="text-lg sm:text-2xl font-bold mb-5"
             style={{ color: C.burgundy, fontFamily: fSans }}
           >
-            Pilates Mat <span style={{ color: C.muted, fontWeight: 400 }}>·</span> Barre Fit
+            {VARIANTES[varIdx].subtitle}
           </p>
 
           <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6 space-y-3" style={{ color: C.dark }}>
@@ -321,7 +326,7 @@ export default function PuertasAbiertasAdultas() {
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Reservar mi plaza de septiembre
+            Quiero empezar
           </button>
 
           <p className="text-sm mt-4 font-semibold" style={{ color: C.burgundy }}>
@@ -450,6 +455,32 @@ export default function PuertasAbiertasAdultas() {
         </div>
       </div>
 
+      {/* ── Dónde estamos (debajo del formulario) ── */}
+      <div className="px-4 pb-12">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: C.muted, fontFamily: fSans }}>
+            Dónde estamos
+          </p>
+          <h2 className="text-2xl sm:text-3xl mb-2" style={{ fontFamily: fSerif, color: C.burgundy }}>
+            📍 En el corazón de Alfahuir
+          </h2>
+          <p className="text-sm mb-5" style={{ color: C.dark }}>
+            Carrer de Motilla del Palancar 34 · Alfahuir, Valencia · A 5 minutos del Centro Comercial Arena
+          </p>
+          <div className="rounded-3xl overflow-hidden shadow-lg" style={{ border: `1px solid ${C.border}` }}>
+            <iframe
+              title="Ubicación de Andrea Carrió Studio"
+              src="https://www.google.com/maps?q=Carrer+de+Motilla+del+Palancar+34,+46019+Val%C3%A8ncia&z=16&output=embed"
+              width="100%"
+              height="300"
+              style={{ border: 0, display: "block", pointerEvents: "none" }}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* ── Confianza: un poco sobre mí ── */}
       <div className="px-4 pb-12">
         <div
@@ -553,32 +584,6 @@ export default function PuertasAbiertasAdultas() {
           >
             Reservar mi plaza
           </button>
-        </div>
-      </div>
-
-      {/* ── Dónde estamos ── */}
-      <div className="px-4 pb-16">
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: C.muted, fontFamily: fSans }}>
-            Dónde estamos
-          </p>
-          <h2 className="text-2xl sm:text-3xl mb-2" style={{ fontFamily: fSerif, color: C.burgundy }}>
-            📍 En el corazón de Alfahuir
-          </h2>
-          <p className="text-sm mb-5" style={{ color: C.dark }}>
-            Carrer de Motilla del Palancar 34 · Alfahuir, Valencia · A 5 minutos del Centro Comercial Arena
-          </p>
-          <div className="rounded-3xl overflow-hidden shadow-lg" style={{ border: `1px solid ${C.border}` }}>
-            <iframe
-              title="Ubicación de Andrea Carrió Studio"
-              src="https://www.google.com/maps?q=Carrer+de+Motilla+del+Palancar+34,+46019+Val%C3%A8ncia&z=16&output=embed"
-              width="100%"
-              height="300"
-              style={{ border: 0, display: "block", pointerEvents: "none" }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          </div>
         </div>
       </div>
 
