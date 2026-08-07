@@ -79,21 +79,21 @@ const pickFeatured = (servicio) => {
 
 // ---------- Sistema de diseño (mismo que los artículos ya publicados) ----------
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const link = (url, a) => `<a href="${url}" style="color:#7d2b13;font-weight:600;">${esc(a)}</a>`;
-const introBox = t => `<div style="background:linear-gradient(135deg,#fff0eb 0%,#fff8f5 100%);border-left:5px solid #7d2b13;border-radius:14px;padding:22px 26px;margin:0 0 10px;"><p style="margin:0;font-size:18px;line-height:1.7;color:#3a2c27;">${t}</p></div>`;
-const h2 = t => `<h2 style="color:#7d2b13;font-size:25px;line-height:1.25;margin:36px 0 14px;padding-bottom:8px;border-bottom:2px solid #ffdbd1;">${esc(t)}</h2>`;
+const link = (url, a) => `<a href="${url}" style="color:#c1592f;font-weight:600;">${esc(a)}</a>`;
+const introBox = t => `<div style="background:linear-gradient(135deg,#fff0eb 0%,#fff8f5 100%);border-left:5px solid #c1592f;border-radius:14px;padding:22px 26px;margin:0 0 10px;"><p style="margin:0;font-size:18px;line-height:1.7;color:#3a2c27;">${t}</p></div>`;
+const h2 = t => `<h2 style="color:#c1592f;font-size:25px;line-height:1.25;margin:36px 0 14px;padding-bottom:8px;border-bottom:2px solid #ffdbd1;">${esc(t)}</h2>`;
 const p = t => `<p style="font-size:16px;line-height:1.75;color:#3a2c27;">${t}</p>`;
-const card = (e, ti, tx) => `<div style="background:#fff8f5;border:1px solid #f0d9cf;border-left:4px solid #7d2b13;border-radius:12px;padding:14px 18px;margin:0 0 10px;"><span style="font-size:15px;font-weight:700;color:#7d2b13;">${esc(e)}&nbsp; ${esc(ti)}</span><span style="display:block;margin-top:4px;color:#56423d;line-height:1.6;">${esc(tx)}</span></div>`;
-const quote = t => `<div style="background:#fbeee9;border-radius:12px;padding:18px 22px;margin:16px 0;font-style:italic;color:#7d2b13;border-left:4px solid #d98c6a;">${esc(t)}</div>`;
+const card = (e, ti, tx) => `<div style="background:#fff8f5;border:1px solid #f0d9cf;border-left:4px solid #c1592f;border-radius:12px;padding:14px 18px;margin:0 0 10px;"><span style="font-size:15px;font-weight:700;color:#c1592f;">${esc(e)}&nbsp; ${esc(ti)}</span><span style="display:block;margin-top:4px;color:#56423d;line-height:1.6;">${esc(tx)}</span></div>`;
+const quote = t => `<div style="background:#fbeee9;border-radius:12px;padding:18px 22px;margin:16px 0;font-style:italic;color:#c1592f;border-left:4px solid #d98c6a;">${esc(t)}</div>`;
 const cta = (url, tipo = 'servicio') => {
   const t = tipo === 'reservas'
     ? { k: '¿Lista para empezar?', s: 'Reserva tu plaza en un minuto, sin complicaciones.', b: 'Reservar mi plaza →' }
     : { k: '¿Damos el primer paso?', s: 'Descubre horarios, edades y precios, y ven a conocer el estudio.', b: 'Ver más →' };
-  return `<div style="background:linear-gradient(135deg,#7d2b13,#9a3a1d);border-radius:16px;padding:28px 24px;margin:30px 0 12px;text-align:center;"><p style="margin:0 0 4px;color:#ffdbd1;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">${t.k}</p><p style="margin:0 0 18px;color:#fff8f5;font-size:18px;line-height:1.5;">${t.s}</p><a href="${url}" style="display:inline-block;background:#fff8f5;color:#7d2b13;padding:15px 34px;border-radius:9999px;text-decoration:none;font-weight:700;font-size:16px;">${t.b}</a></div>`;
+  return `<div style="background:linear-gradient(135deg,#8f3a1e,#6f2f16);border-radius:16px;padding:28px 24px;margin:30px 0 12px;text-align:center;"><p style="margin:0 0 4px;color:#ffdbd1;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">${t.k}</p><p style="margin:0 0 18px;color:#fff8f5;font-size:18px;line-height:1.5;">${t.s}</p><a href="${url}" style="display:inline-block;background:#fff8f5;color:#8f3a1e;padding:15px 34px;border-radius:9999px;text-decoration:none;font-weight:700;font-size:16px;">${t.b}</a></div>`;
 };
 const firma = () => `<p style="font-size:16px;color:#3a2c27;">Un abrazo. 💗<br><strong>Andrea</strong></p>`;
 const faqBlock = (faqs) => {
-  const vis = h2('Preguntas frecuentes') + faqs.map(f => `<div style="border:1px solid #eaddd6;border-radius:12px;padding:14px 18px;margin:0 0 10px;"><p style="margin:0 0 6px;font-weight:700;color:#7d2b13;">${esc(f.q)}</p><p style="margin:0;color:#56423d;line-height:1.6;">${esc(f.a)}</p></div>`).join('');
+  const vis = h2('Preguntas frecuentes') + faqs.map(f => `<div style="border:1px solid #eaddd6;border-radius:12px;padding:14px 18px;margin:0 0 10px;"><p style="margin:0 0 6px;font-weight:700;color:#c1592f;">${esc(f.q)}</p><p style="margin:0;color:#56423d;line-height:1.6;">${esc(f.a)}</p></div>`).join('');
   const ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) };
   return vis + `<script type="application/ld+json">${JSON.stringify(ld)}</script>`;
 };
