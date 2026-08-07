@@ -243,6 +243,38 @@ export default function AlquilerSalaPage() {
           ))}
         </div>
       </section>
+
+      {/* Dónde estamos */}
+      <section style={{ maxWidth: 860, margin: "0 auto", padding: "8px 24px 80px", textAlign: "center" }}>
+        <p style={{ fontFamily: fSans, fontSize: 13, fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: C.muted, margin: "0 0 8px" }}>
+          Dónde estamos
+        </p>
+        <h2 style={{ fontFamily: fSerif, fontSize: "clamp(24px, 4vw, 32px)", fontWeight: 500, color: C.burgundy, margin: "0 0 8px" }}>
+          📍 En el corazón de Alfahuir
+        </h2>
+        <p style={{ fontFamily: fSans, fontSize: 15, fontWeight: 300, lineHeight: 1.6, color: C.dark, margin: "0 0 20px" }}>
+          Carrer de Motilla del Palancar 34 · Alfahuir, Valencia · a 5 min del CC Arena
+        </p>
+        <div style={{ borderRadius: 24, overflow: "hidden", boxShadow: "0 12px 32px rgba(0,0,0,0.12)", border: `1px solid ${C.border}` }}>
+          <iframe
+            title="Ubicación de Andrea Carrió Studio"
+            src="https://www.google.com/maps?q=Carrer+de+Motilla+del+Palancar+34,+46019+Val%C3%A8ncia&z=16&output=embed"
+            width="100%"
+            height="320"
+            style={{ border: 0, display: "block", pointerEvents: "none" }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
+        <a
+          href="https://www.google.com/maps/search/?api=1&query=Carrer+de+Motilla+del+Palancar+34,+46019+Val%C3%A8ncia"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ display: "inline-block", marginTop: 16, fontFamily: fSans, fontSize: 15, fontWeight: 600, color: C.burgundy, textDecoration: "none" }}
+        >
+          Cómo llegar →
+        </a>
+      </section>
     </div>
   );
 }
