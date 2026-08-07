@@ -64,6 +64,19 @@ const SERVICIOS = {
 // el tema tiene intención alta (temas.json -> "destino": "reservas").
 const RESERVAS = process.env.RESERVAS_URL || 'https://reservas.andreacarriostudio.es/';
 
+// Fotos destacadas por disciplina (recortes uniformes 3:2, 1200x800, en Medios).
+// Pilates y Barre usan FOTOS REALES del estudio; Ballet usa imágenes de ballet
+// (no hay fotos reales de niñas en la biblioteca). Se elige una al azar por variedad.
+const FEATURED = {
+  ballet:  [3809, 3811, 3812], // niña con tutú / niña en clase / técnica
+  pilates: [3814, 3808, 3810], // pilates de suelo (real) / puente / pelota
+  barre:   [3815, 3816, 3813], // clase (real) / barras (real) / estiramientos (real)
+};
+const pickFeatured = (servicio) => {
+  const arr = FEATURED[servicio] || FEATURED.barre;
+  return arr[Math.floor(Math.random() * arr.length)];
+};
+
 // ---------- Sistema de diseño (mismo que los artículos ya publicados) ----------
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const link = (url, a) => `<a href="${url}" style="color:#7d2b13;font-weight:600;">${esc(a)}</a>`;
@@ -258,7 +271,7 @@ function construir(art, servicio, destino) {
 
     const post = await wp('/wp/v2/posts', {
       method: 'POST',
-      body: JSON.stringify({ title: art.titulo, slug: tema.slug, status, content: html, excerpt: art.excerpt || '' }),
+      body: JSON.stringify({ title: art.titulo, slug: tema.slug, status, content: html, excerpt: art.excerpt || '', featured_media: pickFeatured(tema.servicio) }),
     });
 
     // Rank Math (focus keyword + meta). No es crítico: si falla, seguimos.
