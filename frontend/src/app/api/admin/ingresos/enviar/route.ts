@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { Resend } from "resend";
 import { ingresosDelMes, ingresosCSV } from "@/lib/ingresos-server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -15,9 +16,9 @@ export async function POST(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const body = await req.json().catch(() => null);
   const mes = (body?.mes ?? "").toString();
-  const email = (body?.email ?? "").toString().trim().toLowerCase();
   if (!/^\d{4}-\d{2}$/.test(mes)) return NextResponse.json({ error: "Mes inválido" }, { status: 400 });
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: "El email del asesor no es válido." }, { status: 400 });
+  const emails = [...new Set(String(body?.email ?? "").split(/[,;]+/).map(s => s.trim().toLowerCase()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)))];
+  if (emails.length === 0) return NextResponse.json({ error: "El email del asesor no es válido." }, { status: 400 });
 
   const { lineas, total } = await ingresosDelMes(mes);
   const csv = ingresosCSV(lineas, total);
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
   try {
     const { error } = await resend.emails.send({
       from,
-      to: email,
+      to: emails,
       subject: `Ingresos ${nombreMes} — Andrea Carrió Studio`,
       html: `<div style="font-family:Arial,sans-serif;color:#333;max-width:520px;margin:0 auto;padding:24px;">
         <p>Hola,</p>
@@ -45,5 +46,6 @@ export async function POST(req: NextRequest) {
     console.error("enviar ingresos asesor:", e);
     return NextResponse.json({ error: "No se pudo enviar el email." }, { status: 500 });
   }
+  try { await supabaseAdmin.from("envios_asesor").insert({ tipo: "ingresos", mes, destinatarios: emails.join(", "), n: lineas.length, total }); } catch {}
   return NextResponse.json({ ok: true, total, lineas: lineas.length });
 }

@@ -17,9 +17,9 @@ export async function POST(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const body = await req.json().catch(() => null);
   const mes = (body?.mes ?? "").toString();
-  const email = (body?.email ?? "").toString().trim().toLowerCase();
   if (!/^\d{4}-\d{2}$/.test(mes)) return NextResponse.json({ error: "Elige un mes concreto." }, { status: 400 });
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: "El email del asesor no es válido." }, { status: 400 });
+  const emails = [...new Set(String(body?.email ?? "").split(/[,;]+/).map(s => s.trim().toLowerCase()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)))];
+  if (emails.length === 0) return NextResponse.json({ error: "El email del asesor no es válido." }, { status: 400 });
 
   const ini = `${mes}-01`;
   const [y, m] = mes.split("-").map(Number);
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
   try {
     const { error } = await resend.emails.send({
-      from, to: email,
+      from, to: emails,
       subject: `Facturas de gastos ${nombreMes} — Andrea Carrió Studio`,
       html: `<div style="font-family:Arial,sans-serif;color:#333;max-width:520px;margin:0 auto;padding:24px;">
         <p>Hola,</p>
@@ -76,5 +76,6 @@ export async function POST(req: NextRequest) {
     console.error("enviar facturas asesor:", e);
     return NextResponse.json({ error: "No se pudo enviar el email (¿demasiados adjuntos?)." }, { status: 500 });
   }
+  try { await supabaseAdmin.from("envios_asesor").insert({ tipo: "facturas", mes, destinatarios: emails.join(", "), n: facturas.length, total: totTotal }); } catch {}
   return NextResponse.json({ ok: true, n: facturas.length });
 }

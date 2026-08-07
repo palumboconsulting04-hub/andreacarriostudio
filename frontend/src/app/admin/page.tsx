@@ -551,6 +551,8 @@ export default function AdminDashboard() {
   const [asesorData, setAsesorData] = useState<{ lineas: LineaIngreso[]; total: number } | null>(null);
   const [asesorLoading, setAsesorLoading] = useState(false);
   const [asesorEmail, setAsesorEmail] = useState("");
+  const [enviosAsesor, setEnviosAsesor] = useState<{ id: string; tipo: string; mes: string; destinatarios: string; n: number | null; total: number | null; enviado_at: string }[]>([]);
+  const cargarEnviosAsesor = () => { fetch("/api/admin/envios-asesor").then(r => r.json()).then(d => setEnviosAsesor(d.data ?? [])).catch(() => {}); };
   const [asesorEnviando, setAsesorEnviando] = useState(false);
   const [asesorMsg, setAsesorMsg] = useState("");
 
@@ -1260,8 +1262,8 @@ export default function AdminDashboard() {
     fetchVentas();
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Hoja del asesor: recuerda el email y carga el libro de ingresos del mes elegido.
-  useEffect(() => { try { setAsesorEmail(localStorage.getItem("acs_asesor_email") ?? ""); } catch {} }, []);
+  // Hoja del asesor: recuerda el email (o pre-rellena los del asesor) y carga el historial de envíos.
+  useEffect(() => { try { setAsesorEmail(localStorage.getItem("acs_asesor_email_v2") || "mariateresacaselles@gmail.com, info@firaadvocats.com, andreacarriostudio@gmail.com"); } catch { setAsesorEmail("mariateresacaselles@gmail.com, info@firaadvocats.com, andreacarriostudio@gmail.com"); } cargarEnviosAsesor(); }, []);
   useEffect(() => {
     if (activeSection !== "Hoja asesor") return;
     setAsesorLoading(true);
@@ -1291,16 +1293,18 @@ export default function AdminDashboard() {
 
   const enviarAlAsesor = async () => {
     const email = asesorEmail.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setAsesorMsg("Escribe un email de asesor válido."); return; }
+    const lista = email.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+    if (!lista.length || !lista.every(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))) { setAsesorMsg("Escribe uno o más emails válidos (separados por coma)."); return; }
     setAsesorEnviando(true); setAsesorMsg("");
     try {
-      try { localStorage.setItem("acs_asesor_email", email); } catch {}
+      try { localStorage.setItem("acs_asesor_email_v2", email); } catch {}
       const r = await fetch("/api/admin/ingresos/enviar", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mes: asesorMes, email }),
       });
       const d = await r.json();
-      setAsesorMsg(r.ok ? `Enviado a ${email} ✓` : (d.error ?? "No se pudo enviar."));
+      setAsesorMsg(r.ok ? `Enviado ✓` : (d.error ?? "No se pudo enviar."));
+      if (r.ok) cargarEnviosAsesor();
     } catch { setAsesorMsg("No se pudo enviar."); }
     setAsesorEnviando(false);
   };
@@ -1562,13 +1566,15 @@ export default function AdminDashboard() {
     if (factEnviando) return;
     if (!factMes) { setFactAsesorMsg("Elige un mes concreto."); return; }
     const email = asesorEmail.trim();
-    if (!/\S+@\S+\.\S+/.test(email)) { setFactAsesorMsg("Escribe el email del asesor."); return; }
+    const lista = email.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+    if (!lista.length || !lista.every(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))) { setFactAsesorMsg("Escribe uno o más emails válidos (separados por coma)."); return; }
     setFactEnviando(true); setFactAsesorMsg("");
-    try { localStorage.setItem("acs_asesor_email", email); } catch {}
+    try { localStorage.setItem("acs_asesor_email_v2", email); } catch {}
     try {
       const res = await fetch("/api/admin/facturas/enviar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mes: factMes, email }) });
       const d = await res.json();
       setFactAsesorMsg(res.ok ? `✓ Enviadas ${d.n} facturas al asesor.` : (d.error || "No se pudo enviar."));
+      if (res.ok) cargarEnviosAsesor();
     } catch { setFactAsesorMsg("No se pudo enviar."); }
     finally { setFactEnviando(false); }
   };
@@ -3445,6 +3451,22 @@ export default function AdminDashboard() {
                 </button>
                 {asesorMsg && <span className="text-sm" style={{ color: asesorMsg.includes("✓") ? "#1f7a3d" : "#b71c1c" }}>{asesorMsg}</span>}
               </div>
+
+              {enviosAsesor.length > 0 && (
+                <div className="rounded-2xl border p-4" style={{ borderColor: "#dcc1b9", backgroundColor: "#fffaf7" }}>
+                  <p className="text-sm font-bold mb-2" style={{ color: "#25190f" }}>Historial de envíos al asesor</p>
+                  <div className="space-y-1">
+                    {enviosAsesor.map(e => (
+                      <div key={e.id} className="text-xs flex flex-wrap gap-x-2" style={{ color: "#56423d" }}>
+                        <span style={{ color: "#7d2b13", fontWeight: 600 }}>{new Date(e.enviado_at).toLocaleString("es-ES")}</span>
+                        <span>· {e.tipo === "facturas" ? "Facturas" : "Ingresos"} {e.mes}</span>
+                        <span>· {e.n ?? 0} {e.tipo === "facturas" ? "fact." : "líneas"}{e.total != null ? ` · ${Number(e.total).toFixed(2).replace(".", ",")} €` : ""}</span>
+                        <span style={{ color: "#89726c" }}>· a {e.destinatarios}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {asesorLoading ? (
                 <p className="text-sm text-center py-8" style={{ color: "#89726c" }}>Cargando…</p>
