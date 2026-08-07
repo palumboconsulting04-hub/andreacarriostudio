@@ -41,19 +41,19 @@ const TAUPE_TEXT = "#33291f";
 // degradado + emoji para que la maqueta no se rompa.
 const SERVICIOS = [
   {
-    img: "",
+    img: "https://andreacarriostudio.es/wp-content/uploads/2026/08/DSC5073.jpg",
     emoji: "🎪",
     title: "Eventos fitness",
     text: "Alquilamos el espacio para eventos fitness y encuentros puntuales. Un entorno amplio, cuidado y preparado para actividades de movimiento y entrenamiento.",
   },
   {
-    img: "",
+    img: "https://andreacarriostudio.es/wp-content/uploads/2026/08/DSC5201.jpg",
     emoji: "🎓",
     title: "Formaciones y cursos",
     text: "El estudio está disponible para formaciones, cursos y talleres. Un espacio tranquilo y funcional, ideal para el aprendizaje y la práctica.",
   },
   {
-    img: "",
+    img: "https://andreacarriostudio.es/wp-content/uploads/2026/08/IMG_0219-scaled.jpeg",
     emoji: "🩰",
     title: "Alquiler de material Barre",
     text: "Alquiler de material de Barre, incluidas barras, para eventos, clases puntuales o formaciones. Una solución flexible para disponer de equipamiento profesional sin inversión previa.",
@@ -85,8 +85,8 @@ export default function AlquilerSalaPage() {
       {/* Hero */}
       <section
         style={{
-          background: `linear-gradient(135deg, ${C.burgundy} 0%, ${C.burgundyDark} 100%)`,
-          padding: "72px 24px",
+          background: `linear-gradient(rgba(93,30,13,0.74), rgba(45,20,9,0.86)), url('https://andreacarriostudio.es/wp-content/uploads/2026/08/IMG_0213-scaled.jpeg') center/cover no-repeat`,
+          padding: "88px 24px",
           textAlign: "center",
         }}
       >
