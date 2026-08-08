@@ -368,9 +368,6 @@ export default function PuertasAbiertasAdultas() {
                 <source src="https://andreacarriostudio.es/wp-content/uploads/2026/08/SaveClip.App_AQOtY47j3KCnnkrfPz9jNPmJA0TXflik2xp-1mSCyclywgMQOQWuLare2ywaddvC7ea_LovfJoTLX14VVBl9M5wFbsbgJ57YcXxTDPg.mp4" type="video/mp4" />
               </video>
             </div>
-            <a href="https://www.instagram.com/p/DbNwcn6Mf15/" target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-sm font-semibold" style={{ color: C.burgundy }}>
-              Ver en Instagram →
-            </a>
           </div>
         </div>
       )}
