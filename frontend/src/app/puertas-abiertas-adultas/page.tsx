@@ -359,15 +359,22 @@ export default function PuertasAbiertasAdultas() {
       {/* ── Vídeo de la clase (solo Barre) ── */}
       {varIdx === 1 && (
         <div className="px-4 pb-12">
-          <div className="max-w-xs mx-auto text-center">
+          <div className="max-w-sm mx-auto text-center">
             <h2 className="text-2xl sm:text-3xl mb-4" style={{ fontFamily: fSerif, color: C.burgundy }}>
               Así es una clase de Barre Fit
             </h2>
-            <div className="rounded-3xl overflow-hidden shadow-lg" style={{ border: `1px solid ${C.border}` }}>
+            <div className="max-w-[240px] mx-auto rounded-3xl overflow-hidden shadow-lg" style={{ border: `1px solid ${C.border}` }}>
               <video autoPlay muted loop playsInline controls preload="metadata" className="w-full block" style={{ backgroundColor: "#000" }}>
                 <source src="https://andreacarriostudio.es/wp-content/uploads/2026/08/SaveClip.App_AQOtY47j3KCnnkrfPz9jNPmJA0TXflik2xp-1mSCyclywgMQOQWuLare2ywaddvC7ea_LovfJoTLX14VVBl9M5wFbsbgJ57YcXxTDPg.mp4" type="video/mp4" />
               </video>
             </div>
+            <button
+              onClick={scrollToForm}
+              className="w-full mt-5 py-3.5 rounded-2xl text-sm font-bold uppercase tracking-wide hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.04em" }}
+            >
+              {VARIANTES[varIdx].offer.cta}
+            </button>
           </div>
         </div>
       )}
