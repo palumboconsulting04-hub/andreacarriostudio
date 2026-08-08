@@ -53,12 +53,10 @@ const VARIANTES = [
   },
   {
     eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "Estudio Especializado en Pilates Mat · Grupos Reducidos"],
-    headline: "Este septiembre, cuida tu postura y tu espalda con Pilates Mat.",
+    headline: "Recupera una espalda sin tensiones, fortalece tu cuerpo y mejora tu postura con un método guiado.",
     subtitle: "Pilates Mat · postura y core",
     body: [
-      "Imagina llegar a octubre con la espalda sin molestias, el core fuerte y la postura recta.",
-      "Gana fuerza, postura y ligereza. Clase tras clase.",
-      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos por la mañana y por la tarde: haz nuevas amigas y disfruta haciendo ejercicio. Para principiantes y para avanzadas.",
+      "Un espacio exclusivo pensado para cuidar de ti a tu ritmo, sin masificaciones ni prisas. Diseñado para mujeres que buscan volver a sentirse ligeras, ágiles y con energía en su día a día.",
     ],
   },
 ];
@@ -330,17 +328,22 @@ export default function PuertasAbiertasAdultas() {
             ))}
           </div>
 
-          <button
-            onClick={scrollToForm}
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
-          >
-            Quiero empezar
-          </button>
-
-          <p className="text-sm mt-4 font-semibold" style={{ color: C.burgundy }}>
-            🔒 Reserva online en solo 4 min, con cualquier tarjeta de débito. Tu clase, asegurada para septiembre.
-          </p>
+          <div className="max-w-lg mx-auto mt-6 rounded-2xl p-5 sm:p-6 text-left shadow-lg" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>
+            <p className="text-lg font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSerif }}>Reserva tu plaza para septiembre</p>
+            <p className="text-sm mb-4" style={{ color: C.brown }}>
+              Asegura tu lugar en nuestros grupos reducidos e incluye un <strong style={{ color: C.dark }}>Estudio Inicial de Movilidad totalmente gratuito</strong> con tu inscripción.
+            </p>
+            <button
+              onClick={scrollToForm}
+              className="w-full px-6 py-4 rounded-2xl text-sm font-bold uppercase tracking-wide shadow-md hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.04em" }}
+            >
+              Quiero mi plaza y mi Estudio Inicial gratis
+            </button>
+            <p className="text-xs mt-3 leading-relaxed" style={{ color: C.muted }}>
+              🔒 Reserva online en solo 2 minutos. Tu plaza queda 100% asegurada para septiembre. Si tras tu primera clase sientes que el estudio no es para ti, te devolvemos el importe íntegro de la reserva sin preguntas.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -359,10 +362,9 @@ export default function PuertasAbiertasAdultas() {
 
           <ul className="space-y-4">
             {[
-              ["Clases reales de Pilates Mat o Barre Fit", "Clases adaptadas a cualquier nivel para que trabajes de verdad tu cuerpo y descubras cómo entrenamos en el estudio."],
-              ["La disciplina que mejor encaja contigo", "Los beneficios del Pilates Mat para la postura, la movilidad y el core, y del Barre Fit para la tonificación, el equilibrio y la resistencia muscular."],
-              ["Un ambiente cercano y grupos reducidos", "Entrenas con tranquilidad, con atención personalizada y la diferencia de trabajar en grupos pequeños."],
-              ["Alguien que te mira y te cuida", "Estoy pendiente de cada movimiento para corregirte bien y que avances segura, sin lesionarte."],
+              ["Atención personalizada", "Ejercicios adaptados a tu nivel actual (principiantes o avanzadas) bajo la supervisión directa de Andrea para asegurar la ejecución correcta y evitar molestias."],
+              ["Ubicación y máxima comodidad", "A solo 5 minutos del CC Arena (Zona Alfahuir), con horarios flexibles de mañana y tarde para encajar fácilmente en tu rutina."],
+              ["Entorno y ambiente cálido", "Grupos reducidos para garantizar un trato cercano, donde entrenar se convierte en tu momento de desconexión del día."],
             ].map(([t, d]) => (
               <li key={t} className="flex gap-3">
                 <Check />
@@ -379,7 +381,7 @@ export default function PuertasAbiertasAdultas() {
             className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Quiero reservar mi plaza
+            Quiero mi plaza y mi Estudio Inicial gratis
           </button>
 
           <div className="mt-6 rounded-2xl p-4" style={{ backgroundColor: "#fff3e0" }}>
@@ -591,7 +593,7 @@ export default function PuertasAbiertasAdultas() {
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.cream, color: C.burgundy, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Reservar mi plaza
+            Quiero mi plaza y mi Estudio Inicial gratis
           </button>
         </div>
       </div>
