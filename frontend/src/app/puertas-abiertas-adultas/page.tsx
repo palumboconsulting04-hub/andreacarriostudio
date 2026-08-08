@@ -30,34 +30,60 @@ const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
 // Titular del hero según la disciplina del anuncio (message match), no A/B al azar:
 // 0 = directo/combinado · 1 = barre · 2 = pilates. Se etiqueta impresión + lead
 // con ese índice (variante) para ver el rendimiento por disciplina en el admin.
+const OFERTA_MICRO = "🔒 Reserva online en solo 2 minutos. Tu plaza queda 100% asegurada para septiembre. Si tras tu primera clase sientes que el estudio no es para ti, te devolvemos el importe íntegro de la reserva sin preguntas.";
+
 const VARIANTES = [
-  {
+  { // 0 · directo / combinado
     eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "Estudio de Pilates Mat y Barre Fit · Grupos Reducidos"],
     headline: "Ponte en forma este septiembre con Pilates Mat y Barre Fit.",
     subtitle: "Pilates Mat · Barre Fit",
-    body: [
-      "Imagina llegar a octubre firme, con la postura recta y la energía de vuelta.",
-      "Gana fuerza, postura y ligereza. Clase tras clase.",
-      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos por la mañana y por la tarde: haz nuevas amigas y disfruta haciendo ejercicio. Para principiantes y para avanzadas.",
+    subheadline: "Un espacio exclusivo pensado para cuidar de ti a tu ritmo, sin masificaciones ni prisas. Tonifica, mejora tu postura y vuelve a sentirte ágil y con energía en tu día a día.",
+    bulletsTitulo: "¿Qué te llevas al empezar?",
+    bullets: [
+      ["Atención personalizada (máx. 10 por clase)", "Andrea corrige cada postura en tiempo real para que trabajes seguro, sin molestias y con la técnica correcta."],
+      ["Cero impacto en tus articulaciones", "Alta intensidad muscular pero amable con tus rodillas y tu espalda."],
+      ["Ubicación y máxima comodidad", "A solo 5 minutos del CC Arena (Zona Alfahuir), con horarios de mañana y tarde en un ambiente cálido."],
     ],
+    offer: {
+      titulo: "Reserva tu plaza para septiembre",
+      desc: "Asegura tu lugar en nuestros grupos reducidos. Tu inscripción incluye una <strong>Evaluación física inicial gratuita</strong>: Andrea valora cómo estás y te dice cómo entrenar sin molestias.",
+      cta: "Quiero mi plaza y mi Evaluación física gratis",
+    },
   },
-  {
-    eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "Estudio Especializado en Barre Fit · Grupos Reducidos"],
-    headline: "Este septiembre, tonifica y recupera un cuerpo firme con Barre Fit.",
+  { // 1 · barre
+    eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "NUEVA APERTURA · Especialista en Barre Fit · Máximo 10 personas por clase"],
+    headline: "El entrenamiento que combina la elegancia de la danza y la precisión del Pilates para tonificar tu cuerpo sin impacto.",
     subtitle: "Barre Fit · tonificación de bajo impacto",
-    body: [
-      "Imagina llegar a octubre con las piernas, los glúteos y el abdomen firmes otra vez.",
-      "Gana fuerza, postura y ligereza. Clase tras clase.",
-      "Abrimos en septiembre en la zona de Alfahuir (Valencia), a 5 min del CC Arena. Grupos reducidos por la mañana y por la tarde: haz nuevas amigas y disfruta haciendo ejercicio. Para principiantes y para avanzadas.",
+    subheadline: "Diseñado para mujeres que buscan esculpir piernas, glúteos y abdomen de forma estilizada, ganando fuerza y mejorando la postura sin sufrir en las articulaciones.",
+    bulletsTitulo: "¿Qué conseguirás en cada clase?",
+    bullets: [
+      ["Tonifica y define, sin volumen pesado", "Un trabajo muscular profundo utilizando la barra de ballet y pequeños accesorios para definir el cuerpo sin ganar volumen pesado."],
+      ["Cero impacto en tus articulaciones", "Movimientos de alta intensidad muscular pero totalmente amables con tus rodillas y tu espalda."],
+      ["Atención 100% personalizada (máx. 10 personas)", "Andrea corregirá cada postura en tiempo real para garantizar que trabajes la musculatura correcta de forma segura."],
+      ["Ubicación y máxima comodidad", "A solo 5 minutos del CC Arena (Zona Alfahuir), con horarios de mañana y tarde en un ambiente cálido y exclusivo."],
     ],
+    offer: {
+      titulo: "Reserva tu plaza para septiembre",
+      desc: "Solo 10 plazas disponibles por grupo. Asegura tu lugar. Tu inscripción incluye una <strong>Sesión Inicial de Introducción a la Técnica gratuita</strong>.",
+      cta: "Quiero mi plaza y mi Sesión Inicial gratis",
+    },
   },
-  {
+  { // 2 · pilates
     eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "Estudio Especializado en Pilates Mat · Grupos Reducidos"],
     headline: "Recupera una espalda sin tensiones, fortalece tu cuerpo y mejora tu postura con un método guiado.",
     subtitle: "Pilates Mat · postura y core",
-    body: [
-      "Un espacio exclusivo pensado para cuidar de ti a tu ritmo, sin masificaciones ni prisas. Diseñado para mujeres que buscan volver a sentirse ligeras, ágiles y con energía en su día a día.",
+    subheadline: "Un espacio exclusivo pensado para cuidar de ti a tu ritmo, sin masificaciones ni prisas. Diseñado para mujeres que buscan volver a sentirse ligeras, ágiles y con energía en su día a día.",
+    bulletsTitulo: "¿Qué te llevas al empezar?",
+    bullets: [
+      ["Atención personalizada", "Ejercicios adaptados a tu nivel actual (principiantes o avanzadas) bajo la supervisión directa de Andrea para asegurar la ejecución correcta y evitar molestias."],
+      ["Ubicación y máxima comodidad", "A solo 5 minutos del CC Arena (Zona Alfahuir), con horarios flexibles de mañana y tarde para encajar fácilmente en tu rutina."],
+      ["Entorno y ambiente cálido", "Grupos reducidos para garantizar un trato cercano, donde entrenar se convierte en tu momento de desconexión del día."],
     ],
+    offer: {
+      titulo: "Reserva tu plaza para septiembre",
+      desc: "Asegura tu lugar en nuestros grupos reducidos. Tu inscripción incluye una <strong>Evaluación física inicial gratuita</strong>: Andrea valora cómo estás y te dice cómo entrenar sin molestias.",
+      cta: "Quiero mi plaza y mi Evaluación física gratis",
+    },
   },
 ];
 
@@ -322,26 +348,22 @@ export default function PuertasAbiertasAdultas() {
             {VARIANTES[varIdx].subtitle}
           </p>
 
-          <div className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6 space-y-3" style={{ color: C.dark }}>
-            {VARIANTES[varIdx].body.map((t, i) => (
-              <p key={i} style={i === 1 ? { fontWeight: 600 } : undefined}>{t}</p>
-            ))}
-          </div>
+          <p className="text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-6" style={{ color: C.dark }}>
+            {VARIANTES[varIdx].subheadline}
+          </p>
 
           <div className="max-w-lg mx-auto mt-6 rounded-2xl p-5 sm:p-6 text-left shadow-lg" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>
-            <p className="text-lg font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSerif }}>Reserva tu plaza para septiembre</p>
-            <p className="text-sm mb-4" style={{ color: C.brown }}>
-              Asegura tu lugar en nuestros grupos reducidos. Tu inscripción incluye una <strong style={{ color: C.dark }}>Evaluación física inicial gratuita</strong>: Andrea valora cómo estás y te dice cómo entrenar sin molestias.
-            </p>
+            <p className="text-lg font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSerif }}>{VARIANTES[varIdx].offer.titulo}</p>
+            <p className="text-sm mb-4" style={{ color: C.brown }} dangerouslySetInnerHTML={{ __html: VARIANTES[varIdx].offer.desc }} />
             <button
               onClick={scrollToForm}
               className="w-full px-6 py-4 rounded-2xl text-sm font-bold uppercase tracking-wide shadow-md hover:opacity-90 transition-opacity"
               style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.04em" }}
             >
-              Quiero mi plaza y mi Evaluación física gratis
+              {VARIANTES[varIdx].offer.cta}
             </button>
             <p className="text-xs mt-3 leading-relaxed" style={{ color: C.muted }}>
-              🔒 Reserva online en solo 2 minutos. Tu plaza queda 100% asegurada para septiembre. Si tras tu primera clase sientes que el estudio no es para ti, te devolvemos el importe íntegro de la reserva sin preguntas.
+              {OFERTA_MICRO}
             </p>
           </div>
         </div>
@@ -357,15 +379,11 @@ export default function PuertasAbiertasAdultas() {
             className="text-2xl sm:text-3xl mb-7 text-center"
             style={{ fontFamily: fSerif, color: C.burgundy }}
           >
-            ¿Qué te llevas al empezar?
+            {VARIANTES[varIdx].bulletsTitulo}
           </h2>
 
           <ul className="space-y-4">
-            {[
-              ["Atención personalizada", "Ejercicios adaptados a tu nivel actual (principiantes o avanzadas) bajo la supervisión directa de Andrea para asegurar la ejecución correcta y evitar molestias."],
-              ["Ubicación y máxima comodidad", "A solo 5 minutos del CC Arena (Zona Alfahuir), con horarios flexibles de mañana y tarde para encajar fácilmente en tu rutina."],
-              ["Entorno y ambiente cálido", "Grupos reducidos para garantizar un trato cercano, donde entrenar se convierte en tu momento de desconexión del día."],
-            ].map(([t, d]) => (
+            {VARIANTES[varIdx].bullets.map(([t, d]) => (
               <li key={t} className="flex gap-3">
                 <Check />
                 <span>
@@ -381,7 +399,7 @@ export default function PuertasAbiertasAdultas() {
             className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Quiero mi plaza y mi Evaluación física gratis
+            {VARIANTES[varIdx].offer.cta}
           </button>
 
           <div className="mt-6 rounded-2xl p-4" style={{ backgroundColor: "#fff3e0" }}>
@@ -593,7 +611,7 @@ export default function PuertasAbiertasAdultas() {
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.cream, color: C.burgundy, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Quiero mi plaza y mi Evaluación física gratis
+            {VARIANTES[varIdx].offer.cta}
           </button>
         </div>
       </div>
