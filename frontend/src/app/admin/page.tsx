@@ -778,7 +778,7 @@ export default function AdminDashboard() {
     fbclid: string | null;
   };
   const [adultasData, setAdultasData] = useState<PuertaAdultaRow[]>([]);
-  const [abData, setAbData] = useState<{ impresiones: number[]; leads: number[]; ventas: number[] } | null>(null);
+  const [abData, setAbData] = useState<{ historico: { impresiones: number[]; leads: number[]; ventas: number[] }; disciplina: { impresiones: number[]; leads: number[]; ventas: number[] }; corte: string } | null>(null);
   const [adultasLoading, setAdultasLoading] = useState(false);
   const [adultasSearch, setAdultasSearch] = useState("");
   const [adultasFiltroDisc, setAdultasFiltroDisc] = useState("");
@@ -1352,7 +1352,7 @@ export default function AdminDashboard() {
       .finally(() => setAdultasLoading(false));
     fetch("/api/admin/ab-titulares")
       .then(r => r.json())
-      .then(d => setAbData(d && Array.isArray(d.impresiones) ? d : null))
+      .then(d => setAbData(d && d.disciplina && Array.isArray(d.disciplina.impresiones) ? d : null))
       .catch(() => setAbData(null));
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -5090,13 +5090,13 @@ export default function AdminDashboard() {
                 {/* A/B de titulares — cuál convierte más */}
                 {(() => {
                   const AB = [
-                    { label: "El turno para ti", desc: "«…¿y si tú también empiezas algo tuyo?»" },
-                    { label: "El propósito de septiembre", desc: "«Empieza a cuidarte con Pilates y Barre Fit.»" },
-                    { label: "El pain point del tono", desc: "«El chiringuito del verano y el tono por los suelos.»" },
+                    { label: "Directo / combinado", desc: "Sin anuncio o anuncio genérico" },
+                    { label: "Barre", desc: "Titular de tonificar (anuncio de barre)" },
+                    { label: "Pilates", desc: "Titular de postura (anuncio de pilates)" },
                   ];
-                  const imp = abData?.impresiones ?? [];
-                  const lea = abData?.leads ?? [];
-                  const ven = abData?.ventas ?? [];
+                  const imp = abData?.disciplina?.impresiones ?? [];
+                  const lea = abData?.disciplina?.leads ?? [];
+                  const ven = abData?.disciplina?.ventas ?? [];
                   const filas = AB.map((v, i) => {
                     const impresiones = imp[i] ?? 0;
                     const leads = lea[i] ?? 0;
@@ -5105,7 +5105,6 @@ export default function AdminDashboard() {
                     const ventaRate = leads > 0 ? (ventas / leads) * 100 : null;
                     return { ...v, i, impresiones, leads, ventas, conv, ventaRate };
                   });
-                  const totalImp = filas.reduce((a, f) => a + f.impresiones, 0);
                   // Solo declaramos "ganador" con datos suficientes (≥30 visitas y ≥1 lead en la mejor).
                   const conFiables = filas.filter(f => f.impresiones >= 30 && f.conv !== null);
                   const ganador = conFiables.length > 0
@@ -5114,7 +5113,7 @@ export default function AdminDashboard() {
                   return (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#89726c" }}>
-                        A/B de titulares · cuál convierte más
+                        Seguimiento por disciplina · desde el 7-ago (titular según el anuncio)
                       </p>
                       <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "#dcc1b9" }}>
                         <table className="w-full text-sm">
@@ -5160,11 +5159,43 @@ export default function AdminDashboard() {
                         </table>
                       </div>
                       <p className="text-xs mt-2 leading-relaxed" style={{ color: "#89726c" }}>
-                        {totalImp < 90
-                          ? "Datos aún insuficientes: cada visitante ve los 3 titulares rotando. Espera a tener más visitas para fiarte del ganador."
-                          : "Cada visitante ve los 3 titulares rotando; cada lead y cada venta se atribuyen al último titular que vio esa persona."}
-                        {" "}<b>«Va ganando»</b> se decide por conversión de visita a lead (llega antes). <b>Ventas</b> = leads que acabaron pagando la inscripción: es la verdad final, pero necesita más volumen para ser fiable.
+                        Cada persona ve el titular que coincide con su anuncio (barre o pilates); «directo» = sin anuncio o genérico.
+                        {" "}<b>«Va ganando»</b> se decide por conversión de visita a lead. <b>Ventas</b> = leads que acabaron pagando: la verdad final, pero necesita volumen.
                       </p>
+                      {(() => {
+                        const HIST = ["El turno para ti", "El propósito de septiembre", "El pain point del tono"];
+                        const h = abData?.historico;
+                        const total = (h?.impresiones ?? []).reduce((a, n) => a + n, 0) + (h?.leads ?? []).reduce((a, n) => a + n, 0);
+                        if (!h || total === 0) return null;
+                        return (
+                          <details className="mt-4">
+                            <summary className="text-xs font-semibold uppercase tracking-widest cursor-pointer" style={{ color: "#89726c" }}>
+                              Histórico · A/B de titulares (hasta el 7-ago) — se conserva
+                            </summary>
+                            <div className="rounded-2xl overflow-hidden border mt-2" style={{ borderColor: "#dcc1b9" }}>
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr style={{ backgroundColor: "#fff0eb" }}>
+                                    {["Titular (antiguo)", "Visitas", "Leads", "Ventas"].map((hh, hi) => (
+                                      <th key={hi} className={`px-4 py-2 text-xs font-semibold uppercase tracking-widest ${hi === 0 ? "text-left" : "text-center"}`} style={{ color: "#89726c" }}>{hh}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {HIST.map((lab, i) => (
+                                    <tr key={i} style={{ borderTop: "1px solid #f0ddd5", backgroundColor: i % 2 === 0 ? "#ffffff" : "#fffbf9" }}>
+                                      <td className="px-4 py-2" style={{ color: "#7d2b13" }}>{lab}</td>
+                                      <td className="px-4 py-2 text-center tabular-nums" style={{ color: "#7d2b13" }}>{h.impresiones?.[i] ?? 0}</td>
+                                      <td className="px-4 py-2 text-center tabular-nums font-semibold" style={{ color: "#7d2b13" }}>{h.leads?.[i] ?? 0}</td>
+                                      <td className="px-4 py-2 text-center tabular-nums font-semibold" style={{ color: "#7d2b13" }}>{h.ventas?.[i] ?? 0}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </details>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
