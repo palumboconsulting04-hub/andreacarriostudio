@@ -254,7 +254,7 @@ function StripePaymentFase({
                   <div>
                     <p className="text-sm font-semibold" style={{ color: "#25190f" }}>Matrícula</p>
                     <p className="text-xs leading-snug mt-0.5" style={{ color: "#56423d" }}>
-                      Incluye evaluación inicial, plaza reservada y material de bienvenida
+                      Incluye evaluación física inicial, plaza reservada y material de bienvenida
                     </p>
                     <p className="text-xs mt-1 italic" style={{ color: "#89726c" }}>
                       Pago anual — una sola vez por curso, no es una cuota mensual
@@ -655,7 +655,7 @@ export default function Paso4Pago({ estado, bozze, onChange, onBack, onConfirmad
                   <div>
                     <p className="text-sm font-semibold" style={{ color: "#25190f" }}>Matrícula</p>
                     <p className="text-xs leading-snug mt-0.5" style={{ color: "#56423d" }}>
-                      Incluye evaluación inicial, plaza reservada y material de bienvenida
+                      Incluye evaluación física inicial, plaza reservada y material de bienvenida
                     </p>
                     <p className="text-xs mt-1 italic" style={{ color: "#89726c" }}>
                       Pago anual — una sola vez por curso, no es una cuota mensual

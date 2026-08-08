@@ -331,14 +331,14 @@ export default function PuertasAbiertasAdultas() {
           <div className="max-w-lg mx-auto mt-6 rounded-2xl p-5 sm:p-6 text-left shadow-lg" style={{ backgroundColor: "#ffffff", border: `2px solid ${C.burgundy}` }}>
             <p className="text-lg font-bold mb-1" style={{ color: C.burgundy, fontFamily: fSerif }}>Reserva tu plaza para septiembre</p>
             <p className="text-sm mb-4" style={{ color: C.brown }}>
-              Asegura tu lugar en nuestros grupos reducidos e incluye un <strong style={{ color: C.dark }}>Estudio Inicial de Movilidad totalmente gratuito</strong> con tu inscripción.
+              Asegura tu lugar en nuestros grupos reducidos. Tu inscripción incluye una <strong style={{ color: C.dark }}>Evaluación física inicial gratuita</strong>: Andrea valora cómo estás y te dice cómo entrenar sin molestias.
             </p>
             <button
               onClick={scrollToForm}
               className="w-full px-6 py-4 rounded-2xl text-sm font-bold uppercase tracking-wide shadow-md hover:opacity-90 transition-opacity"
               style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.04em" }}
             >
-              Quiero mi plaza y mi Estudio Inicial gratis
+              Quiero mi plaza y mi Evaluación física gratis
             </button>
             <p className="text-xs mt-3 leading-relaxed" style={{ color: C.muted }}>
               🔒 Reserva online en solo 2 minutos. Tu plaza queda 100% asegurada para septiembre. Si tras tu primera clase sientes que el estudio no es para ti, te devolvemos el importe íntegro de la reserva sin preguntas.
@@ -381,7 +381,7 @@ export default function PuertasAbiertasAdultas() {
             className="w-full mt-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.burgundy, color: C.cream, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Quiero mi plaza y mi Estudio Inicial gratis
+            Quiero mi plaza y mi Evaluación física gratis
           </button>
 
           <div className="mt-6 rounded-2xl p-4" style={{ backgroundColor: "#fff3e0" }}>
@@ -593,7 +593,7 @@ export default function PuertasAbiertasAdultas() {
             className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm font-semibold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
             style={{ backgroundColor: C.cream, color: C.burgundy, fontFamily: fSans, letterSpacing: "0.08em" }}
           >
-            Quiero mi plaza y mi Estudio Inicial gratis
+            Quiero mi plaza y mi Evaluación física gratis
           </button>
         </div>
       </div>
