@@ -53,7 +53,7 @@ const VARIANTES = [
   { // 1 · barre
     eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "NUEVA APERTURA · Especialista en Barre Fit · Máximo 10 personas por clase"],
     headline: "El entrenamiento que combina la elegancia de la danza y la precisión del Pilates para tonificar tu cuerpo sin impacto.",
-    subtitle: "Barre Fit · tonificación de bajo impacto",
+    subtitle: "Barre Fit · tonifica y define piernas, glúteos y abdomen",
     subheadline: "Diseñado para mujeres que buscan esculpir piernas, glúteos y abdomen de forma estilizada, ganando fuerza y mejorando la postura sin sufrir en las articulaciones.",
     bulletsTitulo: "¿Qué conseguirás en cada clase?",
     bullets: [
