@@ -356,6 +356,25 @@ export default function PuertasAbiertasAdultas() {
         </div>
       </div>
 
+      {/* ── Vídeo de la clase (solo Barre) ── */}
+      {varIdx === 1 && (
+        <div className="px-4 pb-12">
+          <div className="max-w-xs mx-auto text-center">
+            <h2 className="text-2xl sm:text-3xl mb-4" style={{ fontFamily: fSerif, color: C.burgundy }}>
+              Así es una clase de Barre Fit
+            </h2>
+            <div className="rounded-3xl overflow-hidden shadow-lg" style={{ border: `1px solid ${C.border}` }}>
+              <video autoPlay muted loop playsInline controls preload="metadata" className="w-full block" style={{ backgroundColor: "#000" }}>
+                <source src="https://andreacarriostudio.es/wp-content/uploads/2026/08/SaveClip.App_AQOtY47j3KCnnkrfPz9jNPmJA0TXflik2xp-1mSCyclywgMQOQWuLare2ywaddvC7ea_LovfJoTLX14VVBl9M5wFbsbgJ57YcXxTDPg.mp4" type="video/mp4" />
+              </video>
+            </div>
+            <a href="https://www.instagram.com/p/DbNwcn6Mf15/" target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-sm font-semibold" style={{ color: C.burgundy }}>
+              Ver en Instagram →
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* ── Lo que te llevas al empezar ── */}
       <div className="px-4 py-12">
         <div
