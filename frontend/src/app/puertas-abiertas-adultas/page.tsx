@@ -34,7 +34,7 @@ const OFERTA_MICRO = "🔒 Reserva online en solo 2 minutos. Tu plaza queda 100%
 
 const VARIANTES = [
   { // 0 · directo / combinado
-    eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "Estudio de Pilates Mat y Barre Fit · Grupos Reducidos"],
+    eyebrow: "Pilates Mat y Barre Fit · Valencia (Alfahuir)",
     headline: "Ponte en forma este septiembre con Pilates Mat y Barre Fit.",
     subtitle: "Pilates Mat · Barre Fit",
     subheadline: "Un espacio exclusivo pensado para cuidar de ti a tu ritmo, sin masificaciones ni prisas. Tonifica, mejora tu postura y vuelve a sentirte ágil y con energía en tu día a día.",
@@ -51,7 +51,7 @@ const VARIANTES = [
     },
   },
   { // 1 · barre
-    eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "NUEVA APERTURA · Especialista en Barre Fit · Máximo 10 personas por clase"],
+    eyebrow: "Especialista en Barre Fit · Valencia (Alfahuir)",
     headline: "El entrenamiento que combina la elegancia de la danza y la precisión del Pilates para tonificar tu cuerpo sin impacto.",
     subtitle: "Barre Fit · tonifica y define piernas, glúteos y abdomen",
     subheadline: "Diseñado para mujeres que buscan esculpir piernas, glúteos y abdomen de forma estilizada, ganando fuerza y mejorando la postura sin sufrir en las articulaciones.",
@@ -69,7 +69,7 @@ const VARIANTES = [
     },
   },
   { // 2 · pilates
-    eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "Estudio Especializado en Pilates Mat · Grupos Reducidos"],
+    eyebrow: "Especialista en Pilates Mat · Valencia (Alfahuir)",
     headline: "Recupera una espalda sin tensiones, fortalece tu cuerpo y mejora tu postura con un método guiado.",
     subtitle: "Pilates Mat · postura y core",
     subheadline: "Un espacio exclusivo pensado para cuidar de ti a tu ritmo, sin masificaciones ni prisas. Diseñado para mujeres que buscan volver a sentirse ligeras, ágiles y con energía en su día a día.",
@@ -320,19 +320,6 @@ export default function PuertasAbiertasAdultas() {
             style={{ objectFit: "contain" }}
           />
 
-          <p
-            className="text-[11px] uppercase tracking-[0.18em] mb-1"
-            style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 700 }}
-          >
-            {VARIANTES[varIdx].eyebrow[0]}
-          </p>
-          <p
-            className="text-xs sm:text-sm mb-3"
-            style={{ color: C.brown, fontFamily: fSans, fontWeight: 600 }}
-          >
-            {VARIANTES[varIdx].eyebrow[1]}
-          </p>
-
           <h1
             className="text-[1.7rem] sm:text-5xl mb-4 leading-[1.15]"
             style={{ fontFamily: fSerif, color: C.burgundy }}
@@ -403,8 +390,8 @@ export default function PuertasAbiertasAdultas() {
           </button>
 
           <div className="mt-6 rounded-2xl p-4" style={{ backgroundColor: "#fff3e0" }}>
-            <p className="text-sm leading-relaxed" style={{ color: "#8a4b1a" }}>
-              ⚠️ <strong>Un pequeño detalle:</strong> Trabajo siempre con grupos muy reducidos porque me gusta estar pendiente de cada una de vosotras y corregiros bien. Por eso las plazas son limitadas. Si te apetece empezar, reserva tu hueco ahora para asegurar tu horario.
+            <p className="text-sm font-semibold text-center" style={{ color: "#8a4b1a" }}>
+              👥 Grupos de máximo 10 personas por clase
             </p>
           </div>
         </div>
