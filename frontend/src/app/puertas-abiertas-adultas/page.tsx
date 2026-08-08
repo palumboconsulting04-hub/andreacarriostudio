@@ -32,6 +32,7 @@ const fSans = "var(--font-montserrat), 'Montserrat', sans-serif";
 // con ese índice (variante) para ver el rendimiento por disciplina en el admin.
 const VARIANTES = [
   {
+    eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "Estudio de Pilates Mat y Barre Fit · Grupos Reducidos"],
     headline: "Ponte en forma este septiembre con Pilates Mat y Barre Fit.",
     subtitle: "Pilates Mat · Barre Fit",
     body: [
@@ -41,6 +42,7 @@ const VARIANTES = [
     ],
   },
   {
+    eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "Estudio Especializado en Barre Fit · Grupos Reducidos"],
     headline: "Este septiembre, tonifica y recupera un cuerpo firme con Barre Fit.",
     subtitle: "Barre Fit · tonificación de bajo impacto",
     body: [
@@ -50,6 +52,7 @@ const VARIANTES = [
     ],
   },
   {
+    eyebrow: ["ANDREA CARRIÓ STUDIO · VALENCIA (ZONA ALFAHUIR)", "Estudio Especializado en Pilates Mat · Grupos Reducidos"],
     headline: "Este septiembre, cuida tu postura y tu espalda con Pilates Mat.",
     subtitle: "Pilates Mat · postura y core",
     body: [
@@ -294,10 +297,16 @@ export default function PuertasAbiertasAdultas() {
           />
 
           <p
-            className="text-xs uppercase tracking-[0.18em] mb-3"
-            style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 600 }}
+            className="text-[11px] uppercase tracking-[0.18em] mb-1"
+            style={{ color: C.burgundy, fontFamily: fSans, fontWeight: 700 }}
           >
-            Nueva apertura · Estudio de Pilates Mat y Barre Fit · Valencia, Zona Alfahuir
+            {VARIANTES[varIdx].eyebrow[0]}
+          </p>
+          <p
+            className="text-xs sm:text-sm mb-3"
+            style={{ color: C.brown, fontFamily: fSans, fontWeight: 600 }}
+          >
+            {VARIANTES[varIdx].eyebrow[1]}
           </p>
 
           <h1
